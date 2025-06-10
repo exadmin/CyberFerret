@@ -1,4 +1,4 @@
-package com.github.exadmin.sourcesscanner.context;
+package com.github.exadmin.sourcesscanner.persistence;
 
 import javafx.beans.property.Property;
 import javafx.beans.property.SimpleStringProperty;

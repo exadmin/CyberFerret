@@ -1,14 +1,14 @@
 package com.github.exadmin.sourcesscanner;
 
-import com.github.exadmin.sourcesscanner.context.PersistentPropertiesManager;
 import com.github.exadmin.sourcesscanner.fxui.SceneBuilder;
+import com.github.exadmin.sourcesscanner.persistence.PersistentPropertiesManager;
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 
 import java.nio.file.Paths;
 
-import static com.github.exadmin.sourcesscanner.context.PersistentPropertiesManager.*;
+import static com.github.exadmin.sourcesscanner.persistence.PersistentPropertiesManager.*;
 
 public class SourcesScannerApp extends Application {
     private static final String APPLICATION_PERSISTENT_CONTEXT_FILENAME = "app.properties";
