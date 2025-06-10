@@ -4,20 +4,29 @@ import javafx.beans.property.*;
 
 import java.nio.file.Path;
 
-public class FoundItem {
-    private Path path;
+public class FoundPathItem {
+    public static final String STATUS_FOUND = "found";
+
+    private Path filePath;
     private StringProperty visualName = new SimpleStringProperty();
+    private StringProperty status = new SimpleStringProperty();
     private BooleanProperty isDirectory = new SimpleBooleanProperty();
     private LongProperty startPlace = new SimpleLongProperty();
     private LongProperty endPlace = new SimpleLongProperty();
     private StringProperty signatureId = new SimpleStringProperty();
 
-    public FoundItem(Path path) {
-        this.path = path;
+    public FoundPathItem(Path filePath) {
+        this.filePath = filePath;
+        this.visualName.setValue(filePath.getFileName().toString());
+        this.status.setValue(STATUS_FOUND);
+        this.isDirectory.setValue(filePath.toFile().isDirectory());
+        this.startPlace.setValue(0);
+        this.startPlace.setValue(0);
+        this.signatureId.setValue("");
     }
 
-    public Path getPath() {
-        return path;
+    public Path getFilePath() {
+        return filePath;
     }
 
     public String getVisualName() {
@@ -30,6 +39,18 @@ public class FoundItem {
 
     public void setVisualName(String visualName) {
         this.visualName.set(visualName);
+    }
+
+    public String getStatus() {
+        return status.get();
+    }
+
+    public StringProperty statusProperty() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status.set(status);
     }
 
     public boolean isIsDirectory() {

@@ -3,7 +3,8 @@ package com.github.exadmin.sourcesscanner.fxui;
 import com.github.exadmin.sourcesscanner.async.RunnableLogger;
 import com.github.exadmin.sourcesscanner.async.RunnableScanner;
 import com.github.exadmin.sourcesscanner.fxui.helpers.ChooserBuilder;
-import com.github.exadmin.sourcesscanner.model.FoundItem;
+import com.github.exadmin.sourcesscanner.model.FoundPathItem;
+import com.github.exadmin.sourcesscanner.model.FoundItemsContainer;
 import com.github.exadmin.sourcesscanner.persistence.PersistentPropertiesManager;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
@@ -15,7 +16,10 @@ import javafx.stage.Stage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.Map;
 
 import static com.github.exadmin.sourcesscanner.persistence.PersistentPropertiesManager.DICTIONARY;
 import static com.github.exadmin.sourcesscanner.persistence.PersistentPropertiesManager.DIR_TO_SCAN;
@@ -27,10 +31,12 @@ public class SceneBuilder {
 
     private PersistentPropertiesManager appProperties;
     private Stage primaryStage;
+    private FoundItemsContainer foundItemsContainer;
 
     public SceneBuilder(PersistentPropertiesManager appProperties, Stage primaryStage) {
         this.appProperties = appProperties;
         this.primaryStage = primaryStage;
+        this.foundItemsContainer = new FoundItemsContainer();
     }
 
     public Scene buildScene() {
@@ -106,7 +112,10 @@ public class SceneBuilder {
             Button btnRun = new Button("Start");
             btnRun.setOnAction(actionEvent -> {
                 log.debug("Start button is pressed, where sig-file = {}, dir-to-scan = {}", DICTIONARY.getValue(), DIR_TO_SCAN.getValue());
-                Runnable runnable = new RunnableScanner(DICTIONARY.getValue(), DIR_TO_SCAN.getValue());
+                RunnableScanner runnable = new RunnableScanner(DICTIONARY.getValue(), DIR_TO_SCAN.getValue(), foundItemsContainer);
+                runnable.setBeforeStart(() -> btnRun.setDisable(true));
+                runnable.setAfterFinished(() -> btnRun.setDisable(false));
+
                 Thread thread = new Thread(runnable);
                 thread.setDaemon(true);
                 thread.start();
@@ -138,11 +147,11 @@ public class SceneBuilder {
         VBox vbox = new VBox();
         tpExplorer.setContent(vbox);
 
-        TreeTableView<FoundItem> ttView = new TreeTableView<>();
-        TreeTableColumn<FoundItem, String> colVisualName = new TreeTableColumn<>("Path name");
-        TreeTableColumn<FoundItem, Boolean> colIsDir = new TreeTableColumn<>("Is Dir?");
-        TreeTableColumn<FoundItem, Long> colPlace = new TreeTableColumn<>("Place");
-        TreeTableColumn<FoundItem, String> colSigId = new TreeTableColumn<>("Signature Id");
+        TreeTableView<FoundPathItem> ttView = new TreeTableView<>();
+        TreeTableColumn<FoundPathItem, String> colVisualName = new TreeTableColumn<>("Path name");
+        TreeTableColumn<FoundPathItem, Boolean> colIsDir = new TreeTableColumn<>("Is Dir?");
+        TreeTableColumn<FoundPathItem, Long> colPlace = new TreeTableColumn<>("Place");
+        TreeTableColumn<FoundPathItem, String> colSigId = new TreeTableColumn<>("Signature Id");
 
         colVisualName.setCellValueFactory(new TreeItemPropertyValueFactory<>("visualName"));
         colIsDir.setCellValueFactory(new TreeItemPropertyValueFactory<>("isDirectory"));
@@ -156,24 +165,27 @@ public class SceneBuilder {
         ttView.setShowRoot(true);
         ttView.setMinHeight(320);
 
-        FoundItem modelItem = new FoundItem(Paths.get(""));
-        modelItem.setVisualName("Files");
-        modelItem.setIsDirectory(true);
-        modelItem.setStartPlace(1000);
-        modelItem.setEndPlace(1100);
-        modelItem.setSignatureId("12323");
+        final Map<Path, TreeItem<FoundPathItem>> map = new HashMap<>();
 
-        TreeItem<FoundItem> rootTreeItem = new TreeItem<>(modelItem);
-        rootTreeItem.setExpanded(true);
+        final FoundPathItem fakeItem = new FoundPathItem(Paths.get(""));
+        final TreeItem<FoundPathItem> rootTreeItem = new TreeItem<>(fakeItem);
+
+        foundItemsContainer.setOnAddNewItemListener(newItem -> {
+            TreeItem<FoundPathItem> newTreeItem = new TreeItem<>(newItem);
+
+            Path parent = newItem.getFilePath().getParent();
+            TreeItem<FoundPathItem> parentTreeItem = map.get(parent);
+            if (parentTreeItem != null) {
+                parentTreeItem.getChildren().add(newTreeItem);
+            } else {
+                rootTreeItem.getChildren().add(newTreeItem);
+            }
+
+            map.put(newItem.getFilePath(), newTreeItem);
+        });
+
+
         ttView.setRoot(rootTreeItem);
-
-        for (int i=0; i<50; i++) {
-            FoundItem childModelItem = new FoundItem(Paths.get(""));
-            childModelItem.setVisualName("Child " +i);
-
-            TreeItem<FoundItem> childTreeItem = new TreeItem<>(childModelItem);
-            rootTreeItem.getChildren().add(childTreeItem);
-        }
 
         vbox.getChildren().add(ttView);
         vbox.setMaxSize(Double.MAX_VALUE,Double.MAX_VALUE);
