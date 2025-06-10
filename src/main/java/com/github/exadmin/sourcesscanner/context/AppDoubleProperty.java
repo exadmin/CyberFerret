@@ -1,13 +1,25 @@
 package com.github.exadmin.sourcesscanner.context;
 
-public class AppDoubleProperty extends AppAbstractProperty<Double> {
+import javafx.beans.property.DoubleProperty;
+import javafx.beans.property.Property;
+import javafx.beans.property.SimpleDoubleProperty;
 
-    public AppDoubleProperty(String keyName, Double defaultValue) {
-        super(keyName, defaultValue);
+import java.util.Map;
+
+public class AppDoubleProperty extends AbstractPersistentProperty<Double> {
+    private final DoubleProperty fxProperty = new SimpleDoubleProperty();
+
+    AppDoubleProperty(String keyName, Double defaultValue, Map<String, AbstractPersistentProperty<?>> regMap) {
+        super(keyName, defaultValue, regMap);
     }
 
     @Override
-    public Double parseValue(String text) {
-        return Double.parseDouble(text);
+    public void parseValue(Object text) {
+        setValue(Double.parseDouble(text.toString()));
+    }
+
+    @Override
+    protected Property getFxProperty() {
+        return fxProperty;
     }
 }

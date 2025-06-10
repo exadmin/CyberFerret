@@ -1,38 +1,36 @@
 package com.github.exadmin.sourcesscanner;
 
-import com.github.exadmin.sourcesscanner.context.AppAbstractProperty;
-import com.github.exadmin.sourcesscanner.context.AppProperties;
+import com.github.exadmin.sourcesscanner.context.PersistentPropertiesManager;
 import com.github.exadmin.sourcesscanner.fxui.SceneBuilder;
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 
-import java.io.IOException;
 import java.nio.file.Paths;
 
-import static com.github.exadmin.sourcesscanner.context.AppAbstractProperty.*;
+import static com.github.exadmin.sourcesscanner.context.PersistentPropertiesManager.*;
 
 public class SourcesScannerApp extends Application {
     private static final String APPLICATION_PERSISTENT_CONTEXT_FILENAME = "app.properties";
 
     @Override
-    public void start(Stage stage) throws IOException {
-        AppProperties appProperties = new AppProperties(Paths.get("", APPLICATION_PERSISTENT_CONTEXT_FILENAME));
+    public void start(Stage stage) {
+        PersistentPropertiesManager appProperties = new PersistentPropertiesManager(Paths.get("", APPLICATION_PERSISTENT_CONTEXT_FILENAME));
 
         // add listeners
-        stage.widthProperty().addListener((value, oldValue, newValue) -> appProperties.setValue(STAGE_WIDTH, newValue.doubleValue()));
-        stage.heightProperty().addListener((value, oldValue, newValue) -> appProperties.setValue(STAGE_HEIGTH, newValue.doubleValue()));
-        stage.xProperty().addListener((value, oldValue, newValue) -> appProperties.setValue(STAGE_POSX, newValue.doubleValue()));
-        stage.yProperty().addListener((value, oldValue, newValue) -> appProperties.setValue(STAGE_POSY, newValue.doubleValue()));
-        stage.maximizedProperty().addListener((value, oldValue, newValue) -> appProperties.setValue(STAGE_IS_MAXIMIZED, newValue));
+        stage.widthProperty().addListener((value, oldValue, newValue) -> STAGE_WIDTH.parseValue(newValue));
+        stage.heightProperty().addListener((value, oldValue, newValue) -> STAGE_HEIGHT.parseValue(newValue));
+        stage.xProperty().addListener((value, oldValue, newValue) -> STAGE_POSX.parseValue(newValue));
+        stage.yProperty().addListener((value, oldValue, newValue) -> STAGE_POSY.parseValue(newValue));
+        stage.maximizedProperty().addListener((value, oldValue, newValue) -> STAGE_IS_MAXIMIZED.parseValue(newValue));
 
-        Boolean isStageMaximized = appProperties.getValue(STAGE_IS_MAXIMIZED);
+        Boolean isStageMaximized = STAGE_IS_MAXIMIZED.getValue();
         if (isStageMaximized) stage.setMaximized(true);
 
-        stage.setWidth(appProperties.getValue(STAGE_WIDTH));
-        stage.setHeight(appProperties.getValue(STAGE_HEIGTH));
-        stage.setX(appProperties.getValue(STAGE_POSX));
-        stage.setY(appProperties.getValue(STAGE_POSY));
+        stage.setWidth(STAGE_WIDTH.getValue());
+        stage.setHeight(STAGE_HEIGHT.getValue());
+        stage.setX(STAGE_POSX.getValue());
+        stage.setY(STAGE_POSY.getValue());
 
         stage.setOnCloseRequest(windowEvent -> appProperties.saveProperties());
 

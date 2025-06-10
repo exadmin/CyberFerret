@@ -1,29 +1,27 @@
 package com.github.exadmin.sourcesscanner.fxui;
 
-import com.github.exadmin.sourcesscanner.context.AppAbstractProperty;
-import com.github.exadmin.sourcesscanner.context.AppProperties;
+import com.github.exadmin.sourcesscanner.context.PersistentPropertiesManager;
+import com.github.exadmin.sourcesscanner.fxui.helpers.ChooserBuilder;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.StringProperty;
 import javafx.geometry.Insets;
-import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
-import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
-import java.io.File;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import static com.github.exadmin.sourcesscanner.context.PersistentPropertiesManager.DICTIONARY;
+import static com.github.exadmin.sourcesscanner.context.PersistentPropertiesManager.DIR_TO_SCAN;
 
 public class SceneBuilder {
     private static final int LABEL_MIN_WIDTH        = 80;
     private static final int OPEN_FILE_BTN_WIDTH    =  60;
 
-    private AppProperties appProperties;
+    private PersistentPropertiesManager appProperties;
     private Stage primaryStage;
 
-    public SceneBuilder(AppProperties appProperties, Stage primaryStage) {
+    public SceneBuilder(PersistentPropertiesManager appProperties, Stage primaryStage) {
         this.appProperties = appProperties;
         this.primaryStage = primaryStage;
     }
@@ -66,70 +64,23 @@ public class SceneBuilder {
         tpSettings.setContent(vBoxRoot);
         vBoxRoot.setSpacing(8);
 
+        ChooserBuilder chooserBuilder = new ChooserBuilder(primaryStage);
+
         // Dictionary
         {
-            HBox hBox = new HBox();
+            StringProperty sigFileProperty = new SimpleStringProperty(DICTIONARY.getValue());
+            sigFileProperty.addListener((value, oldValue, newValue) -> DICTIONARY.parseValue(newValue));
+
+            HBox hBox = chooserBuilder.buildChooserBox("Signatures registry", sigFileProperty, "...", ChooserBuilder.CHOOSER_TYPE.FILE);
             vBoxRoot.getChildren().add(hBox);
-            hBox.setSpacing(8);
-            {
-                Label lbDictionary = new Label("Dictionary");
-                lbDictionary.setMinWidth(LABEL_MIN_WIDTH);
-                lbDictionary.setAlignment(Pos.CENTER_LEFT);
-
-                TextField tfDictionary = new TextField("");
-                HBox.setHgrow(tfDictionary, Priority.ALWAYS);
-
-                Button btnOpen = new Button("...");
-                btnOpen.setMinWidth(OPEN_FILE_BTN_WIDTH);
-
-                hBox.getChildren().addAll(lbDictionary, tfDictionary, btnOpen);
-
-                FileChooser fileChooser = new FileChooser();
-                btnOpen.setOnAction(e -> {
-                    File file = fileChooser.showOpenDialog(primaryStage);
-                    if (file != null && file.exists()) {
-                        tfDictionary.setText(file.toString());
-                        appProperties.setValue(AppAbstractProperty.DICTIONARY, file.toString());
-                    }
-                });
-
-                // init tfDictionary with value if exist
-                String storedValue = appProperties.getValue(AppAbstractProperty.DICTIONARY);
-                tfDictionary.setText(storedValue);
-
-                Path storedPath = Paths.get(storedValue);
-                File storedFile = storedPath.toFile();
-                if (storedFile.exists() && storedFile.isFile()) {
-                    File parentFolder = storedFile.getParentFile();
-                    if (parentFolder.exists() && parentFolder.isDirectory()) {
-                        fileChooser.setInitialDirectory(parentFolder);
-                    }
-                }
-            }
         }
 
         // Folder to scane
         {
-            HBox hBox = new HBox();
+            StringProperty dirToScanProperty = new SimpleStringProperty(DIR_TO_SCAN.getValue());
+            dirToScanProperty.addListener((prop, oldValue, newValue) -> DIR_TO_SCAN.parseValue(newValue));
+            HBox hBox = chooserBuilder.buildChooserBox("Directory to scan", dirToScanProperty, "...", ChooserBuilder.CHOOSER_TYPE.DIRECTORY);
             vBoxRoot.getChildren().add(hBox);
-            hBox.setSpacing(8);
-            {
-                Label lbDir = new Label("Root dir");
-                lbDir.setAlignment(Pos.CENTER_LEFT);
-                lbDir.setMinWidth(LABEL_MIN_WIDTH);
-
-                TextField tfDirToScan = new TextField("");
-                HBox.setHgrow(tfDirToScan, Priority.ALWAYS);
-
-                Button btnOpen = new Button("...");
-                btnOpen.setMinWidth(OPEN_FILE_BTN_WIDTH);
-
-                hBox.getChildren().addAll(lbDir, tfDirToScan, btnOpen);
-
-                // init tfDictionary with value if exist
-                String storedValue = appProperties.getValue(AppAbstractProperty.DIR_TO_SCAN);
-                tfDirToScan.setText(storedValue);
-            }
         }
 
         // control buttons
