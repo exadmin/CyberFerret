@@ -10,11 +10,16 @@ import com.github.exadmin.sourcesscanner.model.ItemType;
 import com.github.exadmin.sourcesscanner.persistence.PersistentPropertiesManager;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.control.cell.CheckBoxTreeTableCell;
 import javafx.scene.control.cell.TreeItemPropertyValueFactory;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
+import javafx.util.Callback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,13 +32,12 @@ import static com.github.exadmin.sourcesscanner.persistence.PersistentProperties
 import static com.github.exadmin.sourcesscanner.persistence.PersistentPropertiesManager.DIR_TO_SCAN;
 
 public class SceneBuilder {
-    private static final int LABEL_MIN_WIDTH = 80;
-    private static final int OPEN_FILE_BTN_WIDTH = 60;
     private static final Logger log = LoggerFactory.getLogger(SceneBuilder.class);
 
     private PersistentPropertiesManager appProperties;
     private Stage primaryStage;
     private FoundItemsContainer foundItemsContainer;
+    private TreeItem<FoundPathItem> selectedItem;
 
     public SceneBuilder(PersistentPropertiesManager appProperties, Stage primaryStage) {
         this.appProperties = appProperties;
@@ -145,8 +149,22 @@ public class SceneBuilder {
                 }
             });
 
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Information");
+            alert.setHeaderText("???");
+
+            Button btnMark = new Button("Mark as ignored");
+            btnMark.setOnAction(event -> {
+                if (selectedItem == null) {
+                    log.info("No items are selected to be marked as ignored!");
+                    alert.setHeaderText("No items are selected to be marked as ignored");
+                    alert.showAndWait();
+                }
+            });
+
             hBox.getChildren().add(btnLoadSigs);
             hBox.getChildren().add(btnRun);
+            hBox.getChildren().add(btnMark);
         }
 
         return tpSettings;
@@ -165,29 +183,44 @@ public class SceneBuilder {
         VBox vbox = new VBox();
         tpExplorer.setContent(vbox);
 
-        TreeTableView<FoundPathItem> ttView = new TreeTableView<>();
+
         TreeTableColumn<FoundPathItem, String> colVisualName = new TreeTableColumn<>("Path name");
-        TreeTableColumn<FoundPathItem, Boolean> colIsDir = new TreeTableColumn<>("Is Dir?");
-        TreeTableColumn<FoundPathItem, Long> colPlace = new TreeTableColumn<>("Place");
-        TreeTableColumn<FoundPathItem, String> colSigId = new TreeTableColumn<>("Signature Id");
+        TreeTableColumn<FoundPathItem, Boolean> colIgnore = new TreeTableColumn<>("To be ignored");
+        TreeTableColumn<FoundPathItem, Long> colLine = new TreeTableColumn<>("Line #");
+        TreeTableColumn<FoundPathItem, String> colText = new TreeTableColumn<>("Found Text");
 
         colVisualName.setCellValueFactory(new TreeItemPropertyValueFactory<>("visualName"));
-        colIsDir.setCellValueFactory(new TreeItemPropertyValueFactory<>("isDirectory"));
-        colPlace.setCellValueFactory(new TreeItemPropertyValueFactory<>("startPlace")); // todo: custom factory
-        colSigId.setCellValueFactory(new TreeItemPropertyValueFactory<>("signatureId"));
-        ttView.getColumns().add(colVisualName);
-        ttView.getColumns().add(colIsDir);
-        ttView.getColumns().add(colPlace);
-        ttView.getColumns().add(colSigId);
+        colIgnore.setCellValueFactory(new TreeItemPropertyValueFactory<>("signatureId"));
+        colLine.setCellValueFactory(new TreeItemPropertyValueFactory<>("lineNumber"));
+        colText.setCellValueFactory(new TreeItemPropertyValueFactory<>("text"));
+
+        colIgnore.setCellFactory(p -> {
+            CheckBoxTreeTableCell<FoundPathItem,Boolean> cell = new CheckBoxTreeTableCell<>();
+            cell.setAlignment(Pos.CENTER);
+            return cell;
+        });
+
 
         // disable sorting - temporary
         colVisualName.setSortable(false);
-        colIsDir.setSortable(false);
-        colPlace.setSortable(false);
-        colSigId.setSortable(false);
+        colVisualName.setEditable(false);
+        colLine.setSortable(false);
+        colLine.setEditable(false);
+        colIgnore.setSortable(false);
+        colIgnore.setEditable(false);
+        colText.setEditable(false);
+        colText.setSortable(false);
 
         colVisualName.prefWidthProperty().setValue(200d);
 
+        TreeTableView<FoundPathItem> ttView = new TreeTableView<>();
+        ttView.getColumns().add(colVisualName);
+        ttView.getColumns().add(colIgnore);
+        ttView.getColumns().add(colLine);
+        ttView.getColumns().add(colText);
+
+
+        ttView.setEditable(false);
         ttView.setShowRoot(false);
         ttView.setMinHeight(320);
 
@@ -204,6 +237,15 @@ public class SceneBuilder {
 
             parentTreeItem.getChildren().add(newTreeItem);
 
+            // automatically expand all parents for the node with signatures inside
+            if (newItem.getType() == ItemType.SIGNATURE) {
+                TreeItem<FoundPathItem> tItem = parentTreeItem;
+                while (tItem != null) {
+                    tItem.setExpanded(true);
+                    tItem = tItem.getParent();
+                }
+            }
+
             // do sort
             parentTreeItem.getChildren().sort((item1, item2) -> {
                 FoundPathItem fItem1 = item1.getValue();
@@ -213,6 +255,13 @@ public class SceneBuilder {
             });
 
             map.put(newItem, newTreeItem);
+        });
+
+        ttView.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<TreeItem<FoundPathItem>>() {
+            @Override
+            public void changed(ObservableValue<? extends TreeItem<FoundPathItem>> observableValue, TreeItem<FoundPathItem> oldItem, TreeItem<FoundPathItem> newItem) {
+                selectedItem = newItem;
+            }
         });
 
 

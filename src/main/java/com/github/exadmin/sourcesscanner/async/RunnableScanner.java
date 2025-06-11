@@ -121,8 +121,8 @@ public class RunnableScanner extends ARunnable {
                 if (matcher.find()) {
                     FoundPathItem newItem = new FoundPathItem(filePath, ItemType.SIGNATURE, pathItem);
                     newItem.setVisualName(sigId);
-                    newItem.setStartPlace(matcher.start());
-                    newItem.setEndPlace(matcher.end());
+                    newItem.setLineNumber(getLineNumber(fileBody, matcher.start()));
+                    newItem.setText(getText(fileBody, matcher.start(), matcher.end()));
 
                     foundItemsContainer.addItem(newItem);
                     log.info("Signature {} is detected in {}", sigId, filePath);
@@ -136,5 +136,37 @@ public class RunnableScanner extends ARunnable {
     public static String readFile(Path filePath) throws IOException {
         byte[] bytes = Files.readAllBytes(filePath);
         return new String(bytes);
+    }
+
+    public static int getLineNumber(String fileBody, int index) {
+        int lineNumber = 0;
+        int charsCount = 0;
+        List<String> lines = fileBody.lines().toList();
+        for (String line : lines) {
+            charsCount = charsCount + line.length();
+            if (index < charsCount) return lineNumber;
+
+            lineNumber++;
+        }
+
+        return lineNumber;
+    }
+
+    // number of chars to be shown additionaly on the left and right sides of the found piece of text
+    private static final int EXPAND_AREA_TO_BE_SHOWN_CHARS = 50;
+
+
+    private static final int MAX_LENGHT_OF_SHOWN_TEXT = 200;
+
+    public static String getText(String fileBody, int fromIndex, int toIndex) {
+        fromIndex = fromIndex - EXPAND_AREA_TO_BE_SHOWN_CHARS;
+        if (fromIndex < 0) fromIndex = 0;
+        toIndex = toIndex + EXPAND_AREA_TO_BE_SHOWN_CHARS;
+        if (toIndex > fromIndex + MAX_LENGHT_OF_SHOWN_TEXT) toIndex = fromIndex + MAX_LENGHT_OF_SHOWN_TEXT;
+        if (toIndex > fileBody.length()) toIndex = fileBody.length();
+        String text = fileBody.substring(fromIndex, toIndex);
+
+        text = text.replaceAll("\\s", " ");
+        return text;
     }
 }

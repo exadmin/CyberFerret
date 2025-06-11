@@ -14,9 +14,10 @@ public class FoundPathItem {
     private StringProperty visualName = new SimpleStringProperty();
     private StringProperty status = new SimpleStringProperty();
     private ObjectProperty<ItemType> type = new SimpleObjectProperty<>();
-    private LongProperty startPlace = new SimpleLongProperty();
-    private LongProperty endPlace = new SimpleLongProperty();
     private StringProperty signatureId = new SimpleStringProperty();
+    private LongProperty lineNumber = new SimpleLongProperty();
+    private StringProperty text = new SimpleStringProperty();
+    private BooleanProperty ignored = new SimpleBooleanProperty();
 
     public FoundPathItem(Path filePath, ItemType type, FoundPathItem parent) {
         this.parent = parent;
@@ -24,9 +25,9 @@ public class FoundPathItem {
         this.visualName.setValue(filePath.getFileName().toString());
         this.status.setValue(STATUS_FOUND);
         this.type.setValue(type);
-        this.startPlace.setValue(0);
-        this.startPlace.setValue(0);
         this.signatureId.setValue("");
+        this.lineNumber.setValue(0);
+        this.text.setValue("");
     }
 
     public FoundPathItem getParent() {
@@ -73,30 +74,6 @@ public class FoundPathItem {
         this.type.set(type);
     }
 
-    public long getStartPlace() {
-        return startPlace.get();
-    }
-
-    public LongProperty startPlaceProperty() {
-        return startPlace;
-    }
-
-    public void setStartPlace(long startPlace) {
-        this.startPlace.set(startPlace);
-    }
-
-    public long getEndPlace() {
-        return endPlace.get();
-    }
-
-    public LongProperty endPlaceProperty() {
-        return endPlace;
-    }
-
-    public void setEndPlace(long endPlace) {
-        this.endPlace.set(endPlace);
-    }
-
     public String getSignatureId() {
         return signatureId.get();
     }
@@ -107,5 +84,41 @@ public class FoundPathItem {
 
     public void setSignatureId(String signatureId) {
         this.signatureId.set(signatureId);
+    }
+
+    public long getLineNumber() {
+        return lineNumber.get();
+    }
+
+    public LongProperty lineNumberProperty() {
+        return lineNumber;
+    }
+
+    public void setLineNumber(long lineNumber) {
+        this.lineNumber.set(lineNumber);
+    }
+
+    public String getText() {
+        return text.get();
+    }
+
+    public StringProperty textProperty() {
+        return text;
+    }
+
+    public void setText(String text) {
+        this.text.set(text);
+    }
+
+    public boolean isIgnored() {
+        return ignored.get();
+    }
+
+    public BooleanProperty ignoredProperty() {
+        return ignored;
+    }
+
+    public void setIgnored(boolean ignored) {
+        this.ignored.set(ignored);
     }
 }
