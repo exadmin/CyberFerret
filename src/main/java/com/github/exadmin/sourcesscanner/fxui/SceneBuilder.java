@@ -3,8 +3,8 @@ package com.github.exadmin.sourcesscanner.fxui;
 import com.github.exadmin.sourcesscanner.async.RunnableLogger;
 import com.github.exadmin.sourcesscanner.async.RunnableScanner;
 import com.github.exadmin.sourcesscanner.fxui.helpers.ChooserBuilder;
-import com.github.exadmin.sourcesscanner.model.FoundPathItem;
 import com.github.exadmin.sourcesscanner.model.FoundItemsContainer;
+import com.github.exadmin.sourcesscanner.model.FoundPathItem;
 import com.github.exadmin.sourcesscanner.persistence.PersistentPropertiesManager;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
@@ -162,7 +162,15 @@ public class SceneBuilder {
         ttView.getColumns().add(colPlace);
         ttView.getColumns().add(colSigId);
 
-        ttView.setShowRoot(true);
+        // disable sorting - temporary
+        colVisualName.setSortable(false);
+        colIsDir.setSortable(false);
+        colPlace.setSortable(false);
+        colSigId.setSortable(false);
+
+        colVisualName.prefWidthProperty().setValue(200d);
+
+        ttView.setShowRoot(false);
         ttView.setMinHeight(320);
 
         final Map<Path, TreeItem<FoundPathItem>> map = new HashMap<>();
@@ -175,11 +183,22 @@ public class SceneBuilder {
 
             Path parent = newItem.getFilePath().getParent();
             TreeItem<FoundPathItem> parentTreeItem = map.get(parent);
-            if (parentTreeItem != null) {
-                parentTreeItem.getChildren().add(newTreeItem);
-            } else {
-                rootTreeItem.getChildren().add(newTreeItem);
-            }
+            if (parentTreeItem == null) parentTreeItem = rootTreeItem;
+
+            parentTreeItem.getChildren().add(newTreeItem);
+
+            // do sort
+            parentTreeItem.getChildren().sort((item1, item2) -> {
+                FoundPathItem fItem1 = item1.getValue();
+                FoundPathItem fItem2 = item2.getValue();
+
+                if (fItem1.isIsDirectory() == fItem2.isIsDirectory()) {
+                    return fItem1.getVisualName().compareTo(fItem2.getVisualName());
+                }
+
+                return fItem1.isIsDirectory() ? -1 : 1;
+            });
+
 
             map.put(newItem.getFilePath(), newTreeItem);
         });
