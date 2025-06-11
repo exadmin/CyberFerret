@@ -3,11 +3,12 @@ package com.github.exadmin.sourcesscanner.fxui;
 import com.github.exadmin.sourcesscanner.async.RunnableLogger;
 import com.github.exadmin.sourcesscanner.async.RunnableScanner;
 import com.github.exadmin.sourcesscanner.async.RunnableSigsLoader;
+import com.github.exadmin.sourcesscanner.exclude.Excluder;
+import com.github.exadmin.sourcesscanner.fxui.helpers.AlertBuilder;
 import com.github.exadmin.sourcesscanner.fxui.helpers.ChooserBuilder;
 import com.github.exadmin.sourcesscanner.model.FoundItemsContainer;
 import com.github.exadmin.sourcesscanner.model.FoundPathItem;
 import com.github.exadmin.sourcesscanner.model.ItemType;
-import com.github.exadmin.sourcesscanner.persistence.PersistentPropertiesManager;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.beans.value.ChangeListener;
@@ -19,7 +20,6 @@ import javafx.scene.control.cell.CheckBoxTreeTableCell;
 import javafx.scene.control.cell.TreeItemPropertyValueFactory;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
-import javafx.util.Callback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,13 +34,11 @@ import static com.github.exadmin.sourcesscanner.persistence.PersistentProperties
 public class SceneBuilder {
     private static final Logger log = LoggerFactory.getLogger(SceneBuilder.class);
 
-    private PersistentPropertiesManager appProperties;
     private Stage primaryStage;
     private FoundItemsContainer foundItemsContainer;
     private TreeItem<FoundPathItem> selectedItem;
 
-    public SceneBuilder(PersistentPropertiesManager appProperties, Stage primaryStage) {
-        this.appProperties = appProperties;
+    public SceneBuilder(Stage primaryStage) {
         this.primaryStage = primaryStage;
         this.foundItemsContainer = new FoundItemsContainer();
     }
@@ -149,16 +147,18 @@ public class SceneBuilder {
                 }
             });
 
-            Alert alert = new Alert(Alert.AlertType.INFORMATION);
-            alert.setTitle("Information");
-            alert.setHeaderText("???");
+
 
             Button btnMark = new Button("Mark as ignored");
             btnMark.setOnAction(event -> {
                 if (selectedItem == null) {
-                    log.info("No items are selected to be marked as ignored!");
-                    alert.setHeaderText("No items are selected to be marked as ignored");
-                    alert.showAndWait();
+                    String msg = "No items are selected to be marked as ignored!";
+
+                    log.info(msg);
+                    AlertBuilder.showInfo(msg);
+                } else {
+                    Excluder.markToExclude(selectedItem.getValue());
+                    log.info("Item {} was successfully marked as ignored", selectedItem.getValue());
                 }
             });
 
@@ -187,12 +187,14 @@ public class SceneBuilder {
         TreeTableColumn<FoundPathItem, String> colVisualName = new TreeTableColumn<>("Path name");
         TreeTableColumn<FoundPathItem, Boolean> colIgnore = new TreeTableColumn<>("To be ignored");
         TreeTableColumn<FoundPathItem, Long> colLine = new TreeTableColumn<>("Line #");
-        TreeTableColumn<FoundPathItem, String> colText = new TreeTableColumn<>("Found Text");
+        TreeTableColumn<FoundPathItem, String> colDisplayText = new TreeTableColumn<>("Found Text");
+        TreeTableColumn<FoundPathItem, String> colExactSignature = new TreeTableColumn<>("Exact Signature");
 
         colVisualName.setCellValueFactory(new TreeItemPropertyValueFactory<>("visualName"));
         colIgnore.setCellValueFactory(new TreeItemPropertyValueFactory<>("signatureId"));
         colLine.setCellValueFactory(new TreeItemPropertyValueFactory<>("lineNumber"));
-        colText.setCellValueFactory(new TreeItemPropertyValueFactory<>("text"));
+        colDisplayText.setCellValueFactory(new TreeItemPropertyValueFactory<>("displayText"));
+        colExactSignature.setCellValueFactory(new TreeItemPropertyValueFactory<>("foundString"));
 
         colIgnore.setCellFactory(p -> {
             CheckBoxTreeTableCell<FoundPathItem,Boolean> cell = new CheckBoxTreeTableCell<>();
@@ -208,8 +210,10 @@ public class SceneBuilder {
         colLine.setEditable(false);
         colIgnore.setSortable(false);
         colIgnore.setEditable(false);
-        colText.setEditable(false);
-        colText.setSortable(false);
+        colExactSignature.setSortable(false);
+        colExactSignature.setEditable(false);
+        colDisplayText.setEditable(false);
+        colDisplayText.setSortable(false);
 
         colVisualName.prefWidthProperty().setValue(200d);
 
@@ -217,8 +221,8 @@ public class SceneBuilder {
         ttView.getColumns().add(colVisualName);
         ttView.getColumns().add(colIgnore);
         ttView.getColumns().add(colLine);
-        ttView.getColumns().add(colText);
-
+        ttView.getColumns().add(colDisplayText);
+        ttView.getColumns().add(colExactSignature);
 
         ttView.setEditable(false);
         ttView.setShowRoot(false);

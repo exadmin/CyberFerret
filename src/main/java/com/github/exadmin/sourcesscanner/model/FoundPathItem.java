@@ -16,7 +16,8 @@ public class FoundPathItem {
     private ObjectProperty<ItemType> type = new SimpleObjectProperty<>();
     private StringProperty signatureId = new SimpleStringProperty();
     private LongProperty lineNumber = new SimpleLongProperty();
-    private StringProperty text = new SimpleStringProperty();
+    private StringProperty displayText = new SimpleStringProperty(); // this text will be show in the report including all chars around
+    private StringProperty foundString = new SimpleStringProperty(); // this is exactly found signature
     private BooleanProperty ignored = new SimpleBooleanProperty();
 
     public FoundPathItem(Path filePath, ItemType type, FoundPathItem parent) {
@@ -27,7 +28,7 @@ public class FoundPathItem {
         this.type.setValue(type);
         this.signatureId.setValue("");
         this.lineNumber.setValue(0);
-        this.text.setValue("");
+        this.displayText.setValue("");
     }
 
     public FoundPathItem getParent() {
@@ -98,16 +99,16 @@ public class FoundPathItem {
         this.lineNumber.set(lineNumber);
     }
 
-    public String getText() {
-        return text.get();
+    public String getDisplayText() {
+        return displayText.get();
     }
 
-    public StringProperty textProperty() {
-        return text;
+    public StringProperty displayTextProperty() {
+        return displayText;
     }
 
-    public void setText(String text) {
-        this.text.set(text);
+    public void setDisplayText(String displayText) {
+        this.displayText.set(displayText);
     }
 
     public boolean isIgnored() {
@@ -120,5 +121,22 @@ public class FoundPathItem {
 
     public void setIgnored(boolean ignored) {
         this.ignored.set(ignored);
+    }
+
+    public String getFoundString() {
+        return foundString.get();
+    }
+
+    public StringProperty foundStringProperty() {
+        return foundString;
+    }
+
+    public void setFoundString(String foundString) {
+        this.foundString.set(foundString);
+    }
+
+    @Override
+    public String toString() {
+        return filePath.toString();
     }
 }

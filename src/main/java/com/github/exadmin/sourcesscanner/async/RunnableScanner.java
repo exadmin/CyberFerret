@@ -122,7 +122,8 @@ public class RunnableScanner extends ARunnable {
                     FoundPathItem newItem = new FoundPathItem(filePath, ItemType.SIGNATURE, pathItem);
                     newItem.setVisualName(sigId);
                     newItem.setLineNumber(getLineNumber(fileBody, matcher.start()));
-                    newItem.setText(getText(fileBody, matcher.start(), matcher.end()));
+                    newItem.setDisplayText(getText(fileBody, matcher.start(), matcher.end()));
+                    newItem.setFoundString(matcher.group());
 
                     foundItemsContainer.addItem(newItem);
                     log.info("Signature {} is detected in {}", sigId, filePath);

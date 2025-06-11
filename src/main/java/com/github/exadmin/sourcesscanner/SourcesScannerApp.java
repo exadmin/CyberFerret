@@ -34,7 +34,7 @@ public class SourcesScannerApp extends Application {
 
         stage.setOnCloseRequest(windowEvent -> appProperties.saveProperties());
 
-        SceneBuilder sceneBuilder = new SceneBuilder(appProperties, stage);
+        SceneBuilder sceneBuilder = new SceneBuilder(stage);
         Scene scene = sceneBuilder.buildScene();
         stage.setScene(scene);
         stage.show();
