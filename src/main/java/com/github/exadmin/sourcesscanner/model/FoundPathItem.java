@@ -6,23 +6,31 @@ import java.nio.file.Path;
 
 public class FoundPathItem {
     public static final String STATUS_FOUND = "found";
+    public static final String STATUS_ANALIZED_ALL_CLEAR = "clear";
+    public static final String STATUS_ANALIZED_WARN = "warning";
 
     private Path filePath;
+    private FoundPathItem parent;
     private StringProperty visualName = new SimpleStringProperty();
     private StringProperty status = new SimpleStringProperty();
-    private BooleanProperty isDirectory = new SimpleBooleanProperty();
+    private ObjectProperty<ItemType> type = new SimpleObjectProperty<>();
     private LongProperty startPlace = new SimpleLongProperty();
     private LongProperty endPlace = new SimpleLongProperty();
     private StringProperty signatureId = new SimpleStringProperty();
 
-    public FoundPathItem(Path filePath) {
+    public FoundPathItem(Path filePath, ItemType type, FoundPathItem parent) {
+        this.parent = parent;
         this.filePath = filePath;
         this.visualName.setValue(filePath.getFileName().toString());
         this.status.setValue(STATUS_FOUND);
-        this.isDirectory.setValue(filePath.toFile().isDirectory());
+        this.type.setValue(type);
         this.startPlace.setValue(0);
         this.startPlace.setValue(0);
         this.signatureId.setValue("");
+    }
+
+    public FoundPathItem getParent() {
+        return parent;
     }
 
     public Path getFilePath() {
@@ -53,16 +61,16 @@ public class FoundPathItem {
         this.status.set(status);
     }
 
-    public boolean isIsDirectory() {
-        return isDirectory.get();
+    public ItemType getType() {
+        return type.get();
     }
 
-    public BooleanProperty isDirectoryProperty() {
-        return isDirectory;
+    public ObjectProperty<ItemType> typeProperty() {
+        return type;
     }
 
-    public void setIsDirectory(boolean isDirectory) {
-        this.isDirectory.set(isDirectory);
+    public void setType(ItemType type) {
+        this.type.set(type);
     }
 
     public long getStartPlace() {

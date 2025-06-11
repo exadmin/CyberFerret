@@ -2,9 +2,11 @@ package com.github.exadmin.sourcesscanner.fxui;
 
 import com.github.exadmin.sourcesscanner.async.RunnableLogger;
 import com.github.exadmin.sourcesscanner.async.RunnableScanner;
+import com.github.exadmin.sourcesscanner.async.RunnableSigsLoader;
 import com.github.exadmin.sourcesscanner.fxui.helpers.ChooserBuilder;
 import com.github.exadmin.sourcesscanner.model.FoundItemsContainer;
 import com.github.exadmin.sourcesscanner.model.FoundPathItem;
+import com.github.exadmin.sourcesscanner.model.ItemType;
 import com.github.exadmin.sourcesscanner.persistence.PersistentPropertiesManager;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
@@ -109,26 +111,42 @@ public class SceneBuilder {
             vBoxRoot.getChildren().add(hBox);
             hBox.setSpacing(8);
 
-            Button btnRun = new Button("Start");
+            Button btnRun = new Button("Start Scanning");
+            final RunnableScanner runnableScanner = new RunnableScanner();
+            runnableScanner.setBeforeStart(() -> btnRun.setDisable(true));
+            runnableScanner.setAfterFinished(() -> btnRun.setDisable(false));
+
             btnRun.setOnAction(actionEvent -> {
                 log.debug("Start button is pressed, where sig-file = {}, dir-to-scan = {}", DICTIONARY.getValue(), DIR_TO_SCAN.getValue());
-                RunnableScanner runnable = new RunnableScanner(DICTIONARY.getValue(), DIR_TO_SCAN.getValue(), foundItemsContainer);
-                runnable.setBeforeStart(() -> btnRun.setDisable(true));
-                runnable.setAfterFinished(() -> btnRun.setDisable(false));
 
-                Thread thread = new Thread(runnable);
-                thread.setDaemon(true);
-                thread.start();
+                runnableScanner.setSignaturesFile(DICTIONARY.getValue());
+                runnableScanner.setDirToScan(DIR_TO_SCAN.getValue());
+                runnableScanner.setFoundItemsContainer(foundItemsContainer);
+                runnableScanner.startNow();
             });
 
+            // Load signatures button
+            Button btnLoadSigs = new Button("Load Signatures");
+            final RunnableSigsLoader runnableSigsLoader = new RunnableSigsLoader();
+            runnableSigsLoader.setBeforeStart(() -> btnLoadSigs.setDisable(true));
+            runnableSigsLoader.setAfterFinished(() -> {
+                runnableScanner.setSignaturesMap(runnableSigsLoader.getRegExpMap());
+                btnLoadSigs.setDisable(false);
+            });
+
+            btnLoadSigs.setOnAction(event -> {
+                if (DICTIONARY.getValue() != null && !DICTIONARY.getValue().isEmpty()) {
+                    Path sigsPath = Paths.get(DICTIONARY.getValue());
+
+                    runnableSigsLoader.setFileToLoad(sigsPath);
+                    runnableSigsLoader.startNow();
+                } else {
+                    log.warn("Signatures file is not selected. Please select it first.");
+                }
+            });
+
+            hBox.getChildren().add(btnLoadSigs);
             hBox.getChildren().add(btnRun);
-
-            // Test buttoon
-            Button btnTest = new Button("Test");
-            btnTest.setOnAction(event -> {
-                log.debug("Hello!");
-            });
-            hBox.getChildren().add(btnTest);
         }
 
         return tpSettings;
@@ -173,16 +191,15 @@ public class SceneBuilder {
         ttView.setShowRoot(false);
         ttView.setMinHeight(320);
 
-        final Map<Path, TreeItem<FoundPathItem>> map = new HashMap<>();
+        final Map<FoundPathItem, TreeItem<FoundPathItem>> map = new HashMap<>();
 
-        final FoundPathItem fakeItem = new FoundPathItem(Paths.get(""));
+        final FoundPathItem fakeItem = new FoundPathItem(Paths.get(""), ItemType.DIRECTORY, null);
         final TreeItem<FoundPathItem> rootTreeItem = new TreeItem<>(fakeItem);
 
         foundItemsContainer.setOnAddNewItemListener(newItem -> {
             TreeItem<FoundPathItem> newTreeItem = new TreeItem<>(newItem);
 
-            Path parent = newItem.getFilePath().getParent();
-            TreeItem<FoundPathItem> parentTreeItem = map.get(parent);
+            TreeItem<FoundPathItem> parentTreeItem = map.get(newItem.getParent());
             if (parentTreeItem == null) parentTreeItem = rootTreeItem;
 
             parentTreeItem.getChildren().add(newTreeItem);
@@ -192,15 +209,10 @@ public class SceneBuilder {
                 FoundPathItem fItem1 = item1.getValue();
                 FoundPathItem fItem2 = item2.getValue();
 
-                if (fItem1.isIsDirectory() == fItem2.isIsDirectory()) {
-                    return fItem1.getVisualName().compareTo(fItem2.getVisualName());
-                }
-
-                return fItem1.isIsDirectory() ? -1 : 1;
+                return fItem1.getType().getSortOrder() - fItem2.getType().getSortOrder();
             });
 
-
-            map.put(newItem.getFilePath(), newTreeItem);
+            map.put(newItem, newTreeItem);
         });
 
 
