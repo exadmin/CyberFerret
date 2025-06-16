@@ -146,10 +146,7 @@ public class SceneBuilder {
             Button btnMark = new Button("Mark as ignored");
             btnMark.setOnAction(event -> {
                 if (selectedItemProperty.getValue() == null) {
-                    String msg = "No items are selected to be marked as ignored!";
-
-                    log.info(msg);
-                    AlertBuilder.showInfo(msg);
+                    AlertBuilder.showInfo("No items are selected to be marked as ignored!");
                 } else {
                     FoundPathItem foundPathItem = selectedItemProperty.getValue().getValue();
                     Excluder.markToExclude(foundPathItem);

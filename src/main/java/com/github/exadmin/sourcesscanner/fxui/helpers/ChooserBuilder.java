@@ -14,6 +14,7 @@ import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
 import java.io.File;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -53,19 +54,23 @@ public class ChooserBuilder {
 
             // process init-directory for file-chooser
             bindProperty.addListener((bean, oldValue, newValue) -> {
-                Path newPath = Paths.get(newValue);
-                File newFile = newPath.toFile();
+                try {
+                    Path newPath = Paths.get(newValue);
+                    File newFile = newPath.toFile();
 
-                File initDir = newFile.isFile() ? newFile.getParentFile() : newFile;
-                if (initDir.isFile()) initDir = initDir.getParentFile();
+                    File initDir = newFile.isFile() ? newFile.getParentFile() : newFile;
+                    if (initDir.isFile()) initDir = initDir.getParentFile();
 
-                // check init directory for the file/folder-chooser
-                if (initDir.exists() && initDir.isDirectory()) {
-                    verifiedInitDirectory.setValue(initDir);
+                    // check init directory for the file/folder-chooser
+                    if (initDir.exists() && initDir.isDirectory()) {
+                        verifiedInitDirectory.setValue(initDir);
+                    }
+
+                    // check selected value is correct
+                    textField.setStyle(newFile.exists() ? "" : "-fx-background-color: #ffe6e6");
+                } catch (InvalidPathException ex) {
+                    textField.setStyle("-fx-background-color: #ffe6e6");
                 }
-
-                // check selected value is correct
-                textField.setStyle(newFile.exists() ? "" : "-fx-background-color: #ffe6e6");
             });
 
             // todo: remove wa which triggers listener

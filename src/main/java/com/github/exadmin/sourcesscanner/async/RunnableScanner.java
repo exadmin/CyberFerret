@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.exadmin.sourcesscanner.exclude.ExcludeFileModel;
 import com.github.exadmin.sourcesscanner.exclude.Excluder;
+import com.github.exadmin.sourcesscanner.fxui.helpers.AlertBuilder;
 import com.github.exadmin.sourcesscanner.model.FoundItemsContainer;
 import com.github.exadmin.sourcesscanner.model.FoundPathItem;
 import com.github.exadmin.sourcesscanner.model.ItemType;
@@ -49,7 +50,7 @@ public class RunnableScanner extends ARunnable {
     @Override
     protected void _run() throws IOException {
         if (sigMap == null || sigMap.isEmpty()) {
-            log.error("No signatures are loaded. Stop scanning");
+            AlertBuilder.showError("Load signatures first. Nothing to scan by.");
             return;
         }
 
