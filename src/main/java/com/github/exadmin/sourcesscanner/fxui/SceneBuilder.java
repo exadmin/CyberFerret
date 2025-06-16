@@ -92,18 +92,13 @@ public class SceneBuilder {
 
         // Dictionary
         {
-            StringProperty sigFileProperty = new SimpleStringProperty(DICTIONARY.getValue());
-            sigFileProperty.addListener((value, oldValue, newValue) -> DICTIONARY.parseValue(newValue));
-
-            HBox hBox = chooserBuilder.buildChooserBox("Signatures registry", sigFileProperty, "...", ChooserBuilder.CHOOSER_TYPE.FILE);
+            HBox hBox = chooserBuilder.buildChooserBox("Signatures registry", DICTIONARY.getFxProperty(), "...", ChooserBuilder.CHOOSER_TYPE.FILE);
             vBoxRoot.getChildren().add(hBox);
         }
 
         // Folder to scan
         {
-            StringProperty dirToScanProperty = new SimpleStringProperty(DIR_TO_SCAN.getValue());
-            dirToScanProperty.addListener((prop, oldValue, newValue) -> DIR_TO_SCAN.parseValue(newValue));
-            HBox hBox = chooserBuilder.buildChooserBox("Git repository to scan", DIR_TO_SCAN.getFxProperty(), ".!.", ChooserBuilder.CHOOSER_TYPE.DIRECTORY);
+            HBox hBox = chooserBuilder.buildChooserBox("Git repository to scan", DIR_TO_SCAN.getFxProperty(), "...", ChooserBuilder.CHOOSER_TYPE.DIRECTORY);
             vBoxRoot.getChildren().add(hBox);
         }
 

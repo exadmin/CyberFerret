@@ -1,6 +1,8 @@
 package com.github.exadmin.sourcesscanner.fxui.helpers;
 
+import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.Property;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -46,28 +48,43 @@ public class ChooserBuilder {
 
             hBox.getChildren().addAll(label, textField, btnOpen);
 
-            // setup file-chooser
-            FileChooser fileChooser = type == CHOOSER_TYPE.FILE ? new FileChooser() : null;
-            DirectoryChooser dirChooser = type == CHOOSER_TYPE.DIRECTORY ? new DirectoryChooser() : null;
 
+            ObjectProperty<File> verifiedInitDirectory = new SimpleObjectProperty<>();
+
+            // process init-directory for file-chooser
             bindProperty.addListener((bean, oldValue, newValue) -> {
                 Path newPath = Paths.get(newValue);
                 File newFile = newPath.toFile();
 
+                File initDir = newFile.isFile() ? newFile.getParentFile() : newFile;
+                if (initDir.isFile()) initDir = initDir.getParentFile();
+
+                // check init directory for the file/folder-chooser
+                if (initDir.exists() && initDir.isDirectory()) {
+                    verifiedInitDirectory.setValue(initDir);
+                }
+
+                // check selected value is correct
+                textField.setStyle(newFile.exists() ? "" : "-fx-background-color: #ffe6e6");
+            });
+
+            // todo: remove wa which triggers listener
+            bindProperty.setValue(bindProperty.getValue() + " ");
+            bindProperty.setValue(bindProperty.getValue().trim());
+
+            btnOpen.setOnAction(e -> {
+                File file = null;
                 if (type == CHOOSER_TYPE.FILE) {
-                    if (newFile.exists() && newFile.isFile()) {
-                        File initFolder = newFile.getParentFile();
-                        if (initFolder.exists() && initFolder.isDirectory()) fileChooser.setInitialDirectory(initFolder);
-                    }
+                    FileChooser fileChooser = new FileChooser();
+                    fileChooser.setInitialDirectory(verifiedInitDirectory.getValue());
+                    file = fileChooser.showOpenDialog(primaryStage);
                 }
 
                 if (type == CHOOSER_TYPE.DIRECTORY) {
-                    if (newFile.exists() && newFile.isDirectory()) dirChooser.setInitialDirectory(newFile);
+                    DirectoryChooser directoryChooser = new DirectoryChooser();
+                    directoryChooser.setInitialDirectory(verifiedInitDirectory.getValue());
+                    file = directoryChooser.showDialog(primaryStage);
                 }
-            });
-
-            btnOpen.setOnAction(e -> {
-                File file = type == CHOOSER_TYPE.FILE ? fileChooser.showOpenDialog(primaryStage) : dirChooser.showDialog(primaryStage);
 
                 if (file != null && file.exists()) {
                     bindProperty.setValue(file.toString());
