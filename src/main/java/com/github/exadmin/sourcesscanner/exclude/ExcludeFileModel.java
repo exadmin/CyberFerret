@@ -20,4 +20,11 @@ public class ExcludeFileModel {
     public void setSignatures(List<ExcludeSignatureItem> signatures) {
         this.signatures = signatures;
     }
+
+    public boolean contains(String textHash, String relFileNameHash) {
+        ExcludeSignatureItem temp = new ExcludeSignatureItem();
+        temp.setTextHash(textHash);
+        temp.setFileHash(relFileNameHash);
+        return signatures.contains(temp);
+    }
 }

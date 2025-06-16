@@ -5,28 +5,20 @@ import javafx.beans.property.*;
 import java.nio.file.Path;
 
 public class FoundPathItem {
-    public static final String STATUS_FOUND = "found";
-    public static final String STATUS_ANALIZED_ALL_CLEAR = "clear";
-    public static final String STATUS_ANALIZED_WARN = "warning";
-
-    private Path filePath;
-    private FoundPathItem parent;
-    private StringProperty visualName = new SimpleStringProperty();
-    private StringProperty status = new SimpleStringProperty();
-    private ObjectProperty<ItemType> type = new SimpleObjectProperty<>();
-    private StringProperty signatureId = new SimpleStringProperty();
-    private LongProperty lineNumber = new SimpleLongProperty();
-    private StringProperty displayText = new SimpleStringProperty(); // this text will be show in the report including all chars around
-    private StringProperty foundString = new SimpleStringProperty(); // this is exactly found signature
-    private BooleanProperty ignored = new SimpleBooleanProperty();
+    private final Path filePath;
+    private final FoundPathItem parent;
+    private final StringProperty visualName = new SimpleStringProperty();
+    private final ObjectProperty<ItemType> type = new SimpleObjectProperty<>();
+    private final LongProperty lineNumber = new SimpleLongProperty();
+    private final StringProperty displayText = new SimpleStringProperty(); // this text will be shown in the report including all chars around
+    private final StringProperty foundString = new SimpleStringProperty(); // this is exactly found signature
+    private final BooleanProperty ignored = new SimpleBooleanProperty();
 
     public FoundPathItem(Path filePath, ItemType type, FoundPathItem parent) {
         this.parent = parent;
         this.filePath = filePath;
         this.visualName.setValue(filePath.getFileName().toString());
-        this.status.setValue(STATUS_FOUND);
         this.type.setValue(type);
-        this.signatureId.setValue("");
         this.lineNumber.setValue(0);
         this.displayText.setValue("");
     }
@@ -51,18 +43,6 @@ public class FoundPathItem {
         this.visualName.set(visualName);
     }
 
-    public String getStatus() {
-        return status.get();
-    }
-
-    public StringProperty statusProperty() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status.set(status);
-    }
-
     public ItemType getType() {
         return type.get();
     }
@@ -73,18 +53,6 @@ public class FoundPathItem {
 
     public void setType(ItemType type) {
         this.type.set(type);
-    }
-
-    public String getSignatureId() {
-        return signatureId.get();
-    }
-
-    public StringProperty signatureIdProperty() {
-        return signatureId;
-    }
-
-    public void setSignatureId(String signatureId) {
-        this.signatureId.set(signatureId);
     }
 
     public long getLineNumber() {

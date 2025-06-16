@@ -13,8 +13,6 @@ import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
-import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -36,9 +34,9 @@ import static com.github.exadmin.sourcesscanner.persistence.PersistentProperties
 public class SceneBuilder {
     private static final Logger log = LoggerFactory.getLogger(SceneBuilder.class);
 
-    private Stage primaryStage;
-    private FoundItemsContainer foundItemsContainer;
-    private ObjectProperty<TreeItem<FoundPathItem>> selectedItemProperty = new SimpleObjectProperty<>();
+    private final Stage primaryStage;
+    private final FoundItemsContainer foundItemsContainer;
+    private final ObjectProperty<TreeItem<FoundPathItem>> selectedItemProperty = new SimpleObjectProperty<>();
 
     public SceneBuilder(Stage primaryStage) {
         this.primaryStage = primaryStage;
@@ -123,7 +121,6 @@ public class SceneBuilder {
             btnRun.setOnAction(actionEvent -> {
                 log.debug("Start button is pressed, where sig-file = {}, dir-to-scan = {}", DICTIONARY.getValue(), DIR_TO_SCAN.getValue());
 
-                runnableScanner.setSignaturesFile(DICTIONARY.getValue());
                 runnableScanner.setDirToScan(DIR_TO_SCAN.getValue());
                 runnableScanner.setFoundItemsContainer(foundItemsContainer);
                 runnableScanner.startNow();
@@ -268,12 +265,9 @@ public class SceneBuilder {
             map.put(newItem, newTreeItem);
         });
 
-        ttView.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<TreeItem<FoundPathItem>>() {
-            @Override
-            public void changed(ObservableValue<? extends TreeItem<FoundPathItem>> observableValue, TreeItem<FoundPathItem> oldItem, TreeItem<FoundPathItem> newItem) {
-                // cache selected item
-                selectedItemProperty.setValue(newItem);
-            }
+        ttView.getSelectionModel().selectedItemProperty().addListener((bean, oldItem, newItem) -> {
+            // cache selected item
+            selectedItemProperty.setValue(newItem);
         });
 
 

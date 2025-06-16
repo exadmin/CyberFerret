@@ -27,10 +27,10 @@ public class SourcesScannerApp extends Application {
         Boolean isStageMaximized = STAGE_IS_MAXIMIZED.getValue();
         if (isStageMaximized) stage.setMaximized(true);
 
-        stage.setWidth(STAGE_WIDTH.getValue());
-        stage.setHeight(STAGE_HEIGHT.getValue());
-        stage.setX(STAGE_POSX.getValue());
-        stage.setY(STAGE_POSY.getValue());
+        stage.setWidth(STAGE_WIDTH.getValue().doubleValue());
+        stage.setHeight(STAGE_HEIGHT.getValue().doubleValue());
+        stage.setX(STAGE_POSX.getValue().doubleValue());
+        stage.setY(STAGE_POSY.getValue().doubleValue());
 
         stage.setOnCloseRequest(windowEvent -> appProperties.saveProperties());
 

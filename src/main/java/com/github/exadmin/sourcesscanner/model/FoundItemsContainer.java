@@ -5,7 +5,7 @@ import java.util.Collections;
 import java.util.List;
 
 public class FoundItemsContainer {
-    private List<FoundPathItem> foundPathItems = Collections.synchronizedList(new ArrayList<>());
+    private final List<FoundPathItem> foundPathItems = Collections.synchronizedList(new ArrayList<>());
     private FoundFileItemListener onAddNewItemListener;
 
     public void addItem(FoundPathItem newItem) {

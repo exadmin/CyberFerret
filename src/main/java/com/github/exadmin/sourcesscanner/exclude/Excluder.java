@@ -16,7 +16,7 @@ import java.nio.file.Paths;
 
 public class Excluder {
     private static final Logger log = LoggerFactory.getLogger(Excluder.class);
-    private static final String EXCLUDES_FILE_NAME = "qs-grand-report.yaml";
+    public static final String EXCLUDES_SHORT_FILE_NAME = "qs-grand-report.yaml";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     public static void markToExclude(FoundPathItem item) {
@@ -28,7 +28,7 @@ public class Excluder {
         }
 
         // Load existed ignore-file
-        Path excludesFile = Paths.get(rootDir.toString(), ".github", EXCLUDES_FILE_NAME);
+        Path excludesFile = Paths.get(rootDir.toString(), ".github", EXCLUDES_SHORT_FILE_NAME);
         ExcludeFileModel excludeFileModel = excludesFile.toFile().exists() ? loadExistedModel(excludesFile) : new ExcludeFileModel();
         if (excludeFileModel == null) {
             AlertBuilder.showError("Can't load existed exclusion configuration, please check logs and fix errors. If can't - then delete erroneous file.");
@@ -37,7 +37,7 @@ public class Excluder {
 
         // Mark/unmark exclusion
         item.setIgnored(!item.isIgnored());
-        String relFileName = getRelativeFileName(rootDir, item.getFilePath());
+        String relFileName = MiscUtils.getRelativeFileName(rootDir, item.getFilePath());
         String signature = item.getFoundString();
 
         String textHash = MiscUtils.getSHA256AsHex(signature);
@@ -56,7 +56,7 @@ public class Excluder {
         }
 
         excludeFileModel.getSignatures().remove(existedExcludeItem);
-        if (item.isIgnored() && newExcludeItem != null) {
+        if (item.isIgnored()) {
             excludeFileModel.getSignatures().add(newExcludeItem);
         }
 
@@ -94,8 +94,10 @@ public class Excluder {
 
             // check if we have ".git" folder here
             String[] children = dir.list();
-            for (String next : children) {
-                if (".git".equals(next)) return path;
+            if (children != null) {
+                for (String next : children) {
+                    if (".git".equals(next)) return path;
+                }
             }
 
             path = path.getParent();
@@ -104,19 +106,5 @@ public class Excluder {
         return null;
     }
 
-    private static String getRelativeFileName(Path rootDir, Path fileName) {
-        // Normalize both paths to handle '.' and '..' components
-        Path normRoot = rootDir.normalize();
-        Path normFile = fileName.normalize();
 
-        // Make sure the file path is within the root directory
-        if (normFile.startsWith(normRoot)) {
-            // Relativize the path (returns the relative path from rootDir to fileName)
-            Path relativePath = normRoot.relativize(normFile);
-            String result = relativePath.toString();
-            return result.replace("\\", "/"); // switch to unix style in windows running case
-        }
-
-        throw new IllegalStateException("Unexpected file path " + normFile);
-    }
 }

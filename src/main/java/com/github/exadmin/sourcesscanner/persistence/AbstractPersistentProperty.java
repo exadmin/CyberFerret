@@ -16,10 +16,6 @@ public abstract class AbstractPersistentProperty<T> {
         regMap.put(keyName, this);
     }
 
-    public T getDefaultValue() {
-        return defaultValue;
-    }
-
     @Override
     public String toString() {
         return keyName;

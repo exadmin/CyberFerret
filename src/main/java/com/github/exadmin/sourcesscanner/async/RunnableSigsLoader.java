@@ -65,16 +65,16 @@ public class RunnableSigsLoader extends ARunnable {
                     Pattern regExp = Pattern.compile(regExpStr, Pattern.CASE_INSENSITIVE + Pattern.DOTALL);
                     map.put(sigId, regExp);
                 } catch (PatternSyntaxException pse) {
-                    log.error("Error while compiling signature with ID = '" + sigId + "', reg-exp = '" + regExpStr + "'");
+                    log.error("Error while compiling signature with ID = '{}', reg-exp = '{}'", sigId, regExpStr);
                 }
             }
 
             regExpMap = Collections.unmodifiableMap(map);
-            log.info("Signatures are loaded successfully from " + signaturesFile + ". Number of signatures is " + regExpMap.size());
+            log.info("Signatures are loaded successfully from {}. Number of signatures is {}", signaturesFile, regExpMap.size());
 
             isReady.set(true);
         } catch (IOException ex) {
-            log.error("Error while reading file " + signaturesFile);
+            log.error("Error while reading file {}", signaturesFile);
         }
     }
 }

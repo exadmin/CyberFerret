@@ -9,11 +9,11 @@ public class RunnableLogger implements Runnable {
     private static final int CUT_PORTION = MAX_LOG_SIZE_IN_TEXT_AREA_CHARS / 10;
 
     private boolean stop = false;
-    private FXConsoleAppender fxAppender;
-    private TextArea textArea;
+    private final FXConsoleAppender fxAppender;
+    private final TextArea textArea;
 
     public RunnableLogger(TextArea textArea) {
-        if (FXConsoleAppender.MY_INSTANCES.size() != 1) throw new IllegalStateException("Too much fx appenders = " + FXConsoleAppender.MY_INSTANCES.size());
+        if (FXConsoleAppender.MY_INSTANCES.size() != 1) throw new IllegalStateException("Only one FX-Appender is expected to be. Current amount is " + FXConsoleAppender.MY_INSTANCES.size());
 
         this.fxAppender = FXConsoleAppender.MY_INSTANCES.getFirst();
         this.textArea = textArea;

@@ -20,7 +20,7 @@ public class ChooserBuilder {
     private static final int OPEN_BTN_DEFAULT_WIDTH = 80;
 
     public enum CHOOSER_TYPE {
-        FILE, DIRECTORY;
+        FILE, DIRECTORY
     }
 
     private final Stage primaryStage;

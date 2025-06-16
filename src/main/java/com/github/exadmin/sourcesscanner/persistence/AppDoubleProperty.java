@@ -6,10 +6,10 @@ import javafx.beans.property.SimpleDoubleProperty;
 
 import java.util.Map;
 
-public class AppDoubleProperty extends AbstractPersistentProperty<Double> {
+public class AppDoubleProperty extends AbstractPersistentProperty<Number> {
     private final DoubleProperty fxProperty = new SimpleDoubleProperty();
 
-    AppDoubleProperty(String keyName, Double defaultValue, Map<String, AbstractPersistentProperty<?>> regMap) {
+    AppDoubleProperty(String keyName, Number defaultValue, Map<String, AbstractPersistentProperty<?>> regMap) {
         super(keyName, defaultValue, regMap);
     }
 
@@ -19,7 +19,7 @@ public class AppDoubleProperty extends AbstractPersistentProperty<Double> {
     }
 
     @Override
-    public Property getFxProperty() {
+    public Property<Number> getFxProperty() {
         return fxProperty;
     }
 }

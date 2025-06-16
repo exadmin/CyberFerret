@@ -1,8 +1,13 @@
 package com.github.exadmin.sourcesscanner.async;
 
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.exadmin.sourcesscanner.exclude.ExcludeFileModel;
+import com.github.exadmin.sourcesscanner.exclude.Excluder;
 import com.github.exadmin.sourcesscanner.model.FoundItemsContainer;
 import com.github.exadmin.sourcesscanner.model.FoundPathItem;
 import com.github.exadmin.sourcesscanner.model.ItemType;
+import com.github.exadmin.sourcesscanner.utils.MiscUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,8 +20,8 @@ import java.util.regex.Pattern;
 
 public class RunnableScanner extends ARunnable {
     private static final Logger log = LoggerFactory.getLogger(RunnableScanner.class);
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-    private String signaturesFile;
     private String dirToScan;
     private FoundItemsContainer foundItemsContainer;
     private Map<String, Pattern> sigMap = null;
@@ -26,10 +31,6 @@ public class RunnableScanner extends ARunnable {
 
     public void setSignaturesMap(Map<String, Pattern> sigMap) {
         this.sigMap = sigMap;
-    }
-
-    public void setSignaturesFile(String signaturesFile) {
-        this.signaturesFile = signaturesFile;
     }
 
     public void setDirToScan(String dirToScan) {
@@ -55,10 +56,10 @@ public class RunnableScanner extends ARunnable {
         // load files first
         Deque<FoundPathItem> parentsDeque = new ArrayDeque<>();
 
-        Path startDir = Paths.get(dirToScan);
-        Files.walkFileTree(startDir, new FileVisitor<Path>() {
+        final Path rootDir = Paths.get(dirToScan);
+        Files.walkFileTree(rootDir, new FileVisitor<>() {
             @Override
-            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
                 log.debug("Visiting directory {}", dir);
 
                 FoundPathItem parent = parentsDeque.peekLast();
@@ -70,7 +71,7 @@ public class RunnableScanner extends ARunnable {
             }
 
             @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)  {
                 log.debug("Visiting file {}", file);
 
                 FoundPathItem parent = parentsDeque.peekLast();
@@ -81,17 +82,27 @@ public class RunnableScanner extends ARunnable {
             }
 
             @Override
-            public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
+            public FileVisitResult visitFileFailed(Path file, IOException exc) {
                 log.error("Error while visiting {}", file);
                 return FileVisitResult.CONTINUE;
             }
 
             @Override
-            public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+            public FileVisitResult postVisitDirectory(Path dir, IOException exc) {
                 parentsDeque.removeLast();
                 return FileVisitResult.CONTINUE;
             }
         });
+
+        // try loading exclusions-model from the file in the root of the repository
+        ExcludeFileModel excludeFileModel = new ExcludeFileModel(); // create empty container
+        Path exFile = Paths.get(dirToScan, ".github", Excluder.EXCLUDES_SHORT_FILE_NAME);
+        try {
+            OBJECT_MAPPER.enable(JsonParser.Feature.INCLUDE_SOURCE_IN_LOCATION);
+            excludeFileModel = OBJECT_MAPPER.readValue(exFile.toFile(), ExcludeFileModel.class); // load new exclusion context
+        } catch (Exception ex) {
+            log.error("Error while loading exclusions configuration from '{}' file", exFile, ex);
+        }
 
         // start scanning for signatures
         int totalItemsCount = foundItemsContainer.getFoundItems().size();
@@ -125,12 +136,17 @@ public class RunnableScanner extends ARunnable {
                     newItem.setDisplayText(getText(fileBody, matcher.start(), matcher.end()));
                     newItem.setFoundString(matcher.group());
 
+                    // check if we have already marked found signature as ignored
+                    String relFileName = MiscUtils.getRelativeFileName(rootDir, newItem.getFilePath());
+                    String textHash = MiscUtils.getSHA256AsHex(newItem.getFoundString());
+                    String fileHash = MiscUtils.getSHA256AsHex(relFileName);
+
+                    newItem.setIgnored(excludeFileModel.contains(textHash, fileHash));
+
                     foundItemsContainer.addItem(newItem);
                     log.info("Signature {} is detected in {}", sigId, filePath);
                 }
             }
-
-            pathItem.setStatus("Scanned");
         }
     }
 
@@ -153,17 +169,17 @@ public class RunnableScanner extends ARunnable {
         return lineNumber;
     }
 
-    // number of chars to be shown additionaly on the left and right sides of the found piece of text
+    // number of chars to be shown additionally on the left and right sides of the found piece of text
     private static final int EXPAND_AREA_TO_BE_SHOWN_CHARS = 50;
 
 
-    private static final int MAX_LENGHT_OF_SHOWN_TEXT = 200;
+    private static final int MAX_LENGTH_OF_SHOWN_TEXT = 200;
 
     public static String getText(String fileBody, int fromIndex, int toIndex) {
         fromIndex = fromIndex - EXPAND_AREA_TO_BE_SHOWN_CHARS;
         if (fromIndex < 0) fromIndex = 0;
         toIndex = toIndex + EXPAND_AREA_TO_BE_SHOWN_CHARS;
-        if (toIndex > fromIndex + MAX_LENGHT_OF_SHOWN_TEXT) toIndex = fromIndex + MAX_LENGHT_OF_SHOWN_TEXT;
+        if (toIndex > fromIndex + MAX_LENGTH_OF_SHOWN_TEXT) toIndex = fromIndex + MAX_LENGTH_OF_SHOWN_TEXT;
         if (toIndex > fileBody.length()) toIndex = fileBody.length();
         String text = fileBody.substring(fromIndex, toIndex);
 
