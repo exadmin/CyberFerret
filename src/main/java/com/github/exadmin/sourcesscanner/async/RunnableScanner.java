@@ -12,6 +12,7 @@ import com.github.exadmin.sourcesscanner.utils.MiscUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -49,6 +50,16 @@ public class RunnableScanner extends ARunnable {
 
     @Override
     protected void _run() throws IOException {
+        final Path rootDir = Paths.get(dirToScan);
+        // check that root of the git-repository is selected - otherwise show warning
+        Path gitConfigPath = Paths.get(dirToScan, ".git", "config");
+        File gitConfigFile = gitConfigPath.toFile();
+        if (!gitConfigFile.exists() || !gitConfigFile.isFile()) {
+            AlertBuilder.showWarn("You've selected not a root of a git-repository.\n" +
+                    "You can continue using scanner but exclusion file may be created/written not in the canonical place.\n" +
+                    "Existed exclusion configurations will not be shown");
+        }
+
         if (sigMap == null || sigMap.isEmpty()) {
             AlertBuilder.showError("Load signatures first. Nothing to scan by.");
             return;
@@ -56,8 +67,6 @@ public class RunnableScanner extends ARunnable {
 
         // load files first
         Deque<FoundPathItem> parentsDeque = new ArrayDeque<>();
-
-        final Path rootDir = Paths.get(dirToScan);
         Files.walkFileTree(rootDir, new FileVisitor<>() {
             @Override
             public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {

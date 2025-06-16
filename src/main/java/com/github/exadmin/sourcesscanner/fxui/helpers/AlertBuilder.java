@@ -30,4 +30,15 @@ public class AlertBuilder {
             alert.showAndWait();
         });
     }
+
+    public static void showWarn(String text) {
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.WARNING);
+            alert.setTitle("Warning");
+            alert.setHeaderText(text);
+
+            log.error(text);
+            alert.showAndWait();
+        });
+    }
 }

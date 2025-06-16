@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.github.exadmin.sourcesscanner.fxui.helpers.AlertBuilder;
 import com.github.exadmin.sourcesscanner.model.FoundPathItem;
+import com.github.exadmin.sourcesscanner.model.ItemType;
 import com.github.exadmin.sourcesscanner.utils.MiscUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,12 +20,25 @@ public class Excluder {
     public static final String EXCLUDES_SHORT_FILE_NAME = "qs-grand-report.yaml";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-    public static void markToExclude(FoundPathItem item) {
+    /**
+     * Marks or unmark provided item as ignored and persists this state into special yaml-file.
+     * For each item a root of git repository is tried to be defined. In case user works with non-git repositories
+     * an exclusion configuration yaml-file will be created in the provided default path.
+     * @param item FoundPathItem to be analyzed
+     * @param defaultRootPath place to crete/write configuration file in case not git-repository will be defined for the provided item
+     * @return Path to exclusion configuration file
+     */
+    public static Path markToExclude(FoundPathItem item, Path defaultRootPath) {
+        // check that we support currerntly selected item for future processing
+        if (!(item.getType() == ItemType.SIGNATURE)) {
+            AlertBuilder.showWarn("Only items with exact signatures are supported in this version of application");
+            return null;
+        }
+
         // Get root of the repository for the provided item
-        final Path rootDir = getRepositoryRoot(item);
+        Path rootDir = getRepositoryRoot(item);
         if (rootDir == null) {
-            log.error("Can't mark {} as ignored, cause can't define if it's placed inside Git-repository", item);
-            return;
+            rootDir = defaultRootPath;
         }
 
         // Load existed ignore-file
@@ -32,7 +46,7 @@ public class Excluder {
         ExcludeFileModel excludeFileModel = excludesFile.toFile().exists() ? loadExistedModel(excludesFile) : new ExcludeFileModel();
         if (excludeFileModel == null) {
             AlertBuilder.showError("Can't load existed exclusion configuration, please check logs and fix errors. If can't - then delete erroneous file.");
-            return;
+            return null;
         }
 
         // Mark/unmark exclusion
@@ -63,6 +77,8 @@ public class Excluder {
         // save changes back to file
         excludesFile.toFile().getParentFile().mkdirs();
         try {
+            excludeFileModel.doSortBeforeSaving();
+
             OBJECT_MAPPER.setSerializationInclusion(JsonInclude.Include.NON_NULL);
             OBJECT_MAPPER.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
             OBJECT_MAPPER.enable(SerializationFeature.INDENT_OUTPUT);
@@ -70,6 +86,8 @@ public class Excluder {
         } catch (Exception ex) {
             log.error("Error while saving exclusions into the file {}", excludesFile, ex);
         }
+
+        return excludesFile;
     }
 
     private static ExcludeFileModel loadExistedModel(Path filePath) {

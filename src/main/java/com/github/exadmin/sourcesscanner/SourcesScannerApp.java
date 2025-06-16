@@ -38,6 +38,8 @@ public class SourcesScannerApp extends Application {
         Scene scene = sceneBuilder.buildScene();
         stage.setScene(scene);
         stage.show();
+
+        stage.setTitle("Attention Signatures Scanner, version 1.0.1");
     }
 
     public static void main(String[] args) {

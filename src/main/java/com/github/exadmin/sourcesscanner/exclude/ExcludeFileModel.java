@@ -27,4 +27,15 @@ public class ExcludeFileModel {
         temp.setFileHash(relFileNameHash);
         return signatures.contains(temp);
     }
+
+    public void doSortBeforeSaving() {
+        signatures.sort((o1, o2) -> {
+            int compareByFile = o1.getFileHash().compareTo(o2.getFileHash());
+            if (compareByFile == 0) {
+                return o1.getTextHash().compareTo(o2.getTextHash());
+            }
+
+            return compareByFile;
+        });
+    }
 }

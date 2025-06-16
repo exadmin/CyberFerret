@@ -149,8 +149,8 @@ public class SceneBuilder {
                     AlertBuilder.showInfo("No items are selected to be marked as ignored!");
                 } else {
                     FoundPathItem foundPathItem = selectedItemProperty.getValue().getValue();
-                    Excluder.markToExclude(foundPathItem);
-                    log.info("Item {} was successfully {} as ignored", foundPathItem, foundPathItem.isIgnored() ? "marked" : "unmarked");
+                    Path resultYaml = Excluder.markToExclude(foundPathItem, Paths.get(DIR_TO_SCAN.toString()));
+                    log.info("Item {} was successfully {} as ignored, the result is stored into {}", foundPathItem, foundPathItem.isIgnored() ? "(+)marked" : "(-)unmarked", resultYaml);
                 }
             });
 
