@@ -6,13 +6,12 @@ import com.github.exadmin.sourcesscanner.async.RunnableSigsLoader;
 import com.github.exadmin.sourcesscanner.exclude.Excluder;
 import com.github.exadmin.sourcesscanner.fxui.helpers.AlertBuilder;
 import com.github.exadmin.sourcesscanner.fxui.helpers.ChooserBuilder;
+import com.github.exadmin.sourcesscanner.model.FoundFileItemListener;
 import com.github.exadmin.sourcesscanner.model.FoundItemsContainer;
 import com.github.exadmin.sourcesscanner.model.FoundPathItem;
 import com.github.exadmin.sourcesscanner.model.ItemType;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
-import javafx.beans.property.SimpleStringProperty;
-import javafx.beans.property.StringProperty;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -115,6 +114,9 @@ public class SceneBuilder {
 
             btnRun.setOnAction(actionEvent -> {
                 log.debug("Start button is pressed, where sig-file = {}, dir-to-scan = {}", DICTIONARY.getValue(), DIR_TO_SCAN.getValue());
+
+                // drop previous scan result
+                foundItemsContainer.clearAll();
 
                 runnableScanner.setDirToScan(DIR_TO_SCAN.getValue());
                 runnableScanner.setFoundItemsContainer(foundItemsContainer);
@@ -245,32 +247,40 @@ public class SceneBuilder {
         final FoundPathItem fakeItem = new FoundPathItem(Paths.get(""), ItemType.DIRECTORY, null);
         final TreeItem<FoundPathItem> rootTreeItem = new TreeItem<>(fakeItem);
 
-        foundItemsContainer.setOnAddNewItemListener(newItem -> {
-            TreeItem<FoundPathItem> newTreeItem = new TreeItem<>(newItem);
+        foundItemsContainer.setOnAddNewItemListener(new FoundFileItemListener() {
+            @Override
+            public void newItemAdded(FoundPathItem newItem) {
+                TreeItem<FoundPathItem> newTreeItem = new TreeItem<>(newItem);
 
-            TreeItem<FoundPathItem> parentTreeItem = map.get(newItem.getParent());
-            if (parentTreeItem == null) parentTreeItem = rootTreeItem;
+                TreeItem<FoundPathItem> parentTreeItem = map.get(newItem.getParent());
+                if (parentTreeItem == null) parentTreeItem = rootTreeItem;
 
-            parentTreeItem.getChildren().add(newTreeItem);
+                parentTreeItem.getChildren().add(newTreeItem);
 
-            // automatically expand all parents for the node with signatures inside
-            if (newItem.getType() == ItemType.SIGNATURE) {
-                TreeItem<FoundPathItem> tItem = parentTreeItem;
-                while (tItem != null) {
-                    tItem.setExpanded(true);
-                    tItem = tItem.getParent();
+                // automatically expand all parents for the node with signatures inside
+                if (newItem.getType() == ItemType.SIGNATURE) {
+                    TreeItem<FoundPathItem> tItem = parentTreeItem;
+                    while (tItem != null) {
+                        tItem.setExpanded(true);
+                        tItem = tItem.getParent();
+                    }
                 }
+
+                // do sort
+                parentTreeItem.getChildren().sort((item1, item2) -> {
+                    FoundPathItem fItem1 = item1.getValue();
+                    FoundPathItem fItem2 = item2.getValue();
+
+                    return fItem1.getType().getSortOrder() - fItem2.getType().getSortOrder();
+                });
+
+                map.put(newItem, newTreeItem);
             }
 
-            // do sort
-            parentTreeItem.getChildren().sort((item1, item2) -> {
-                FoundPathItem fItem1 = item1.getValue();
-                FoundPathItem fItem2 = item2.getValue();
-
-                return fItem1.getType().getSortOrder() - fItem2.getType().getSortOrder();
-            });
-
-            map.put(newItem, newTreeItem);
+            @Override
+            public void onClearAll() {
+                rootTreeItem.getChildren().clear();
+            }
         });
 
         ttView.getSelectionModel().selectedItemProperty().addListener((bean, oldItem, newItem) -> {

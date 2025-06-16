@@ -115,11 +115,11 @@ public class RunnableScanner extends ARunnable {
         }
 
         // start scanning for signatures
-        int totalItemsCount = foundItemsContainer.getFoundItems().size();
+        int totalItemsCount = foundItemsContainer.getFoundItemsSize();
         int processedItemsCount = 0;
         int nextRate = 0;
 
-        List<FoundPathItem> list = new ArrayList<>(foundItemsContainer.getFoundItems());
+        List<FoundPathItem> list = foundItemsContainer.getFoundItemsCopy();
         for (FoundPathItem pathItem : list) {
             // update progress
             processedItemsCount++;

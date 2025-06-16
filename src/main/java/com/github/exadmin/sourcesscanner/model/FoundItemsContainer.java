@@ -13,12 +13,26 @@ public class FoundItemsContainer {
         onAddNewItemListener.newItemAdded(newItem);
     }
 
-    public List<FoundPathItem> getFoundItems() {
+    // do not public this api
+    private List<FoundPathItem> getFoundItems() {
         return foundPathItems;
+    }
+
+    public int getFoundItemsSize() {
+        return foundPathItems.size();
+    }
+
+    public List<FoundPathItem> getFoundItemsCopy() {
+        return new ArrayList<>(foundPathItems);
     }
 
 
     public void setOnAddNewItemListener(FoundFileItemListener onAddNewItemListener) {
         this.onAddNewItemListener = onAddNewItemListener;
+    }
+
+    public void clearAll() {
+        getFoundItems().clear();
+        onAddNewItemListener.onClearAll();
     }
 }
