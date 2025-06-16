@@ -9,6 +9,8 @@ import com.github.exadmin.sourcesscanner.fxui.helpers.ChooserBuilder;
 import com.github.exadmin.sourcesscanner.model.FoundItemsContainer;
 import com.github.exadmin.sourcesscanner.model.FoundPathItem;
 import com.github.exadmin.sourcesscanner.model.ItemType;
+import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.beans.value.ChangeListener;
@@ -36,7 +38,7 @@ public class SceneBuilder {
 
     private Stage primaryStage;
     private FoundItemsContainer foundItemsContainer;
-    private TreeItem<FoundPathItem> selectedItem;
+    private ObjectProperty<TreeItem<FoundPathItem>> selectedItemProperty = new SimpleObjectProperty<>();
 
     public SceneBuilder(Stage primaryStage) {
         this.primaryStage = primaryStage;
@@ -99,11 +101,11 @@ public class SceneBuilder {
             vBoxRoot.getChildren().add(hBox);
         }
 
-        // Folder to scane
+        // Folder to scan
         {
             StringProperty dirToScanProperty = new SimpleStringProperty(DIR_TO_SCAN.getValue());
             dirToScanProperty.addListener((prop, oldValue, newValue) -> DIR_TO_SCAN.parseValue(newValue));
-            HBox hBox = chooserBuilder.buildChooserBox("Directory to scan", dirToScanProperty, "...", ChooserBuilder.CHOOSER_TYPE.DIRECTORY);
+            HBox hBox = chooserBuilder.buildChooserBox("Git repository to scan", DIR_TO_SCAN.getFxProperty(), ".!.", ChooserBuilder.CHOOSER_TYPE.DIRECTORY);
             vBoxRoot.getChildren().add(hBox);
         }
 
@@ -151,15 +153,20 @@ public class SceneBuilder {
 
             Button btnMark = new Button("Mark as ignored");
             btnMark.setOnAction(event -> {
-                if (selectedItem == null) {
+                if (selectedItemProperty.getValue() == null) {
                     String msg = "No items are selected to be marked as ignored!";
 
                     log.info(msg);
                     AlertBuilder.showInfo(msg);
                 } else {
-                    Excluder.markToExclude(selectedItem.getValue());
-                    log.info("Item {} was successfully marked as ignored", selectedItem.getValue());
+                    FoundPathItem foundPathItem = selectedItemProperty.getValue().getValue();
+                    Excluder.markToExclude(foundPathItem);
+                    log.info("Item {} was successfully {} as ignored", foundPathItem, foundPathItem.isIgnored() ? "marked" : "unmarked");
                 }
+            });
+
+            selectedItemProperty.addListener((bean, olValue, newValue) -> {
+                // todo: define button depending on selected item
             });
 
             hBox.getChildren().add(btnLoadSigs);
@@ -191,7 +198,7 @@ public class SceneBuilder {
         TreeTableColumn<FoundPathItem, String> colExactSignature = new TreeTableColumn<>("Exact Signature");
 
         colVisualName.setCellValueFactory(new TreeItemPropertyValueFactory<>("visualName"));
-        colIgnore.setCellValueFactory(new TreeItemPropertyValueFactory<>("signatureId"));
+        colIgnore.setCellValueFactory(new TreeItemPropertyValueFactory<>("ignored"));
         colLine.setCellValueFactory(new TreeItemPropertyValueFactory<>("lineNumber"));
         colDisplayText.setCellValueFactory(new TreeItemPropertyValueFactory<>("displayText"));
         colExactSignature.setCellValueFactory(new TreeItemPropertyValueFactory<>("foundString"));
@@ -264,7 +271,8 @@ public class SceneBuilder {
         ttView.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<TreeItem<FoundPathItem>>() {
             @Override
             public void changed(ObservableValue<? extends TreeItem<FoundPathItem>> observableValue, TreeItem<FoundPathItem> oldItem, TreeItem<FoundPathItem> newItem) {
-                selectedItem = newItem;
+                // cache selected item
+                selectedItemProperty.setValue(newItem);
             }
         });
 

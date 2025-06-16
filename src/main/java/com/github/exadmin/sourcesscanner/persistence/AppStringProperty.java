@@ -14,7 +14,7 @@ public class AppStringProperty extends AbstractPersistentProperty<String> {
     }
 
     @Override
-    protected Property<String> getFxProperty() {
+    public Property<String> getFxProperty() {
         return fxProperty;
     }
 

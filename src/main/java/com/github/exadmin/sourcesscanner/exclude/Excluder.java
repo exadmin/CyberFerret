@@ -35,7 +35,7 @@ public class Excluder {
             return;
         }
 
-        // Add/update exclusion
+        // Mark/unmark exclusion
         item.setIgnored(!item.isIgnored());
         String relFileName = getRelativeFileName(rootDir, item.getFilePath());
         String signature = item.getFoundString();
@@ -55,9 +55,8 @@ public class Excluder {
             }
         }
 
-        if (existedExcludeItem != null) {
-            excludeFileModel.getSignatures().remove(existedExcludeItem);
-        } else {
+        excludeFileModel.getSignatures().remove(existedExcludeItem);
+        if (item.isIgnored() && newExcludeItem != null) {
             excludeFileModel.getSignatures().add(newExcludeItem);
         }
 

@@ -1,6 +1,6 @@
 package com.github.exadmin.sourcesscanner.fxui.helpers;
 
-import javafx.beans.property.StringProperty;
+import javafx.beans.property.Property;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -19,17 +19,17 @@ public class ChooserBuilder {
     private static final int LABEL_DEFAULT_WIDTH = 80;
     private static final int OPEN_BTN_DEFAULT_WIDTH = 80;
 
-    public static enum CHOOSER_TYPE {
+    public enum CHOOSER_TYPE {
         FILE, DIRECTORY;
     }
 
-    private Stage primaryStage;
+    private final Stage primaryStage;
 
     public ChooserBuilder(Stage primaryStage) {
         this.primaryStage = primaryStage;
     }
 
-    public HBox buildChooserBox(String labelText, StringProperty bindProperty, String btnText, CHOOSER_TYPE type) {
+    public HBox buildChooserBox(String labelText, Property<String> bindProperty, String btnText, CHOOSER_TYPE type) {
         HBox hBox = new HBox();
         hBox.setSpacing(8);
         {
@@ -50,17 +50,21 @@ public class ChooserBuilder {
             FileChooser fileChooser = type == CHOOSER_TYPE.FILE ? new FileChooser() : null;
             DirectoryChooser dirChooser = type == CHOOSER_TYPE.DIRECTORY ? new DirectoryChooser() : null;
 
-            if (bindProperty.getValue() != null) {
-                Path storedPath = Paths.get(bindProperty.getValue());
-                File storedFile = storedPath.toFile();
-                if (storedFile.exists() && storedFile.isFile()) {
-                    File parentFolder = storedFile.getParentFile();
-                    if (parentFolder.exists() && parentFolder.isDirectory()) {
-                        if (fileChooser != null) fileChooser.setInitialDirectory(parentFolder);
-                        if (dirChooser != null) dirChooser.setInitialDirectory(parentFolder);
+            bindProperty.addListener((bean, oldValue, newValue) -> {
+                Path newPath = Paths.get(newValue);
+                File newFile = newPath.toFile();
+
+                if (type == CHOOSER_TYPE.FILE) {
+                    if (newFile.exists() && newFile.isFile()) {
+                        File initFolder = newFile.getParentFile();
+                        if (initFolder.exists() && initFolder.isDirectory()) fileChooser.setInitialDirectory(initFolder);
                     }
                 }
-            }
+
+                if (type == CHOOSER_TYPE.DIRECTORY) {
+                    if (newFile.exists() && newFile.isDirectory()) dirChooser.setInitialDirectory(newFile);
+                }
+            });
 
             btnOpen.setOnAction(e -> {
                 File file = type == CHOOSER_TYPE.FILE ? fileChooser.showOpenDialog(primaryStage) : dirChooser.showDialog(primaryStage);

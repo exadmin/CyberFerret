@@ -14,7 +14,7 @@ public class AppBooleanProperty extends AbstractPersistentProperty<Boolean> {
     }
 
     @Override
-    protected Property<Boolean> getFxProperty() {
+    public Property<Boolean> getFxProperty() {
         return fxProperty;
     }
 

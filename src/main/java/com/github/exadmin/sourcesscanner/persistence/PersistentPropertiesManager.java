@@ -16,7 +16,7 @@ public class PersistentPropertiesManager {
     public static final AbstractPersistentProperty<Double>  STAGE_POSX          = new AppDoubleProperty("stage.posX", 0d, REG_MAP);
     public static final AbstractPersistentProperty<Double>  STAGE_POSY          = new AppDoubleProperty("stage.posY", 0d, REG_MAP);
     public static final AbstractPersistentProperty<String>  DICTIONARY          = new AppStringProperty("dictionary", "", REG_MAP);
-    public static final AbstractPersistentProperty<String>  DIR_TO_SCAN          = new AppStringProperty("dir-to-scan", "", REG_MAP);
+    public static final AbstractPersistentProperty<String>  DIR_TO_SCAN         = new AppStringProperty("dir-to-scan", "", REG_MAP);
     public static final AbstractPersistentProperty<Boolean> STAGE_IS_MAXIMIZED  = new AppBooleanProperty("stage.maximized", false, REG_MAP);
 
     private static final Logger log = LoggerFactory.getLogger(PersistentPropertiesManager.class);

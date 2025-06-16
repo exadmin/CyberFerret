@@ -33,7 +33,7 @@ public abstract class AbstractPersistentProperty<T> {
         getFxProperty().setValue(newValue);
     }
 
-    protected abstract Property<T> getFxProperty();
+    public abstract Property<T> getFxProperty();
 
     public abstract void parseValue(Object strValue);
 }

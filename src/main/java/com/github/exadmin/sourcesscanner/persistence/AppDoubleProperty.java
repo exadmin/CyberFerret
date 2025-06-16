@@ -19,7 +19,7 @@ public class AppDoubleProperty extends AbstractPersistentProperty<Double> {
     }
 
     @Override
-    protected Property getFxProperty() {
+    public Property getFxProperty() {
         return fxProperty;
     }
 }
