@@ -232,6 +232,22 @@ public class SceneBuilder {
         ttView.setShowRoot(false);
         ttView.setMinHeight(320);
 
+        ttView.setRowFactory(tv -> new TreeTableRow<FoundPathItem>() {
+            @Override
+            protected void updateItem(FoundPathItem foundPathItem, boolean isSelected) {
+                if (foundPathItem == null) {
+                    setStyle("");
+                } else if (!isSelected && foundPathItem.isIgnored()) {
+                    setStyle("-fx-background-color: #64dea7;");
+                } else {
+                    setStyle("");
+                }
+
+                super.updateItem(foundPathItem, isSelected);
+
+            }
+        });
+
         final Map<FoundPathItem, TreeItem<FoundPathItem>> map = new HashMap<>();
 
         final FoundPathItem fakeItem = new FoundPathItem(Paths.get(""), ItemType.DIRECTORY, null);
