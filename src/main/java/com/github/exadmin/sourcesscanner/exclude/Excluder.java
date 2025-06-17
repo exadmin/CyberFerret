@@ -29,12 +29,6 @@ public class Excluder {
      * @return Path to exclusion configuration file
      */
     public static Path markToExclude(FoundPathItem item, Path defaultRootPath) {
-        // check that we support currerntly selected item for future processing
-        if (!(item.getType() == ItemType.SIGNATURE)) {
-            AlertBuilder.showWarn("Only items with exact signatures are supported in this version of application");
-            return null;
-        }
-
         // Get root of the repository for the provided item
         Path rootDir = getRepositoryRoot(item);
         if (rootDir == null) {
@@ -54,25 +48,11 @@ public class Excluder {
         String relFileName = MiscUtils.getRelativeFileName(rootDir, item.getFilePath());
         String signature = item.getFoundString();
 
-        String textHash = MiscUtils.getSHA256AsHex(signature);
+        String textHash = item.getType() == ItemType.SIGNATURE ? MiscUtils.getSHA256AsHex(signature) : "00000000";
         String fileHash = MiscUtils.getSHA256AsHex(relFileName);
 
-        ExcludeSignatureItem newExcludeItem = new ExcludeSignatureItem();
-        newExcludeItem.setTextHash(textHash);
-        newExcludeItem.setFileHash(fileHash);
-
-        ExcludeSignatureItem existedExcludeItem = null;
-        for (ExcludeSignatureItem next : excludeFileModel.getSignatures()) {
-            if (next.equals(newExcludeItem)) {
-                existedExcludeItem = next;
-                break;
-            }
-        }
-
-        excludeFileModel.getSignatures().remove(existedExcludeItem);
-        if (item.isIgnored()) {
-            excludeFileModel.getSignatures().add(newExcludeItem);
-        }
+        excludeFileModel.remove(textHash, fileHash);
+        if (item.isIgnored()) excludeFileModel.add(textHash, fileHash);
 
         // save changes back to file
         excludesFile.toFile().getParentFile().mkdirs();

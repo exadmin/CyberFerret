@@ -13,11 +13,11 @@ public class ExcludeFileModel {
         signatures = new ArrayList<>();
     }
 
-    public List<ExcludeSignatureItem> getSignatures() {
+    private List<ExcludeSignatureItem> getSignatures() {
         return signatures;
     }
 
-    public void setSignatures(List<ExcludeSignatureItem> signatures) {
+    private void setSignatures(List<ExcludeSignatureItem> signatures) {
         this.signatures = signatures;
     }
 
@@ -26,6 +26,28 @@ public class ExcludeFileModel {
         temp.setTextHash(textHash);
         temp.setFileHash(relFileNameHash);
         return signatures.contains(temp);
+    }
+
+    public ExcludeSignatureItem remove(String textHash, String relFileNameHash) {
+        ExcludeSignatureItem itemToRemove = null;
+        for (ExcludeSignatureItem next : getSignatures()) {
+            if (next.getTextHash().equals(textHash) && next.getFileHash().equals(relFileNameHash)) {
+                itemToRemove = next;
+                break;
+            }
+        }
+
+        if (itemToRemove != null) getSignatures().remove(itemToRemove);
+        return itemToRemove;
+    }
+
+    public ExcludeSignatureItem add(String textHash, String relFileNameHash) {
+        ExcludeSignatureItem newItem = new ExcludeSignatureItem();
+        newItem.setTextHash(textHash);
+        newItem.setFileHash(relFileNameHash);
+        getSignatures().add(newItem);
+
+        return newItem;
     }
 
     public void doSortBeforeSaving() {
