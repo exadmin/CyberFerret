@@ -9,13 +9,10 @@ public class RunnableLogger implements Runnable {
     private static final int CUT_PORTION = MAX_LOG_SIZE_IN_TEXT_AREA_CHARS / 10;
 
     private boolean stop = false;
-    private final FXConsoleAppender fxAppender;
+    private FXConsoleAppender fxAppender = null;
     private final TextArea textArea;
 
     public RunnableLogger(TextArea textArea) {
-        if (FXConsoleAppender.MY_INSTANCES.size() != 1) throw new IllegalStateException("Only one FX-Appender is expected to be. Current amount is " + FXConsoleAppender.MY_INSTANCES.size());
-
-        this.fxAppender = FXConsoleAppender.MY_INSTANCES.getFirst();
         this.textArea = textArea;
     }
 
@@ -25,10 +22,20 @@ public class RunnableLogger implements Runnable {
 
     @Override
     public void run() {
-        fxAppender.setServed(true);
         StringBuilder buf = new StringBuilder();
 
         while (!stop) {
+            // check if appender initialized
+            if (fxAppender == null && FXConsoleAppender.MY_INSTANCES.isEmpty()) {
+                sleep();
+                continue;
+            }
+
+            if (fxAppender == null) {
+                fxAppender = FXConsoleAppender.MY_INSTANCES.getFirst();
+                fxAppender.setServed(true);
+            }
+
             buf.setLength(0);
 
             for (int i=0; i<100; i++) {

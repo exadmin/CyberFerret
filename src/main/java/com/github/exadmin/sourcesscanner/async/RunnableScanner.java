@@ -158,6 +158,8 @@ public class RunnableScanner extends ARunnable {
                 }
             }
         }
+
+        log.info("Scanning completed for 100%");
     }
 
     public static String readFile(Path filePath) throws IOException {

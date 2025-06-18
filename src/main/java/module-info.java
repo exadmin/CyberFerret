@@ -8,6 +8,7 @@ module com.github.exadmin.sourcesscanner {
     requires com.fasterxml.jackson.core;
     requires com.fasterxml.jackson.databind;
     requires java.desktop;
+    requires java.xml; // for log4j configuration plugins
 
     exports com.github.exadmin.sourcesscanner;
     opens com.github.exadmin.sourcesscanner.model to javafx.base;
