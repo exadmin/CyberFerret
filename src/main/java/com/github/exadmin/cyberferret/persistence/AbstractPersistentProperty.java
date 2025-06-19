@@ -6,7 +6,7 @@ import java.util.Map;
 
 public abstract class AbstractPersistentProperty<T> {
     private final String keyName;
-    private final T defaultValue;
+    protected final T defaultValue;
 
     AbstractPersistentProperty(String keyName, T defaultValue , Map<String, AbstractPersistentProperty<?>> regMap) {
         this.keyName = keyName;

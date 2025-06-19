@@ -5,12 +5,18 @@ import com.github.exadmin.cyberferret.persistence.PersistentPropertiesManager;
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Paths;
+import java.util.Properties;
 
 import static com.github.exadmin.cyberferret.persistence.PersistentPropertiesManager.*;
 
 public class CyberFerretApp extends Application {
+    private static final Logger log = LoggerFactory.getLogger(CyberFerretApp.class);
     private static final String APPLICATION_PERSISTENT_CONTEXT_FILENAME = "app.properties";
 
     @Override
@@ -24,9 +30,8 @@ public class CyberFerretApp extends Application {
         stage.yProperty().addListener((value, oldValue, newValue) -> STAGE_POSY.parseValue(newValue));
         stage.maximizedProperty().addListener((value, oldValue, newValue) -> STAGE_IS_MAXIMIZED.parseValue(newValue));
 
-        Boolean isStageMaximized = STAGE_IS_MAXIMIZED.getValue();
-        if (isStageMaximized) stage.setMaximized(true);
 
+        stage.setMaximized(STAGE_IS_MAXIMIZED.getValue());
         stage.setWidth(STAGE_WIDTH.getValue().doubleValue());
         stage.setHeight(STAGE_HEIGHT.getValue().doubleValue());
         stage.setX(STAGE_POSX.getValue().doubleValue());
@@ -39,10 +44,23 @@ public class CyberFerretApp extends Application {
         stage.setScene(scene);
         stage.show();
 
-        stage.setTitle("Attention Signatures Scanner, version 1.0.1");
+        String appVer = loadApplicationVersion();
+        stage.setTitle("Cyber Ferret (version " + appVer + ")");
     }
 
     public static void main(String[] args) {
         launch();
+    }
+
+    private String loadApplicationVersion() {
+        Properties props = new Properties();
+        try (InputStream input = getClass().getResourceAsStream("/version.properties")) {
+            props.load(input);
+            return props.getProperty("application.version");
+        } catch (IOException ex) {
+            log.error("Error while loading {}", "/version.properties", ex);
+        }
+
+        return "UNDEFINED";
     }
 }

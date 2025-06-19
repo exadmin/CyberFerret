@@ -11,6 +11,7 @@ public class AppStringProperty extends AbstractPersistentProperty<String> {
 
     AppStringProperty(String keyName, String defaultValue, Map<String, AbstractPersistentProperty<?>> regMap) {
         super(keyName, defaultValue, regMap);
+        setValue(defaultValue);
     }
 
     @Override

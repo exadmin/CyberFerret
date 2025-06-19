@@ -11,6 +11,7 @@ public class AppDoubleProperty extends AbstractPersistentProperty<Number> {
 
     AppDoubleProperty(String keyName, Number defaultValue, Map<String, AbstractPersistentProperty<?>> regMap) {
         super(keyName, defaultValue, regMap);
+        setValue(defaultValue);
     }
 
     @Override

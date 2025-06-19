@@ -11,6 +11,7 @@ public class AppBooleanProperty extends AbstractPersistentProperty<Boolean> {
 
     AppBooleanProperty(String keyName, Boolean defaultValue, Map<String, AbstractPersistentProperty<?>> regMap) {
         super(keyName, defaultValue, regMap);
+        setValue(defaultValue);
     }
 
     @Override
