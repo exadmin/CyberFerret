@@ -128,7 +128,7 @@
                         </manifest>
                     </archive>
 
-                    <finalName>cyber-ferret</finalName>
+                    <finalName>${artifactId}-${version}</finalName>
                     <appendAssemblyId>false</appendAssemblyId>
                 </configuration>
 
