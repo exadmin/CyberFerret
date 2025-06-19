@@ -96,6 +96,7 @@
     </dependencies>
 
     <build>
+        <!-- to replace version.properties with actual vaulue -->
         <resources>
             <resource>
                 <directory>src/main/resources</directory>

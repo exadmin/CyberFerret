@@ -13,7 +13,7 @@ mvn clean package assembly:single
 Install Java from https://jdk.java.net/24/
 Install JavaFX from https://gluonhq.com/products/javafx/
 ```shell
-java --module-path "...\JDKs\javafx-sdk-24.0.1\lib" --add-modules javafx.controls,javafx.web,javafx.graphics --enable-native-access=javafx.graphics -jar ./target/cyber-ferret.jar
+java --module-path "...\JDKs\javafx-sdk-24.0.1\lib" --add-modules javafx.controls,javafx.web,javafx.graphics --enable-native-access=javafx.graphics -jar cyberferret.jar
 ```
 
 # How to ru - linux version
