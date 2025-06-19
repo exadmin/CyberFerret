@@ -36,3 +36,7 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+### Application runtime temp files
+app.properties
+logs.log

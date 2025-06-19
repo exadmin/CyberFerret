@@ -12,8 +12,10 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <junit.version>5.10.2</junit.version>
-        <maven.compiler.source>24</maven.compiler.source>
-        <maven.compiler.target>24</maven.compiler.target>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
+        <javafx.version>21</javafx.version>
+        <javafx.maven.plugin.version>0.0.8</javafx.maven.plugin.version>
     </properties>
 
     <dependencies>
@@ -21,12 +23,12 @@
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
-            <version>17.0.6</version>
+            <version>${javafx.version}</version>
         </dependency>
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-fxml</artifactId>
-            <version>17.0.6</version>
+            <version>${javafx.version}</version>
         </dependency>
         <dependency>
             <groupId>org.controlsfx</groupId>
@@ -82,6 +84,15 @@
     <build>
         <plugins>
             <plugin>
+                <groupId>org.openjfx</groupId>
+                <artifactId>javafx-maven-plugin</artifactId>
+                <version>${javafx.maven.plugin.version}</version>
+                <configuration>
+                    <mainClass>com.github.exadmin.sourcesscanner.SourcesScannerApp</mainClass>
+                </configuration>
+            </plugin>
+
+            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-assembly-plugin</artifactId>
 
@@ -96,7 +107,7 @@
                         </manifest>
                     </archive>
 
-                    <finalName>${project.artifactId}-${project.version}</finalName>
+                    <finalName>sig-scanner</finalName>
                     <appendAssemblyId>false</appendAssemblyId>
                 </configuration>
 
@@ -135,6 +146,9 @@
                     </execution>
                 </executions>
             </plugin>
+
+
+
         </plugins>
 
 
