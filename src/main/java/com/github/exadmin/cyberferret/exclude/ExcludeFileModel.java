@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ExcludeFileModel {
-    @JsonProperty("signatures")
+    @JsonProperty("exclusions")
     private List<ExcludeSignatureItem> signatures;
 
     public ExcludeFileModel() {

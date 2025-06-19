@@ -5,10 +5,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Objects;
 
 public class ExcludeSignatureItem {
-    @JsonProperty("text-hash")
+    @JsonProperty("t-hash")
     private String textHash;
 
-    @JsonProperty("file-hash")
+    @JsonProperty("f-hash")
     private String fileHash;
 
     public ExcludeSignatureItem() {

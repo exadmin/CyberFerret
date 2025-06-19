@@ -72,6 +72,9 @@ public class RunnableScanner extends ARunnable {
             public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
                 log.debug("Visiting directory {}", dir);
 
+                // todo: move this hard code to some configurable place, priority = normal
+                if (dir.getFileName().toString().equals(".git")) return FileVisitResult.SKIP_SUBTREE;
+
                 FoundPathItem parent = parentsDeque.peekLast();
                 FoundPathItem foundPathItem = new FoundPathItem(dir, ItemType.DIRECTORY, parent);
                 foundItemsContainer.addItem(foundPathItem);
@@ -106,7 +109,7 @@ public class RunnableScanner extends ARunnable {
 
         // try loading exclusions-model from the file in the root of the repository
         ExcludeFileModel excludeFileModel = new ExcludeFileModel(); // create empty container
-        Path exFile = Paths.get(dirToScan, ".github", Excluder.EXCLUDES_SHORT_FILE_NAME);
+        Path exFile = Paths.get(dirToScan, Excluder.PERSISTENCE_FOLDER, Excluder.EXCLUDES_SHORT_FILE_NAME);
         try {
             OBJECT_MAPPER.enable(JsonParser.Feature.INCLUDE_SOURCE_IN_LOCATION);
             excludeFileModel = OBJECT_MAPPER.readValue(exFile.toFile(), ExcludeFileModel.class); // load new exclusion context

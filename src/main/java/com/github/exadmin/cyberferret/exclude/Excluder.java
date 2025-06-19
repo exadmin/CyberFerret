@@ -17,7 +17,8 @@ import java.nio.file.Paths;
 
 public class Excluder {
     private static final Logger log = LoggerFactory.getLogger(Excluder.class);
-    public static final String EXCLUDES_SHORT_FILE_NAME = "qs-grand-report.yaml";
+    public static final String PERSISTENCE_FOLDER = ".qubership";
+    public static final String EXCLUDES_SHORT_FILE_NAME = "grand-report.json";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     /**
@@ -36,8 +37,8 @@ public class Excluder {
         }
 
         // Load existed ignore-file
-        Path excludesFile = Paths.get(rootDir.toString(), ".github", EXCLUDES_SHORT_FILE_NAME);
-        ExcludeFileModel excludeFileModel = excludesFile.toFile().exists() ? loadExistedModel(excludesFile) : new ExcludeFileModel();
+        Path excludesFile = Paths.get(rootDir.toString(), Excluder.PERSISTENCE_FOLDER, EXCLUDES_SHORT_FILE_NAME);
+        ExcludeFileModel excludeFileModel = getModelToWorkWith(excludesFile);
         if (excludeFileModel == null) {
             AlertBuilder.showError("Can't load existed exclusion configuration, please check logs and fix errors. If can't - then delete erroneous file.");
             return null;
@@ -70,14 +71,27 @@ public class Excluder {
         return excludesFile;
     }
 
-    private static ExcludeFileModel loadExistedModel(Path filePath) {
+    /**
+     * Tries to load existed model with exclusions. If file does not exist - it is similar to empty configuration,
+     * so new empty instance will be returned.
+     * In case of any error during loading process (for instance incorrect file format) a null will be returned.
+     * @param filePath Path to configuration file to load model from
+     * @return
+     */
+    private static ExcludeFileModel getModelToWorkWith(Path filePath) {
         try {
-            OBJECT_MAPPER.enable(StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION.mappedFeature());
-            return OBJECT_MAPPER.readValue(filePath.toFile(), ExcludeFileModel.class);
+            File file = filePath.toFile();
+            if (file.exists() && file.isFile()) {
+                OBJECT_MAPPER.enable(StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION.mappedFeature());
+                return OBJECT_MAPPER.readValue(filePath.toFile(), ExcludeFileModel.class);
+            } else {
+                return new ExcludeFileModel();
+            }
         } catch (Exception ex) {
-            log.error("Can't load existed exclusion configuration {}", filePath, ex);
-            return null;
+            log.error("Error happened during configuration loading from {}", filePath, ex);
         }
+
+        return null;
     }
 
     private static Path getRepositoryRoot(FoundPathItem item) {
