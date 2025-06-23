@@ -13,6 +13,7 @@ public class FoundPathItem {
     private final StringProperty displayText = new SimpleStringProperty(); // this text will be shown in the report including all chars around
     private final StringProperty foundString = new SimpleStringProperty(); // this is exactly found signature
     private final BooleanProperty ignored = new SimpleBooleanProperty();
+    private final BooleanProperty allowedValue = new SimpleBooleanProperty();
 
     public FoundPathItem(Path filePath, ItemType type, FoundPathItem parent) {
         this.parent = parent;
@@ -21,6 +22,7 @@ public class FoundPathItem {
         this.type.setValue(type);
         this.lineNumber.setValue(0);
         this.displayText.setValue("");
+        this.allowedValue.setValue(false);
     }
 
     public FoundPathItem getParent() {
@@ -107,4 +109,18 @@ public class FoundPathItem {
     public String toString() {
         return filePath.toString();
     }
+
+    public boolean isAllowedValue() {
+        return allowedValue.get();
+    }
+
+    public BooleanProperty allowedValueProperty() {
+        return allowedValue;
+    }
+
+    public void setAllowedValue(boolean newValue) {
+        this.allowedValue.setValue(newValue);
+    }
+
+
 }

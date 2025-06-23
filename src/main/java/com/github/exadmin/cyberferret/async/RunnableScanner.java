@@ -27,12 +27,17 @@ public class RunnableScanner extends ARunnable {
     private String dirToScan;
     private FoundItemsContainer foundItemsContainer;
     private Map<String, Pattern> sigMap = null;
+    private Map<String, String> allowedSigMap = null;
 
     public RunnableScanner() {
     }
 
     public void setSignaturesMap(Map<String, Pattern> sigMap) {
         this.sigMap = sigMap;
+    }
+
+    public void setAllowedSigMap(Map<String, String> allowedSigMap) {
+        this.allowedSigMap = allowedSigMap;
     }
 
     public void setDirToScan(String dirToScan) {
@@ -155,6 +160,11 @@ public class RunnableScanner extends ARunnable {
                     String fileHash = MiscUtils.getSHA256AsHex(relFileName);
 
                     newItem.setIgnored(excludeFileModel.contains(textHash, fileHash));
+
+                    // check if item is in the allowed list
+                    if (allowedSigMap.containsValue(newItem.getFoundString())) {
+                        newItem.setAllowedValue(true);
+                    }
 
                     foundItemsContainer.addItem(newItem);
                     log.info("Signature {} is detected in {}", sigId, filePath);

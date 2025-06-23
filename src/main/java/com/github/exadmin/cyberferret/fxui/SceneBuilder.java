@@ -63,11 +63,10 @@ public class SceneBuilder {
         Tab tab = new Tab("Signatures Analyzer");
         tab.setClosable(false);
 
-        TitledPane tpSettings = createSettingsGroup();
+        TitledPane tpDictionary = createDictionaryGroup();
+        TitledPane tpRepository = createRepositoryGroup();
         TitledPane tpExplorer = createExplorerGroup(tabPane);
         TitledPane tpLogs = createLogsPane();
-
-        // bPane.setStyle("-fx-background-color: red;");
 
         BorderPane bpRoot = new BorderPane();
         Pane wrapper = new StackPane(bpRoot);
@@ -75,17 +74,21 @@ public class SceneBuilder {
         bpRoot.prefWidthProperty().bind(wrapper.widthProperty());
         bpRoot.prefHeightProperty().bind(wrapper.heightProperty());
 
-        bpRoot.setTop(tpSettings);
+        VBox vBox = new VBox();
+        vBox.getChildren().add(tpDictionary);
+        vBox.getChildren().add(tpRepository);
+
+        bpRoot.setTop(vBox);
         bpRoot.setCenter(tpExplorer);
         bpRoot.setBottom(tpLogs);
 
         return tab;
     }
 
-    protected TitledPane createSettingsGroup() {
+    protected TitledPane createDictionaryGroup() {
         TitledPane tpSettings = new TitledPane();
         tpSettings.setCollapsible(false);
-        tpSettings.setText("Settings");
+        tpSettings.setText("Dictionary");
 
         VBox vBoxRoot = new VBox();
         tpSettings.setContent(vBoxRoot);
@@ -97,17 +100,18 @@ public class SceneBuilder {
 
         // Dictionary
         {
-            HBox hBox = chooserBuilder.buildChooserBox("Custom dictionary", DICTIONARY.getFxProperty(), "Select ...", ChooserBuilder.CHOOSER_TYPE.FILE);
+            HBox hBox = chooserBuilder.buildChooserBox("Local dictionary", DICTIONARY.getFxProperty(), "Select file", ChooserBuilder.CHOOSER_TYPE.FILE);
             vBoxRoot.getChildren().add(hBox);
 
             // Load signatures button
-            Button btnLoadSigs = new Button("Apply");
+            Button btnLoadSigs = new Button("Load it");
             hBox.getChildren().add(btnLoadSigs);
             btnLoadSigs.setPrefWidth(DEFAULT_BUTTON_WIDTH);
 
             runnableSigsLoader.setBeforeStart(() -> btnLoadSigs.setDisable(true));
             runnableSigsLoader.setAfterFinished(() -> {
                 runnableScanner.setSignaturesMap(runnableSigsLoader.getRegExpMap());
+                runnableScanner.setAllowedSigMap(runnableSigsLoader.getAllowedSignaturesMap());
                 btnLoadSigs.setDisable(false);
             });
 
@@ -128,6 +132,22 @@ public class SceneBuilder {
             HBox hBox = buildOnlineSignatureLoader(primaryStage);
             vBoxRoot.getChildren().add(hBox);
         }
+
+        return tpSettings;
+    }
+
+    protected TitledPane createRepositoryGroup() {
+        TitledPane tpSettings = new TitledPane();
+        tpSettings.setCollapsible(false);
+        tpSettings.setText("Repository");
+
+        VBox vBoxRoot = new VBox();
+        tpSettings.setContent(vBoxRoot);
+        vBoxRoot.setSpacing(8);
+
+        ChooserBuilder chooserBuilder = new ChooserBuilder(primaryStage);
+
+        final RunnableScanner runnableScanner = new RunnableScanner();
 
         // Folder to scan
         {
@@ -199,12 +219,14 @@ public class SceneBuilder {
 
         TreeTableColumn<FoundPathItem, String> colVisualName = new TreeTableColumn<>("Path name");
         TreeTableColumn<FoundPathItem, Boolean> colIgnore = new TreeTableColumn<>("To be ignored");
+        TreeTableColumn<FoundPathItem, Boolean> colAllowed = new TreeTableColumn<>("Allowed");
         TreeTableColumn<FoundPathItem, Long> colLine = new TreeTableColumn<>("Line #");
         TreeTableColumn<FoundPathItem, String> colDisplayText = new TreeTableColumn<>("Found Text");
         TreeTableColumn<FoundPathItem, String> colExactSignature = new TreeTableColumn<>("Exact Signature");
 
         colVisualName.setCellValueFactory(new TreeItemPropertyValueFactory<>("visualName"));
         colIgnore.setCellValueFactory(new TreeItemPropertyValueFactory<>("ignored"));
+        colAllowed.setCellValueFactory(new TreeItemPropertyValueFactory<>("allowedValue"));
         colLine.setCellValueFactory(new TreeItemPropertyValueFactory<>("lineNumber"));
         colDisplayText.setCellValueFactory(new TreeItemPropertyValueFactory<>("displayText"));
         colExactSignature.setCellValueFactory(new TreeItemPropertyValueFactory<>("foundString"));
@@ -227,12 +249,15 @@ public class SceneBuilder {
         colExactSignature.setEditable(false);
         colDisplayText.setEditable(false);
         colDisplayText.setSortable(false);
+        colAllowed.setEditable(false);
+        colAllowed.setSortable(false);
 
         colVisualName.prefWidthProperty().setValue(200d);
 
         TreeTableView<FoundPathItem> ttView = new TreeTableView<>();
         ttView.getColumns().add(colVisualName);
         ttView.getColumns().add(colIgnore);
+        ttView.getColumns().add(colAllowed);
         ttView.getColumns().add(colLine);
         ttView.getColumns().add(colDisplayText);
         ttView.getColumns().add(colExactSignature);
@@ -244,16 +269,19 @@ public class SceneBuilder {
         ttView.setRowFactory(tv -> new TreeTableRow<FoundPathItem>() {
             @Override
             protected void updateItem(FoundPathItem foundPathItem, boolean isSelected) {
-                if (foundPathItem == null) {
-                    setStyle("");
-                } else if (!isSelected && foundPathItem.isIgnored()) {
-                    setStyle("-fx-background-color: #64dea7;");
-                } else {
-                    setStyle("");
-                }
+            if (foundPathItem == null) {
+                setStyle("");
+            } else if (!isSelected && foundPathItem.isIgnored()) {
+                setStyle("-fx-background-color: #5cb574;");
+            } else if (!isSelected && foundPathItem.isAllowedValue()) {
+                setStyle("-fx-background-color: #c1f7cf;");
+            } else if (!isSelected && !foundPathItem.foundStringProperty().isEmpty().get()) {
+                setStyle("-fx-background-color: #f2d0d0;");
+            } else {
+                setStyle("");
+            }
 
-                super.updateItem(foundPathItem, isSelected);
-
+            super.updateItem(foundPathItem, isSelected);
             }
         });
 
@@ -341,9 +369,9 @@ public class SceneBuilder {
         Label lbVersion = new Label("Online dictionary");
         Label lbPassw = new Label("Password");
         TextField tfPassword = new PasswordField();
-        Button btnCheckUpdates = new Button("Download locally");
-        Button btnDecrypt = new Button("Decrypt & Save");
-        Button btnApply = new Button("Apply decrypted");
+        Button btnCheckUpdates = new Button("Download");
+        Button btnDecrypt = new Button("Decrypt");
+        Button btnApply = new Button("Load decrypted");
         Label lbSalt = new Label("Salt");
         TextField tfSalt = new PasswordField();
 
