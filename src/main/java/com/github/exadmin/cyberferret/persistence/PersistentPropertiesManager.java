@@ -18,6 +18,8 @@ public class PersistentPropertiesManager {
     public static final AbstractPersistentProperty<String>  DICTIONARY          = new AppStringProperty("dictionary", "", REG_MAP);
     public static final AbstractPersistentProperty<String>  DIR_TO_SCAN         = new AppStringProperty("dir-to-scan", "", REG_MAP);
     public static final AbstractPersistentProperty<Boolean> STAGE_IS_MAXIMIZED  = new AppBooleanProperty("stage.maximized", false, REG_MAP);
+    public static final AbstractPersistentProperty<String>  PASSWORD            = new AppStringProperty("dictionary.password", "", REG_MAP);
+    public static final AbstractPersistentProperty<String>  SALT                = new AppStringProperty("dictionary.salt", "", REG_MAP);
 
     private static final Logger log = LoggerFactory.getLogger(PersistentPropertiesManager.class);
     private final Path filePath;

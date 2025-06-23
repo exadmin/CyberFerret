@@ -40,3 +40,5 @@ build/
 ### Application runtime temp files
 app.properties
 logs.log
+/dictionary-latest-tmp.encrypted
+/dictionary-latest-cache.decrypted

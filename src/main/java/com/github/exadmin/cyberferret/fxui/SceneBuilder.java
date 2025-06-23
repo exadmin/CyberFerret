@@ -1,8 +1,6 @@
 package com.github.exadmin.cyberferret.fxui;
 
-import com.github.exadmin.cyberferret.async.RunnableLogger;
-import com.github.exadmin.cyberferret.async.RunnableScanner;
-import com.github.exadmin.cyberferret.async.RunnableSigsLoader;
+import com.github.exadmin.cyberferret.async.*;
 import com.github.exadmin.cyberferret.exclude.Excluder;
 import com.github.exadmin.cyberferret.fxui.helpers.AlertBuilder;
 import com.github.exadmin.cyberferret.fxui.helpers.ChooserBuilder;
@@ -10,8 +8,11 @@ import com.github.exadmin.cyberferret.model.FoundFileItemListener;
 import com.github.exadmin.cyberferret.model.FoundItemsContainer;
 import com.github.exadmin.cyberferret.model.FoundPathItem;
 import com.github.exadmin.cyberferret.model.ItemType;
+import com.github.exadmin.cyberferret.utils.FileUtils;
+import com.github.exadmin.cyberferret.utils.PasswordBasedEncryption;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
+import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -22,13 +23,14 @@ import javafx.stage.Stage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 
-import static com.github.exadmin.cyberferret.persistence.PersistentPropertiesManager.DICTIONARY;
-import static com.github.exadmin.cyberferret.persistence.PersistentPropertiesManager.DIR_TO_SCAN;
+import static com.github.exadmin.cyberferret.fxui.FxConstants.*;
+import static com.github.exadmin.cyberferret.persistence.PersistentPropertiesManager.*;
 
 public class SceneBuilder {
     private static final Logger log = LoggerFactory.getLogger(SceneBuilder.class);
@@ -36,10 +38,12 @@ public class SceneBuilder {
     private final Stage primaryStage;
     private final FoundItemsContainer foundItemsContainer;
     private final ObjectProperty<TreeItem<FoundPathItem>> selectedItemProperty = new SimpleObjectProperty<>();
+    private final RunnableSigsLoader runnableSigsLoader;
 
     public SceneBuilder(Stage primaryStage) {
         this.primaryStage = primaryStage;
         this.foundItemsContainer = new FoundItemsContainer();
+        this.runnableSigsLoader = new RunnableSigsLoader();
     }
 
     public Scene buildScene() {
@@ -89,43 +93,18 @@ public class SceneBuilder {
 
         ChooserBuilder chooserBuilder = new ChooserBuilder(primaryStage);
 
+        final RunnableScanner runnableScanner = new RunnableScanner();
+
         // Dictionary
         {
-            HBox hBox = chooserBuilder.buildChooserBox("Signatures registry", DICTIONARY.getFxProperty(), "...", ChooserBuilder.CHOOSER_TYPE.FILE);
+            HBox hBox = chooserBuilder.buildChooserBox("Custom dictionary", DICTIONARY.getFxProperty(), "Select ...", ChooserBuilder.CHOOSER_TYPE.FILE);
             vBoxRoot.getChildren().add(hBox);
-        }
-
-        // Folder to scan
-        {
-            HBox hBox = chooserBuilder.buildChooserBox("Git repository to scan", DIR_TO_SCAN.getFxProperty(), "...", ChooserBuilder.CHOOSER_TYPE.DIRECTORY);
-            vBoxRoot.getChildren().add(hBox);
-        }
-
-        // control buttons
-        {
-            HBox hBox = new HBox();
-            vBoxRoot.getChildren().add(hBox);
-            hBox.setSpacing(8);
-
-            Button btnRun = new Button("Start Scanning");
-            final RunnableScanner runnableScanner = new RunnableScanner();
-            runnableScanner.setBeforeStart(() -> btnRun.setDisable(true));
-            runnableScanner.setAfterFinished(() -> btnRun.setDisable(false));
-
-            btnRun.setOnAction(actionEvent -> {
-                log.debug("Start button is pressed, where sig-file = {}, dir-to-scan = {}", DICTIONARY.getValue(), DIR_TO_SCAN.getValue());
-
-                // drop previous scan result
-                foundItemsContainer.clearAll();
-
-                runnableScanner.setDirToScan(DIR_TO_SCAN.getValue());
-                runnableScanner.setFoundItemsContainer(foundItemsContainer);
-                runnableScanner.startNow();
-            });
 
             // Load signatures button
-            Button btnLoadSigs = new Button("Load Signatures");
-            final RunnableSigsLoader runnableSigsLoader = new RunnableSigsLoader();
+            Button btnLoadSigs = new Button("Apply");
+            hBox.getChildren().add(btnLoadSigs);
+            btnLoadSigs.setPrefWidth(DEFAULT_BUTTON_WIDTH);
+
             runnableSigsLoader.setBeforeStart(() -> btnLoadSigs.setDisable(true));
             runnableSigsLoader.setAfterFinished(() -> {
                 runnableScanner.setSignaturesMap(runnableSigsLoader.getRegExpMap());
@@ -137,15 +116,52 @@ public class SceneBuilder {
                     Path sigsPath = Paths.get(DICTIONARY.getValue());
 
                     runnableSigsLoader.setFileToLoad(sigsPath);
-                    runnableSigsLoader.startNow();
+                    runnableSigsLoader.startNowInNewThread();
                 } else {
                     log.warn("Signatures file is not selected. Please select it first.");
                 }
+            });
+        }
+
+        // Online signature loader
+        {
+            HBox hBox = buildOnlineSignatureLoader(primaryStage);
+            vBoxRoot.getChildren().add(hBox);
+        }
+
+        // Folder to scan
+        {
+            HBox hBox = chooserBuilder.buildChooserBox("Git repository to scan", DIR_TO_SCAN.getFxProperty(), "Select ...", ChooserBuilder.CHOOSER_TYPE.DIRECTORY);
+            vBoxRoot.getChildren().add(hBox);
+        }
+
+        // control buttons
+        {
+            HBox hBox = new HBox();
+            vBoxRoot.getChildren().add(hBox);
+            hBox.setSpacing(8);
+
+            Button btnRun = new Button("Start Scanning");
+            btnRun.setPrefWidth(DEFAULT_BUTTON_WIDTH);
+
+            runnableScanner.setBeforeStart(() -> btnRun.setDisable(true));
+            runnableScanner.setAfterFinished(() -> btnRun.setDisable(false));
+
+            btnRun.setOnAction(actionEvent -> {
+                log.debug("Start button is pressed, where sig-file = {}, dir-to-scan = {}", DICTIONARY.getValue(), DIR_TO_SCAN.getValue());
+
+                // drop previous scan result
+                foundItemsContainer.clearAll();
+
+                runnableScanner.setDirToScan(DIR_TO_SCAN.getValue());
+                runnableScanner.setFoundItemsContainer(foundItemsContainer);
+                runnableScanner.startNowInNewThread();
             });
 
 
 
             Button btnMark = new Button("Mark as ignored");
+            btnMark.setPrefWidth(DEFAULT_BUTTON_WIDTH);
             btnMark.setOnAction(event -> {
                 if (selectedItemProperty.getValue() == null) {
                     AlertBuilder.showInfo("No items are selected to be marked as ignored!");
@@ -160,7 +176,6 @@ public class SceneBuilder {
                 // todo: define button depending on selected item
             });
 
-            hBox.getChildren().add(btnLoadSigs);
             hBox.getChildren().add(btnRun);
             hBox.getChildren().add(btnMark);
         }
@@ -320,5 +335,90 @@ public class SceneBuilder {
         thread.start();
 
         return tpLogs;
+    }
+
+    private HBox buildOnlineSignatureLoader(Stage primaryStage) {
+        Label lbVersion = new Label("Online dictionary");
+        Label lbPassw = new Label("Password");
+        TextField tfPassword = new PasswordField();
+        Button btnCheckUpdates = new Button("Download locally");
+        Button btnDecrypt = new Button("Decrypt & Save");
+        Button btnApply = new Button("Apply decrypted");
+        Label lbSalt = new Label("Salt");
+        TextField tfSalt = new PasswordField();
+
+        HBox hBox = new HBox();
+        hBox.setSpacing(8);
+
+        hBox.getChildren().add(lbVersion);
+        hBox.getChildren().add(btnCheckUpdates);
+        hBox.getChildren().add(new Separator(Orientation.VERTICAL));
+
+        hBox.getChildren().add(lbPassw);
+        hBox.getChildren().add(tfPassword);
+        hBox.getChildren().add(lbSalt);
+        hBox.getChildren().add(tfSalt);
+        hBox.getChildren().add(new Separator(Orientation.VERTICAL));
+
+        hBox.getChildren().add(btnDecrypt);
+        hBox.getChildren().add(btnApply);
+
+        HBox.setHgrow(tfPassword, Priority.ALWAYS);
+        lbVersion.setPrefWidth(DEFAULT_LABEL_WIDTH);
+        btnCheckUpdates.setPrefWidth(DEFAULT_BUTTON_WIDTH);
+        btnApply.setPrefWidth(DEFAULT_BUTTON_WIDTH);
+        btnDecrypt.setPrefWidth(DEFAULT_BUTTON_WIDTH);
+
+        tfPassword.setEditable(true);
+
+        tfPassword.textProperty().addListener((bean, oldValue, newValue) -> PASSWORD.setValue(newValue));
+        tfPassword.textProperty().setValue(PASSWORD.getValue());
+
+        tfSalt.textProperty().addListener((bean, oldValue, newValue) -> SALT.setValue(newValue));
+        tfSalt.textProperty().setValue(SALT.getValue());
+
+        btnCheckUpdates.setOnAction((event) -> {
+            ARunnable runnable = new RunnableCheckOnlineDictionary();
+            runnable.setBeforeStart(() -> btnCheckUpdates.setDisable(true));
+            runnable.setAfterFinished(() -> btnCheckUpdates.setDisable(false));
+            runnable.startNowInNewThread();
+        });
+
+        btnDecrypt.setOnAction((event) -> {
+            // check password and salt are set
+            if (tfPassword.getText().isEmpty() || tfSalt.getText().isEmpty()) {
+                AlertBuilder.showWarn("You need provide password and salt for dictionary encryption");
+            } else {
+                File fileDecrypted = new File(FxConstants.DICTIONARY_FILE_PATH_DECRYPTED);
+                if (fileDecrypted.exists()) {
+                    boolean wasDeleted = fileDecrypted.delete();
+                    if (wasDeleted)
+                        log.info("Existed decrypted dictionary cache-file was deleted by {}", fileDecrypted);
+                }
+
+                try {
+                    String encryptedBody = FileUtils.readFile(DICTIONARY_FILE_PATH_ENCRYPTED);
+                    String decryptedBody = PasswordBasedEncryption.decrypt(encryptedBody, tfPassword.getText(), tfSalt.getText());
+
+                    if (decryptedBody != null && !decryptedBody.isEmpty()) {
+                        FileUtils.saveToFile(decryptedBody, FxConstants.DICTIONARY_FILE_PATH_DECRYPTED);
+                        log.info("New decrypted dictionary cache-file was successfully created at {}", fileDecrypted);
+                    }
+                } catch (Exception ex) {
+                    log.error("Error while decrypting file {}. Check password and salt values!", fileDecrypted, ex);
+                }
+            }
+        });
+
+        btnApply.setOnAction((event) -> {
+            Path sigsPath = Paths.get(DICTIONARY_FILE_PATH_DECRYPTED);
+            File sigsFile = sigsPath.toFile();
+            if (sigsFile.exists() && sigsFile.isFile()) {
+                runnableSigsLoader.setFileToLoad(sigsPath);
+                runnableSigsLoader.startNowInNewThread();
+            }
+        });
+
+        return hBox;
     }
 }

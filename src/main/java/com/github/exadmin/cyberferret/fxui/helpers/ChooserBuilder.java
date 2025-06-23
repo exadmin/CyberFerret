@@ -1,5 +1,6 @@
 package com.github.exadmin.cyberferret.fxui.helpers;
 
+import com.github.exadmin.cyberferret.fxui.FxConstants;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.Property;
 import javafx.beans.property.SimpleObjectProperty;
@@ -19,8 +20,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public class ChooserBuilder {
-    private static final int LABEL_DEFAULT_WIDTH = 80;
-    private static final int OPEN_BTN_DEFAULT_WIDTH = 80;
 
     public enum CHOOSER_TYPE {
         FILE, DIRECTORY
@@ -37,7 +36,7 @@ public class ChooserBuilder {
         hBox.setSpacing(8);
         {
             Label label = new Label(labelText);
-            label.setMinWidth(LABEL_DEFAULT_WIDTH);
+            label.setMinWidth(FxConstants.DEFAULT_LABEL_WIDTH);
             label.setAlignment(Pos.CENTER_LEFT);
 
             TextField textField = new TextField();
@@ -45,7 +44,7 @@ public class ChooserBuilder {
             HBox.setHgrow(textField, Priority.ALWAYS);
 
             Button btnOpen = new Button(btnText);
-            btnOpen.setMinWidth(OPEN_BTN_DEFAULT_WIDTH);
+            btnOpen.setPrefWidth(FxConstants.DEFAULT_BUTTON_WIDTH);
 
             hBox.getChildren().addAll(label, textField, btnOpen);
 

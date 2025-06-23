@@ -28,7 +28,7 @@ public abstract class ARunnable implements Runnable {
         }
     }
 
-    public final void startNow() {
+    public final void startNowInNewThread() {
         Thread thread = new Thread(this);
         thread.setDaemon(true);
         thread.start();
