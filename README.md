@@ -8,18 +8,24 @@ Scans any files for different pre-defined signatures (supporting RegExp and othe
 mvn clean package assembly:single
 ```
 
-# How to run - windows version
+# How to run - Windows version
 ## prerequisites
-Install Java from https://jdk.java.net/24/
+Install JDK from https://jdk.java.net/24/
 Install JavaFX from https://gluonhq.com/products/javafx/
 ```shell
 java --module-path "...\JDKs\javafx-sdk-24.0.1\lib" --add-modules javafx.controls,javafx.web,javafx.graphics --enable-native-access=javafx.graphics -jar cyberferret.jar
 ```
 
-# How to ru - linux version
+# How to run - linux version
 ## prerequisites
-Install Java from https://jdk.java.net/24/
+Install JDK from https://jdk.java.net/24/
 Install JavaFX from https://gluonhq.com/products/javafx/
 ```shell
 java --module-path $path_to_javafx_sdk/lib --add-modules javafx.controls,javafx.web,javafx.graphics --enable-native-access=javafx.graphics -jar ./target/cyber-ferret.jar
 ```
+# How to run - in IntelliJ IDEA
+## prerequisites
+Install JDK from https://jdk.java.net/24/
+Install JavaFX from https://gluonhq.com/products/javafx/
+Create Run/Debug Configuration Profile of type "Application"
+Set VM options "--module-path "...\JDKs\javafx-sdk-24.0.1\lib" --add-modules  javafx.controls,javafx.web,javafx.graphics --enable-native-access=javafx.graphics"
