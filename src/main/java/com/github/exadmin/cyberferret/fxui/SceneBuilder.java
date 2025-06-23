@@ -39,11 +39,13 @@ public class SceneBuilder {
     private final FoundItemsContainer foundItemsContainer;
     private final ObjectProperty<TreeItem<FoundPathItem>> selectedItemProperty = new SimpleObjectProperty<>();
     private final RunnableSigsLoader runnableSigsLoader;
+    private final RunnableScanner runnableScanner;
 
     public SceneBuilder(Stage primaryStage) {
         this.primaryStage = primaryStage;
         this.foundItemsContainer = new FoundItemsContainer();
         this.runnableSigsLoader = new RunnableSigsLoader();
+        this.runnableScanner = new RunnableScanner();
     }
 
     public Scene buildScene() {
@@ -96,8 +98,6 @@ public class SceneBuilder {
 
         ChooserBuilder chooserBuilder = new ChooserBuilder(primaryStage);
 
-        final RunnableScanner runnableScanner = new RunnableScanner();
-
         // Dictionary
         {
             HBox hBox = chooserBuilder.buildChooserBox("Local dictionary", DICTIONARY.getFxProperty(), "Select file", ChooserBuilder.CHOOSER_TYPE.FILE);
@@ -147,8 +147,6 @@ public class SceneBuilder {
 
         ChooserBuilder chooserBuilder = new ChooserBuilder(primaryStage);
 
-        final RunnableScanner runnableScanner = new RunnableScanner();
-
         // Folder to scan
         {
             HBox hBox = chooserBuilder.buildChooserBox("Git repository to scan", DIR_TO_SCAN.getFxProperty(), "Select ...", ChooserBuilder.CHOOSER_TYPE.DIRECTORY);
@@ -168,7 +166,7 @@ public class SceneBuilder {
             runnableScanner.setAfterFinished(() -> btnRun.setDisable(false));
 
             btnRun.setOnAction(actionEvent -> {
-                log.debug("Start button is pressed, where sig-file = {}, dir-to-scan = {}", DICTIONARY.getValue(), DIR_TO_SCAN.getValue());
+                log.debug("Start button is pressed using dictionary {}, dir-to-scan = {}", DICTIONARY.getValue(), DIR_TO_SCAN.getValue());
 
                 // drop previous scan result
                 foundItemsContainer.clearAll();
