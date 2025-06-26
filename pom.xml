@@ -105,7 +105,7 @@
     </dependencies>
 
     <build>
-        <!-- to replace version.properties with actual vaulue -->
+        <!-- to replace version.properties with actual value -->
         <resources>
             <resource>
                 <directory>src/main/resources</directory>
@@ -157,7 +157,7 @@
                 <version>3.3.1</version>
                 <executions>
                     <execution>
-                        <id>copy-resources</id>
+                        <id>copy-xml-resources</id>
                         <phase>process-resources</phase>
                         <goals>
                             <goal>copy-resources</goal>
@@ -169,6 +169,26 @@
                                     <directory>src/main/resources</directory>
                                     <includes>
                                         <include>**/*.xml</include>
+                                    </includes>
+                                    <filtering>false</filtering>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+
+                    <execution>
+                        <id>copy-shell-resources</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>src/shell</directory>
+                                    <includes>
+                                        <include>*.*</include>
                                     </includes>
                                     <filtering>false</filtering>
                                 </resource>
