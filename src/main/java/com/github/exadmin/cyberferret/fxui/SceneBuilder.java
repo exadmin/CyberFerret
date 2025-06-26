@@ -12,6 +12,7 @@ import com.github.exadmin.cyberferret.utils.FileUtils;
 import com.github.exadmin.cyberferret.utils.PasswordBasedEncryption;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
+import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -65,7 +66,8 @@ public class SceneBuilder {
         Tab tab = new Tab("Signatures Analyzer");
         tab.setClosable(false);
 
-        TitledPane tpDictionary = createDictionaryGroup();
+        TitledPane tpOnlineDictionary = createOnlineDictionaryPane();
+        TitledPane tpOfflineDictionare = createOfflineDictionaryPane();
         TitledPane tpRepository = createRepositoryGroup();
         TitledPane tpExplorer = createExplorerGroup(tabPane);
         TitledPane tpLogs = createLogsPane();
@@ -77,20 +79,47 @@ public class SceneBuilder {
         bpRoot.prefHeightProperty().bind(wrapper.heightProperty());
 
         VBox vBox = new VBox();
-        vBox.getChildren().add(tpDictionary);
+        Accordion accordion = new Accordion();
+        {
+            accordion.getPanes().add(tpOnlineDictionary);
+            accordion.getPanes().add(tpOfflineDictionare);
+            accordion.setExpandedPane(tpOnlineDictionary);
+        }
+        vBox.getChildren().add(accordion);
         vBox.getChildren().add(tpRepository);
 
         bpRoot.setTop(vBox);
         bpRoot.setCenter(tpExplorer);
         bpRoot.setBottom(tpLogs);
 
+        bpRoot.setPadding(new Insets(1));
+        vBox.setSpacing(2);
+
         return tab;
     }
 
-    protected TitledPane createDictionaryGroup() {
+    protected TitledPane createOnlineDictionaryPane() {
+        TitledPane tpOnlineDictionary = new TitledPane();
+        tpOnlineDictionary.setCollapsible(true);
+        tpOnlineDictionary.setText("Online Dictionary (recommended)");
+
+        VBox vBoxRoot = new VBox();
+        tpOnlineDictionary.setContent(vBoxRoot);
+        vBoxRoot.setSpacing(8);
+
+        // Online signature loader
+        {
+            HBox hBox = buildOnlineSignatureLoader(primaryStage);
+            vBoxRoot.getChildren().add(hBox);
+        }
+
+        return tpOnlineDictionary;
+    }
+
+    protected TitledPane createOfflineDictionaryPane() {
         TitledPane tpSettings = new TitledPane();
-        tpSettings.setCollapsible(false);
-        tpSettings.setText("Dictionary");
+        tpSettings.setCollapsible(true);
+        tpSettings.setText("Offline Dictionary");
 
         VBox vBoxRoot = new VBox();
         tpSettings.setContent(vBoxRoot);
@@ -125,12 +154,6 @@ public class SceneBuilder {
                     log.warn("Signatures file is not selected. Please select it first.");
                 }
             });
-        }
-
-        // Online signature loader
-        {
-            HBox hBox = buildOnlineSignatureLoader(primaryStage);
-            vBoxRoot.getChildren().add(hBox);
         }
 
         return tpSettings;
