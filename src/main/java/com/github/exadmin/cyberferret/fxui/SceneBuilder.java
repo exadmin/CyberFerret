@@ -214,7 +214,9 @@ public class SceneBuilder {
             });
 
             selectedItemProperty.addListener((bean, olValue, newValue) -> {
-                // todo: define button depending on selected item
+                if (bean != null && bean.getValue() != null && bean.getValue().getValue() != null) {
+                    log.info("Selected file path: {}", bean.getValue().getValue().getFilePath().toAbsolutePath());
+                }
             });
 
             hBox.getChildren().add(btnRun);
