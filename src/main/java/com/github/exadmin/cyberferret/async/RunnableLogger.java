@@ -8,6 +8,9 @@ public class RunnableLogger implements Runnable {
     private static final int MAX_LOG_SIZE_IN_TEXT_AREA_CHARS = 1024 * 5;
     private static final int CUT_PORTION = MAX_LOG_SIZE_IN_TEXT_AREA_CHARS / 10;
 
+    private long lastTimestamp = 0;
+    private static final long MILLIS_MUST_PASSED = 300;
+
     private boolean stop = false;
     private FXConsoleAppender fxAppender = null;
     private final TextArea textArea;
@@ -45,7 +48,14 @@ public class RunnableLogger implements Runnable {
                 buf.append(text).append("\n");
             }
 
-            if (!buf.isEmpty()) {
+            // if it's time to call JavaFX thread
+            long curTime = System.currentTimeMillis();
+            boolean doJavaFxCall = false;
+            if (curTime - lastTimestamp > MILLIS_MUST_PASSED) {
+                doJavaFxCall = true;
+            }
+
+            if (doJavaFxCall && !buf.isEmpty()) {
                 String text = buf.toString();
                 buf.setLength(0);
 
@@ -62,6 +72,8 @@ public class RunnableLogger implements Runnable {
                         textArea.deselect();
                     }
                 });
+
+                lastTimestamp = curTime;
             } else {
                 // sleep a moment
                 sleep();

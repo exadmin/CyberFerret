@@ -20,6 +20,8 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -116,63 +118,48 @@ public class RunnableScanner extends ARunnable {
         });
 
         // try loading exclusions-model from the file in the root of the repository
-        ExcludeFileModel excludeFileModel = new ExcludeFileModel(); // create empty container
+        ExcludeFileModel tmpExcludeFileModel = new ExcludeFileModel(); // create empty container
         Path exFile = Paths.get(dirToScan, Excluder.PERSISTENCE_FOLDER, Excluder.EXCLUDES_SHORT_FILE_NAME);
         try {
             OBJECT_MAPPER.enable(JsonParser.Feature.INCLUDE_SOURCE_IN_LOCATION);
-            excludeFileModel = OBJECT_MAPPER.readValue(exFile.toFile(), ExcludeFileModel.class); // load new exclusion context
+            tmpExcludeFileModel = OBJECT_MAPPER.readValue(exFile.toFile(), ExcludeFileModel.class); // load new exclusion context
         } catch (Exception ex) {
             log.error("Error while loading exclusions configuration from '{}' file", exFile, ex);
         }
 
+        final ExcludeFileModel excludeFileModel = tmpExcludeFileModel;
+
         // start scanning for signatures
         int totalItemsCount = foundItemsContainer.getFoundItemsSize();
-        int processedItemsCount = 0;
-        int nextRate = 0;
+        final AtomicInteger processedItemsCount = new AtomicInteger(0);
+        final AtomicInteger nextRate = new AtomicInteger(0);
 
         List<FoundPathItem> list = foundItemsContainer.getFoundItemsCopy();
-        for (FoundPathItem pathItem : list) {
-            // update progress
-            processedItemsCount++;
-            int progressRate =  processedItemsCount * 100 / totalItemsCount;
-            if (progressRate > nextRate) {
-                log.info("Scanned rate = {}%", progressRate);
-                nextRate = nextRate + 10;
-            }
+        final AtomicInteger numberOfThreadsInProgress = new AtomicInteger(0);
 
-            // we do scan only file-items
-            if (pathItem.getType() == ItemType.DIRECTORY || pathItem.getType() == ItemType.SIGNATURE) continue;
+        try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+            list.forEach(pathItem -> {
+                executor.submit(() -> {
+                    numberOfThreadsInProgress.incrementAndGet();
 
-            Path filePath = pathItem.getFilePath();
-            String fileBody = readFile(filePath);
-            for (Map.Entry<String, Pattern> me : sigMap.entrySet()) {
-                String sigId = me.getKey();
-                Pattern regExp = me.getValue();
+                    // update progress rate
+                    int currentCount = processedItemsCount.incrementAndGet();
+                    int progressRate =  currentCount * 100 / totalItemsCount;
+                    if (progressRate > nextRate.get()) {
+                        // Platform.runLater(() -> {log.info("Scanned rate = {}%", progressRate);});
 
-                Matcher matcher = regExp.matcher(fileBody);
-                if (matcher.find()) {
-                    FoundPathItem newItem = new FoundPathItem(filePath, ItemType.SIGNATURE, pathItem);
-                    newItem.setVisualName(sigId);
-                    newItem.setLineNumber(getLineNumber(fileBody, matcher.start()));
-                    newItem.setDisplayText(getText(fileBody, matcher.start(), matcher.end()));
-                    newItem.setFoundString(matcher.group());
-
-                    // check if we have already marked found signature as ignored
-                    String relFileName = MiscUtils.getRelativeFileName(rootDir, newItem.getFilePath());
-                    String textHash = MiscUtils.getSHA256AsHex(newItem.getFoundString());
-                    String fileHash = MiscUtils.getSHA256AsHex(relFileName);
-
-                    newItem.setIgnored(excludeFileModel.contains(textHash, fileHash));
-
-                    // check if item is in the allowed list
-                    if (allowedSigMap.containsValue(newItem.getFoundString())) {
-                        newItem.setAllowedValue(true);
+                        nextRate.addAndGet(10); // todo: non thread safe - refactor later
                     }
 
-                    foundItemsContainer.addItem(newItem);
-                    log.info("Signature {} is detected in {}", sigId, filePath);
-                }
-            }
+
+                    log.info("Threads in progress = {}, Scanning for {}", numberOfThreadsInProgress.get(), pathItem);
+
+                    // do scan
+                    scan(pathItem, rootDir, excludeFileModel, sigMap, allowedSigMap, foundItemsContainer);
+
+                    numberOfThreadsInProgress.decrementAndGet();
+                });
+            });
         }
 
         log.info("Scanning completed for 100%");
@@ -213,5 +200,48 @@ public class RunnableScanner extends ARunnable {
 
         text = text.replaceAll("\\s", " ");
         return text;
+    }
+
+    private static void scan(FoundPathItem pathItem, Path rootDir, ExcludeFileModel excludeFileModel, Map<String, Pattern> sigMap, Map<String, String> allowedSigMap, FoundItemsContainer foundItemsContainer) {
+        // we do scan only file-items
+        if (pathItem.getType() == ItemType.DIRECTORY || pathItem.getType() == ItemType.SIGNATURE) return;
+
+        Path filePath = pathItem.getFilePath();
+        String fileBody = null;
+        try {
+            fileBody = readFile(filePath);
+        } catch (IOException ex) {
+            log.error("Error while reading file '{}'. Skipping it.", filePath, ex);
+            return;
+        }
+
+        for (Map.Entry<String, Pattern> me : sigMap.entrySet()) {
+            String sigId = me.getKey();
+            Pattern regExp = me.getValue();
+
+            Matcher matcher = regExp.matcher(fileBody);
+            if (matcher.find()) {
+                FoundPathItem newItem = new FoundPathItem(filePath, ItemType.SIGNATURE, pathItem);
+                newItem.setVisualName(sigId);
+                newItem.setLineNumber(getLineNumber(fileBody, matcher.start()));
+                newItem.setDisplayText(getText(fileBody, matcher.start(), matcher.end()));
+                newItem.setFoundString(matcher.group());
+
+                // check if we have already marked found signature as ignored
+                String relFileName = MiscUtils.getRelativeFileName(rootDir, newItem.getFilePath());
+                String textHash = MiscUtils.getSHA256AsHex(newItem.getFoundString());
+                String fileHash = MiscUtils.getSHA256AsHex(relFileName);
+
+                newItem.setIgnored(excludeFileModel.contains(textHash, fileHash));
+
+                // check if item is in the allowed list
+                if (allowedSigMap.containsValue(newItem.getFoundString())) {
+                    newItem.setAllowedValue(true);
+                }
+
+                foundItemsContainer.addItem(newItem);
+                log.info("Signature {} is detected in {}", sigId, filePath);
+            }
+        }
     }
 }
