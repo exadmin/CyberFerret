@@ -19,4 +19,15 @@ public class FileUtils {
         Path path = Paths.get(fileToWriteInto);
         Files.write(path, content.getBytes());
     }
+
+    public static String getFileExtensionAsString(Path path) {
+        if (path == null) return null;
+
+        String fileName = path.getFileName().toString();
+        int dotIndex = fileName.lastIndexOf('.');
+
+        return (dotIndex > 0 && dotIndex < fileName.length() - 1)
+                ? fileName.substring(dotIndex + 1)
+                : null;
+    }
 }

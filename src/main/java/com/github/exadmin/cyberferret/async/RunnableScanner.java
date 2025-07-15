@@ -8,6 +8,7 @@ import com.github.exadmin.cyberferret.fxui.helpers.AlertBuilder;
 import com.github.exadmin.cyberferret.model.FoundItemsContainer;
 import com.github.exadmin.cyberferret.model.FoundPathItem;
 import com.github.exadmin.cyberferret.model.ItemType;
+import com.github.exadmin.cyberferret.utils.FileUtils;
 import com.github.exadmin.cyberferret.utils.MiscUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +34,7 @@ public class RunnableScanner extends ARunnable {
     private FoundItemsContainer foundItemsContainer;
     private Map<String, Pattern> sigMap = null;
     private Map<String, String> allowedSigMap = null;
+    private Map<String, List<String>> excludeExtMap = null;
 
     public RunnableScanner() {
     }
@@ -43,6 +45,10 @@ public class RunnableScanner extends ARunnable {
 
     public void setAllowedSigMap(Map<String, String> allowedSigMap) {
         this.allowedSigMap = allowedSigMap;
+    }
+
+    public void setExcludeExtMap(Map<String, List<String>> excludeExtMap) {
+        this.excludeExtMap = excludeExtMap;
     }
 
     public void setDirToScan(String dirToScan) {
@@ -161,7 +167,7 @@ public class RunnableScanner extends ARunnable {
                     log.info("Threads in progress = {}, Scanning for {}", numberOfThreadsInProgress.get(), pathItem);
 
                     // do scan
-                    scan(pathItem, rootDir, excludeFileModel, sigMap, allowedSigMap, foundItemsContainer);
+                    scan(pathItem, rootDir, excludeFileModel, foundItemsContainer);
 
                     numberOfThreadsInProgress.decrementAndGet();
                 });
@@ -192,8 +198,6 @@ public class RunnableScanner extends ARunnable {
 
     // number of chars to be shown additionally on the left and right sides of the found piece of text
     private static final int EXPAND_AREA_TO_BE_SHOWN_CHARS = 50;
-
-
     private static final int MAX_LENGTH_OF_SHOWN_TEXT = 200;
 
     public static String getText(String fileBody, int fromIndex, int toIndex) {
@@ -208,7 +212,7 @@ public class RunnableScanner extends ARunnable {
         return text;
     }
 
-    private static void scan(FoundPathItem pathItem, Path rootDir, ExcludeFileModel excludeFileModel, Map<String, Pattern> sigMap, Map<String, String> allowedSigMap, FoundItemsContainer foundItemsContainer) {
+    private void scan(FoundPathItem pathItem, Path rootDir, ExcludeFileModel excludeFileModel, FoundItemsContainer foundItemsContainer) {
         // we do scan only file-items
         if (pathItem.getType() == ItemType.DIRECTORY || pathItem.getType() == ItemType.SIGNATURE) return;
 
@@ -225,6 +229,8 @@ public class RunnableScanner extends ARunnable {
             String sigId = me.getKey();
             Pattern regExp = me.getValue();
 
+            if (isToIgnoreFile(sigId, filePath)) continue;
+
             Matcher matcher = regExp.matcher(fileBody);
             if (matcher.find()) {
                 FoundPathItem newItem = new FoundPathItem(filePath, ItemType.SIGNATURE, pathItem);
@@ -232,13 +238,6 @@ public class RunnableScanner extends ARunnable {
                 newItem.setLineNumber(getLineNumber(fileBody, matcher.start()));
                 newItem.setDisplayText(getText(fileBody, matcher.start(), matcher.end()));
                 newItem.setFoundString(matcher.group());
-
-                // check if we have already marked found signature as ignored
-               /* String relFileName = MiscUtils.getRelativeFileName(rootDir, newItem.getFilePath());
-                String textHash = MiscUtils.getSHA256AsHex(newItem.getFoundString());
-                String fileHash = MiscUtils.getSHA256AsHex(relFileName);
-
-                newItem.setIgnored(excludeFileModel.contains(textHash, fileHash));*/
 
                 calculateIgnoreFlagState(newItem, pathItem, rootDir, excludeFileModel);
 
@@ -251,6 +250,17 @@ public class RunnableScanner extends ARunnable {
                 log.info("Signature {} is detected in {}", sigId, filePath);
             }
         }
+    }
+
+    private boolean isToIgnoreFile(String signatureId, Path currentFile) {
+        if (excludeExtMap == null) return false;
+        List<String> list = excludeExtMap.get(signatureId);
+        if (list == null) return false;
+
+        String fileExt = FileUtils.getFileExtensionAsString(currentFile);
+        if (fileExt == null) return false;
+
+        return list.contains(fileExt);
     }
 
     private static void calculateIgnoreFlagState(FoundPathItem foundPathItem, FoundPathItem parent, Path rootDir, ExcludeFileModel excludeFileModel) {

@@ -20,8 +20,9 @@ public class RunnableSigsLoader extends ARunnable {
 
     private Path signaturesFile;
     private final AtomicBoolean isReady = new AtomicBoolean(false);
-    private Map<String, Pattern> regExpMap;
-    private Map<String, String> allowedSignaturesMap;
+    private Map<String, Pattern> regExpMap;           // map of signatures
+    private Map<String, String> allowedSignaturesMap; // effectively the list of exact strings which are allowed when capturing
+    private Map<String, List<String>> excludeExtsMap; // signature -> List of file extensions to ignore
     private String dictionaryVersion = "undefined";
 
     public void setFileToLoad(Path filePath) {
@@ -42,6 +43,10 @@ public class RunnableSigsLoader extends ARunnable {
         return allowedSignaturesMap;
     }
 
+    public Map<String, List<String>> getExcludeExtsMap() {
+        return excludeExtsMap;
+    }
+
     public boolean isReady() {
         return isReady.get();
     }
@@ -59,8 +64,11 @@ public class RunnableSigsLoader extends ARunnable {
         try (FileInputStream fis = new FileInputStream(signaturesFile.toFile())) {
             properties.load(fis);
 
-            Map<String, Pattern> expMap = new HashMap<>();
-            Map<String, String> allowedMap = new HashMap<>();
+            Map<String, Pattern> regExpTmpMap = new HashMap<>();
+            Map<String, String> allowedSignaturesTmpMap = new HashMap<>();
+            Map<String, List<String>> includeExt = new HashMap<>();
+            Map<String, List<String>> excludeExtTmpMap = new HashMap<>();
+
             for (Object key : properties.keySet()) {
                 String sigId = key.toString();
                 String expression = properties.getProperty(sigId);
@@ -70,18 +78,34 @@ public class RunnableSigsLoader extends ARunnable {
                     continue;
                 }
 
+                // if signature must exclude some files with provided list of extensions
+                if (sigId.endsWith("(exclude-ext)")) {
+                    String[] exts = expression.split(",");
+                    List<String> extList = new ArrayList<>();
+                    for (String ext : exts) {
+                        ext = ext.trim();
+                        if (!ext.isEmpty()) extList.add(ext);
+                    }
+
+                    sigId = sigId.substring(0, sigId.length() -13);
+                    excludeExtTmpMap.put(sigId, extList);
+
+                    continue;
+                }
+
                 if (sigId.endsWith("(allowed)")) {
                     sigId = sigId.substring(0, sigId.length() - 9);
 
                     log.info("Signature with id '{}' = '{}' is marked as allowed.", sigId, expression);
-                    allowedMap.put(sigId, expression);
+                    allowedSignaturesTmpMap.put(sigId, expression);
                 } else {
-                    compileAndKeep(sigId, expression, expMap);
+                    compileAndKeep(sigId, expression, regExpTmpMap);
                 }
             }
 
-            regExpMap = Collections.unmodifiableMap(expMap);
-            allowedSignaturesMap = Collections.unmodifiableMap(allowedMap);
+            regExpMap = Collections.unmodifiableMap(regExpTmpMap);
+            allowedSignaturesMap = Collections.unmodifiableMap(allowedSignaturesTmpMap);
+            excludeExtsMap = Collections.unmodifiableMap(excludeExtTmpMap);
 
             log.info("Signatures are loaded successfully from {}. Number of signatures is {}", signaturesFile, regExpMap.size());
             log.info("Number of allowed signatures is {}", allowedSignaturesMap.size());
