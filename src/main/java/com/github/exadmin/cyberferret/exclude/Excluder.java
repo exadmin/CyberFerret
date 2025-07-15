@@ -20,6 +20,7 @@ public class Excluder {
     public static final String PERSISTENCE_FOLDER = ".qubership";
     public static final String EXCLUDES_SHORT_FILE_NAME = "grand-report.json";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    public static final String HASH_IGNORE_CONTENT = "00000000";
 
     /**
      * Marks or unmark provided item as ignored and persists this state into special yaml-file.
@@ -49,7 +50,7 @@ public class Excluder {
         String relFileName = MiscUtils.getRelativeFileName(rootDir, item.getFilePath());
         String signature = item.getFoundString();
 
-        String textHash = item.getType() == ItemType.SIGNATURE ? MiscUtils.getSHA256AsHex(signature) : "00000000";
+        String textHash = item.getType() == ItemType.SIGNATURE ? MiscUtils.getSHA256AsHex(signature) : HASH_IGNORE_CONTENT;
         String fileHash = MiscUtils.getSHA256AsHex(relFileName);
 
         excludeFileModel.remove(textHash, fileHash);

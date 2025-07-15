@@ -75,6 +75,18 @@ public class RunnableScanner extends ARunnable {
             return;
         }
 
+        // try loading exclusions-model from the file in the root of the repository
+        ExcludeFileModel tmpExcludeFileModel = new ExcludeFileModel(); // create empty container
+        Path exFile = Paths.get(dirToScan, Excluder.PERSISTENCE_FOLDER, Excluder.EXCLUDES_SHORT_FILE_NAME);
+        try {
+            OBJECT_MAPPER.enable(JsonParser.Feature.INCLUDE_SOURCE_IN_LOCATION);
+            tmpExcludeFileModel = OBJECT_MAPPER.readValue(exFile.toFile(), ExcludeFileModel.class); // load new exclusion context
+        } catch (Exception ex) {
+            log.error("Error while loading exclusions configuration from '{}' file", exFile, ex);
+        }
+
+        final ExcludeFileModel excludeFileModel = tmpExcludeFileModel;
+
         // load files first
         Deque<FoundPathItem> parentsDeque = new ArrayDeque<>();
         Files.walkFileTree(rootDir, new FileVisitor<>() {
@@ -90,6 +102,8 @@ public class RunnableScanner extends ARunnable {
                 foundItemsContainer.addItem(foundPathItem);
                 parentsDeque.add(foundPathItem);
 
+                calculateIgnoreFlagState(foundPathItem, parent, rootDir, excludeFileModel);
+
                 return FileVisitResult.CONTINUE;
             }
 
@@ -100,6 +114,8 @@ public class RunnableScanner extends ARunnable {
                 FoundPathItem parent = parentsDeque.peekLast();
                 FoundPathItem foundPathItem = new FoundPathItem(file, ItemType.FILE, parent);
                 foundItemsContainer.addItem(foundPathItem);
+
+                calculateIgnoreFlagState(foundPathItem, parent, rootDir, excludeFileModel);
 
                 return FileVisitResult.CONTINUE;
             }
@@ -117,17 +133,7 @@ public class RunnableScanner extends ARunnable {
             }
         });
 
-        // try loading exclusions-model from the file in the root of the repository
-        ExcludeFileModel tmpExcludeFileModel = new ExcludeFileModel(); // create empty container
-        Path exFile = Paths.get(dirToScan, Excluder.PERSISTENCE_FOLDER, Excluder.EXCLUDES_SHORT_FILE_NAME);
-        try {
-            OBJECT_MAPPER.enable(JsonParser.Feature.INCLUDE_SOURCE_IN_LOCATION);
-            tmpExcludeFileModel = OBJECT_MAPPER.readValue(exFile.toFile(), ExcludeFileModel.class); // load new exclusion context
-        } catch (Exception ex) {
-            log.error("Error while loading exclusions configuration from '{}' file", exFile, ex);
-        }
 
-        final ExcludeFileModel excludeFileModel = tmpExcludeFileModel;
 
         // start scanning for signatures
         int totalItemsCount = foundItemsContainer.getFoundItemsSize();
@@ -228,11 +234,13 @@ public class RunnableScanner extends ARunnable {
                 newItem.setFoundString(matcher.group());
 
                 // check if we have already marked found signature as ignored
-                String relFileName = MiscUtils.getRelativeFileName(rootDir, newItem.getFilePath());
+               /* String relFileName = MiscUtils.getRelativeFileName(rootDir, newItem.getFilePath());
                 String textHash = MiscUtils.getSHA256AsHex(newItem.getFoundString());
                 String fileHash = MiscUtils.getSHA256AsHex(relFileName);
 
-                newItem.setIgnored(excludeFileModel.contains(textHash, fileHash));
+                newItem.setIgnored(excludeFileModel.contains(textHash, fileHash));*/
+
+                calculateIgnoreFlagState(newItem, pathItem, rootDir, excludeFileModel);
 
                 // check if item is in the allowed list
                 if (allowedSigMap.containsValue(newItem.getFoundString())) {
@@ -243,5 +251,17 @@ public class RunnableScanner extends ARunnable {
                 log.info("Signature {} is detected in {}", sigId, filePath);
             }
         }
+    }
+
+    private static void calculateIgnoreFlagState(FoundPathItem foundPathItem, FoundPathItem parent, Path rootDir, ExcludeFileModel excludeFileModel) {
+        // check if Ignore-flag is specified directly for current folder
+        String relFileName = MiscUtils.getRelativeFileName(rootDir, foundPathItem.getFilePath());
+        String hash = MiscUtils.getSHA256AsHex(relFileName);
+        boolean isMarkedAsIgnored = excludeFileModel.contains(Excluder.HASH_IGNORE_CONTENT, hash);
+
+        // if no - then use flag state from parent item
+        if (!isMarkedAsIgnored && parent != null) isMarkedAsIgnored = parent.isIgnored();
+
+        foundPathItem.setIgnored(isMarkedAsIgnored);
     }
 }
