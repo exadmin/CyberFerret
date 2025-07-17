@@ -12,6 +12,8 @@ import com.github.exadmin.cyberferret.utils.FileUtils;
 import com.github.exadmin.cyberferret.utils.PasswordBasedEncryption;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
+import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
@@ -19,11 +21,14 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.CheckBoxTreeTableCell;
 import javafx.scene.control.cell.TreeItemPropertyValueFactory;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.awt.Desktop;
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -204,15 +209,7 @@ public class SceneBuilder {
 
             Button btnMark = new Button("Mark as ignored");
             btnMark.setPrefWidth(DEFAULT_BUTTON_WIDTH);
-            btnMark.setOnAction(event -> {
-                if (selectedItemProperty.getValue() == null) {
-                    AlertBuilder.showInfo("No items are selected to be marked as ignored!");
-                } else {
-                    FoundPathItem foundPathItem = selectedItemProperty.getValue().getValue();
-                    Path resultYaml = Excluder.markToExclude(foundPathItem, Paths.get(DIR_TO_SCAN.toString()));
-                    log.info("Item {} was successfully {} as ignored, the result is stored into {}", foundPathItem, foundPathItem.isIgnored() ? "(+)marked" : "(-)unmarked", resultYaml);
-                }
-            });
+            btnMark.setOnAction(new MarkAsIgnoredEventHandler());
 
             selectedItemProperty.addListener((bean, olValue, newValue) -> {
                 if (bean != null && bean.getValue() != null && bean.getValue().getValue() != null) {
@@ -293,19 +290,67 @@ public class SceneBuilder {
         ttView.setRowFactory(tv -> new TreeTableRow<FoundPathItem>() {
             @Override
             protected void updateItem(FoundPathItem foundPathItem, boolean isSelected) {
-            if (foundPathItem == null) {
-                setStyle("");
-            } else if (!isSelected && foundPathItem.isIgnored()) {
-                setStyle("-fx-background-color: #5cb574;");
-            } else if (!isSelected && foundPathItem.isAllowedValue()) {
-                setStyle("-fx-background-color: #c1f7cf;");
-            } else if (!isSelected && !foundPathItem.foundStringProperty().isEmpty().get()) {
-                setStyle("-fx-background-color: #f2d0d0;");
-            } else {
-                setStyle("");
+                if (foundPathItem == null) {
+                    setStyle("");
+                    setContextMenu(null);
+                } else {
+                    if (!isSelected && foundPathItem.isIgnored()) {
+                        setStyle("-fx-background-color: #5cb574;");
+                    } else if (!isSelected && foundPathItem.isAllowedValue()) {
+                        setStyle("-fx-background-color: #c1f7cf;");
+                    } else if (!isSelected && !foundPathItem.foundStringProperty().isEmpty().get()) {
+                        setStyle("-fx-background-color: #f2d0d0;");
+                    } else {
+                        setStyle("");
+                    }
+
+                    ContextMenu contextMenu = createContextMenu(foundPathItem);
+                    setContextMenu(contextMenu);
+                }
+                super.updateItem(foundPathItem, isSelected);
             }
 
-            super.updateItem(foundPathItem, isSelected);
+            private ContextMenu createContextMenu(FoundPathItem foundPathItem) {
+                Path filePath = foundPathItem.getFilePath();
+                File file = (filePath != null) ? filePath.toFile() : null;
+
+                MenuItem openInEditor = new MenuItem("Open in editor");
+                openInEditor.setOnAction(event -> {
+                    try {
+                        if (file != null && file.exists() && file.isFile()) {
+                            Desktop.getDesktop().open(file);
+                        }
+                    } catch (Exception ex) {
+                        log.error("Failed to open file {} in editor", filePath, ex);
+                    }
+                });
+
+                MenuItem openInExplorer = new MenuItem("Open in explorer");
+                openInExplorer.setOnAction(event -> {
+                    try {
+                        if (file != null && file.exists()) {
+                            Desktop.getDesktop().open(file.getParentFile());
+                        }
+                    } catch (Exception ex) {
+                        log.error("Failed to open folder of file {} in explorer", filePath, ex);
+                    }
+                });
+
+                MenuItem copySignature = new MenuItem("Copy found signature");
+                copySignature.setOnAction(event -> {
+                    String signature = foundPathItem.getFoundString();
+                    if (signature != null && !signature.isEmpty()) {
+                        Clipboard clipboard = Clipboard.getSystemClipboard();
+                        ClipboardContent content = new ClipboardContent();
+                        content.putString(signature);
+                        clipboard.setContent(content);
+                    }
+                });
+
+                MenuItem markAsIgnored = new MenuItem("Mark as ignored");
+                markAsIgnored.setOnAction(new MarkAsIgnoredEventHandler());
+
+                return new ContextMenu(openInEditor, openInExplorer, copySignature, markAsIgnored);
             }
         });
 
@@ -472,5 +517,18 @@ public class SceneBuilder {
         });
 
         return hBox;
+    }
+
+    private class MarkAsIgnoredEventHandler implements EventHandler<ActionEvent> {
+        @Override
+        public void handle(ActionEvent event) {
+            if (selectedItemProperty.getValue() == null) {
+                AlertBuilder.showInfo("No items are selected to be marked as ignored!");
+            } else {
+                FoundPathItem foundPathItem = selectedItemProperty.getValue().getValue();
+                Path resultYaml = Excluder.markToExclude(foundPathItem, Paths.get(DIR_TO_SCAN.toString()));
+                log.info("Item {} was successfully {} as ignored, the result is stored into {}", foundPathItem, foundPathItem.isIgnored() ? "(+)marked" : "(-)unmarked", resultYaml);
+            }
+        }
     }
 }
