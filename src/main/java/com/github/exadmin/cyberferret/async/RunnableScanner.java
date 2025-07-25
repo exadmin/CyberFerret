@@ -177,11 +177,6 @@ public class RunnableScanner extends ARunnable {
         log.info("Scanning completed for 100%");
     }
 
-    public static String readFile(Path filePath) throws IOException {
-        byte[] bytes = Files.readAllBytes(filePath);
-        return new String(bytes);
-    }
-
     public static int getLineNumber(String fileBody, int index) {
         int lineNumber = 0;
         int charsCount = 0;
@@ -217,9 +212,9 @@ public class RunnableScanner extends ARunnable {
         if (pathItem.getType() == ItemType.DIRECTORY || pathItem.getType() == ItemType.SIGNATURE) return;
 
         Path filePath = pathItem.getFilePath();
-        String fileBody = null;
+        String fileBody;
         try {
-            fileBody = readFile(filePath);
+            fileBody = FileUtils.readFile(filePath);
         } catch (IOException ex) {
             log.error("Error while reading file '{}'. Skipping it.", filePath, ex);
             return;
@@ -267,8 +262,12 @@ public class RunnableScanner extends ARunnable {
         // check if Ignore-flag is specified directly for current folder
         String relFileName = MiscUtils.getRelativeFileName(rootDir, foundPathItem.getFilePath());
         String hash = MiscUtils.getSHA256AsHex(relFileName);
-        boolean isMarkedAsIgnored = excludeFileModel.contains(Excluder.HASH_IGNORE_CONTENT, hash);
+        String textHash = Excluder.HASH_IGNORE_CONTENT;
+        if (ItemType.SIGNATURE.equals(foundPathItem.getType())) {
+            textHash = MiscUtils.getSHA256AsHex(foundPathItem.getFoundString());
+        }
 
+        boolean isMarkedAsIgnored = excludeFileModel.contains(textHash, hash);
         // if no - then use flag state from parent item
         if (!isMarkedAsIgnored && parent != null) isMarkedAsIgnored = parent.isIgnored();
 
