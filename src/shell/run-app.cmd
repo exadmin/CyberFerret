@@ -2,7 +2,7 @@
 if defined JAVAFX_PATH (
     if not "%JAVAFX_PATH%"=="" (
         echo Environment variable JAVAFX_PATH is set to: %JAVAFX_PATH%
-        start javaw --module-path "%JAVAFX_PATH%\lib" --add-modules javafx.controls,javafx.web,javafx.graphics --enable-native-access=javafx.graphics -jar cyberferret-1.0.1.jar
+        start javaw --module-path "%JAVAFX_PATH%\lib" --add-modules javafx.controls,javafx.web,javafx.graphics --enable-native-access=javafx.graphics -jar cyberferret.jar
         exit /b 0
     ) else (
         goto error

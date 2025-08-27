@@ -2,7 +2,7 @@
 
 if [[ -n "$JAVAFX_PATH" && "$JAVAFX_PATH" != "" ]]; then
     echo "Environment variable JAVAFX_PATH is set to: $JAVAFX_PATH"
-    java --module-path "$JAVAFX_PATH/lib" --add-modules javafx.controls,javafx.web,javafx.graphics --enable-native-access=javafx.graphics -jar cyberferret-1.0.1.jar
+    java --module-path "$JAVAFX_PATH/lib" --add-modules javafx.controls,javafx.web,javafx.graphics --enable-native-access=javafx.graphics -jar cyberferret.jar
     exit 0
 else
     echo "ERROR: 'JAVAFX_PATH' variable is not set or has empty value."
