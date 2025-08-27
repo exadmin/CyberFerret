@@ -6,7 +6,7 @@
 
     <groupId>com.github.exadmin</groupId>
     <artifactId>cyberferret</artifactId>
-    <version>1.0.4</version>
+    <version>1.0.5</version>
     <name>cyber-ferret</name>
 
     <properties>

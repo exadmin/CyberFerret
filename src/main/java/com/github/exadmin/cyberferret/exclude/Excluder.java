@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.github.exadmin.cyberferret.fxui.helpers.AlertBuilder;
 import com.github.exadmin.cyberferret.model.FoundPathItem;
 import com.github.exadmin.cyberferret.model.ItemType;
+import com.github.exadmin.cyberferret.utils.FileUtils;
 import com.github.exadmin.cyberferret.utils.MiscUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,7 +65,9 @@ public class Excluder {
             OBJECT_MAPPER.setSerializationInclusion(JsonInclude.Include.NON_NULL);
             OBJECT_MAPPER.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
             OBJECT_MAPPER.enable(SerializationFeature.INDENT_OUTPUT);
-            OBJECT_MAPPER.writeValue(excludesFile.toFile(), excludeFileModel);
+            String text = OBJECT_MAPPER.writeValueAsString(excludeFileModel);
+            text = text + "\n";
+            FileUtils.saveToFile(text, excludesFile.toString());
         } catch (Exception ex) {
             log.error("Error while saving exclusions into the file {}", excludesFile, ex);
         }
