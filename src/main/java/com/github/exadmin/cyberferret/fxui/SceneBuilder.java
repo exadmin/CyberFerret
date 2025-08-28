@@ -77,13 +77,10 @@ public class SceneBuilder {
         TitledPane tpExplorer = createExplorerGroup(tabPane);
         TitledPane tpLogs = createLogsPane();
 
-        BorderPane bpRoot = new BorderPane();
-        Pane wrapper = new StackPane(bpRoot);
-        tab.setContent(wrapper);
-        bpRoot.prefWidthProperty().bind(wrapper.widthProperty());
-        bpRoot.prefHeightProperty().bind(wrapper.heightProperty());
-
         VBox vBox = new VBox();
+        Pane wrapper = new StackPane(vBox);
+        tab.setContent(wrapper);
+
         Accordion accordion = new Accordion();
         {
             accordion.getPanes().add(tpOnlineDictionary);
@@ -93,11 +90,12 @@ public class SceneBuilder {
         vBox.getChildren().add(accordion);
         vBox.getChildren().add(tpRepository);
 
-        bpRoot.setTop(vBox);
-        bpRoot.setCenter(tpExplorer);
-        bpRoot.setBottom(tpLogs);
 
-        bpRoot.setPadding(new Insets(1));
+        SplitPane splitPane = new SplitPane();
+        splitPane.setOrientation(Orientation.VERTICAL);
+        splitPane.getItems().addAll(tpExplorer, tpLogs);
+        vBox.getChildren().add(splitPane);
+
         vBox.setSpacing(2);
 
         return tab;
