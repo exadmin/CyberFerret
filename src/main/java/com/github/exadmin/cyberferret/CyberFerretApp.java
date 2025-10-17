@@ -57,7 +57,7 @@ public class CyberFerretApp extends Application {
         try (InputStream input = getClass().getResourceAsStream("/version.properties")) {
             props.load(input);
             return props.getProperty("application.version");
-        } catch (IOException ex) {
+        } catch (IOException | NullPointerException ex) {
             log.error("Error while loading {}", "/version.properties", ex);
         }
 
