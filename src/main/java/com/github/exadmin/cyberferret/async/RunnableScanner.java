@@ -35,6 +35,7 @@ public class RunnableScanner extends ARunnable {
     private Map<String, Pattern> sigMap = null;
     private Map<String, String> allowedSigMap = null;
     private Map<String, List<String>> excludeExtMap = null;
+    private List<Pattern> binaryExcludePatterns = null;
 
     public RunnableScanner() {
     }
@@ -49,6 +50,10 @@ public class RunnableScanner extends ARunnable {
 
     public void setExcludeExtMap(Map<String, List<String>> excludeExtMap) {
         this.excludeExtMap = excludeExtMap;
+    }
+
+    public void setBinaryExcludePatterns(List<Pattern> binaryExcludePatterns) {
+        this.binaryExcludePatterns = binaryExcludePatterns;
     }
 
     public void setDirToScan(String dirToScan) {
@@ -212,6 +217,37 @@ public class RunnableScanner extends ARunnable {
         if (pathItem.getType() == ItemType.DIRECTORY || pathItem.getType() == ItemType.SIGNATURE) return;
 
         Path filePath = pathItem.getFilePath();
+
+        // Check if file is binary
+        boolean isBinary = false;
+        try {
+            isBinary = FileUtils.isBinaryFile(filePath);
+        } catch (IOException ex) {
+            log.warn("Could not determine if file '{}' is binary. Treating as text.", filePath);
+        }
+
+        // If file is binary, check if it's excluded
+        if (isBinary) {
+            boolean isExcluded = FileUtils.matchesAnyPattern(filePath, binaryExcludePatterns);
+            if (isExcluded) {
+                log.debug("Binary file '{}' is excluded from detection", filePath);
+                return;
+            }
+
+            // Flag the binary artifact
+            FoundPathItem binaryItem = new FoundPathItem(filePath, ItemType.SIGNATURE, pathItem);
+            binaryItem.setVisualName("BINARY_ARTIFACT");
+            binaryItem.setLineNumber(0);
+            binaryItem.setDisplayText("Binary file detected (contains zero bytes in first 16KiB)");
+            binaryItem.setFoundString(filePath.getFileName().toString());
+
+            calculateIgnoreFlagState(binaryItem, pathItem, rootDir, excludeFileModel);
+            foundItemsContainer.addItem(binaryItem);
+            log.warn("Binary artifact detected: {}", filePath);
+            return;
+        }
+
+        // For text files, proceed with normal scanning
         String fileBody;
         try {
             fileBody = FileUtils.readFile(filePath);
