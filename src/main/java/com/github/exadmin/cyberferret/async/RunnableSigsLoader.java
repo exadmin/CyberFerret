@@ -23,6 +23,7 @@ public class RunnableSigsLoader extends ARunnable {
     private Map<String, Pattern> regExpMap;           // map of signatures
     private Map<String, String> allowedSignaturesMap; // effectively the list of exact strings which are allowed when capturing
     private Map<String, List<String>> excludeExtsMap; // signature -> List of file extensions to ignore
+    private List<Pattern> binaryExcludePatterns;       // list of file name patterns to exclude from binary detection
     private String dictionaryVersion = "undefined";
 
     public void setFileToLoad(Path filePath) {
@@ -47,6 +48,10 @@ public class RunnableSigsLoader extends ARunnable {
         return excludeExtsMap;
     }
 
+    public List<Pattern> getBinaryExcludePatterns() {
+        return binaryExcludePatterns;
+    }
+
     public boolean isReady() {
         return isReady.get();
     }
@@ -68,6 +73,7 @@ public class RunnableSigsLoader extends ARunnable {
             Map<String, String> allowedSignaturesTmpMap = new HashMap<>();
             Map<String, List<String>> includeExt = new HashMap<>();
             Map<String, List<String>> excludeExtTmpMap = new HashMap<>();
+            List<Pattern> binaryExcludePatternsTmp = new ArrayList<>();
 
             for (Object key : properties.keySet()) {
                 String sigId = key.toString();
@@ -93,6 +99,25 @@ public class RunnableSigsLoader extends ARunnable {
                     continue;
                 }
 
+                // load binary file exclusion patterns
+                if (sigId.endsWith("(binary-exclude)")) {
+                    String[] patterns = expression.split(",");
+                    for (String patternStr : patterns) {
+                        patternStr = patternStr.trim();
+                        if (!patternStr.isEmpty()) {
+                            try {
+                                Pattern pattern = Pattern.compile(patternStr);
+                                binaryExcludePatternsTmp.add(pattern);
+                                log.info("Binary exclusion pattern loaded: '{}'", patternStr);
+                            } catch (PatternSyntaxException pse) {
+                                log.error("Error while compiling binary exclusion pattern '{}'", patternStr, pse);
+                            }
+                        }
+                    }
+
+                    continue;
+                }
+
                 if (sigId.endsWith("(allowed)")) {
                     sigId = sigId.substring(0, sigId.length() - 9);
 
@@ -106,9 +131,11 @@ public class RunnableSigsLoader extends ARunnable {
             regExpMap = Collections.unmodifiableMap(regExpTmpMap);
             allowedSignaturesMap = Collections.unmodifiableMap(allowedSignaturesTmpMap);
             excludeExtsMap = Collections.unmodifiableMap(excludeExtTmpMap);
+            binaryExcludePatterns = Collections.unmodifiableList(binaryExcludePatternsTmp);
 
             log.info("Signatures are loaded successfully from {}. Number of signatures is {}", signaturesFile, regExpMap.size());
             log.info("Number of allowed signatures is {}", allowedSignaturesMap.size());
+            log.info("Number of binary exclusion patterns is {}", binaryExcludePatterns.size());
             log.info("Dictionary version is {}", dictionaryVersion);
 
             isReady.set(true);
