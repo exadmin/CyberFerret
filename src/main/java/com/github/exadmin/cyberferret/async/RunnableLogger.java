@@ -50,12 +50,12 @@ public class RunnableLogger implements Runnable {
 
             // if it's time to call JavaFX thread
             long curTime = System.currentTimeMillis();
-            boolean doJavaFxCall = false;
-            if (curTime - lastTimestamp > MILLIS_MUST_PASSED) {
-                doJavaFxCall = true;
-            }
 
-            if (doJavaFxCall && !buf.isEmpty()) {
+            if (curTime - lastTimestamp < MILLIS_MUST_PASSED) {
+                sleep();
+            };
+
+            if (!buf.isEmpty()) {
                 String text = buf.toString();
                 buf.setLength(0);
 

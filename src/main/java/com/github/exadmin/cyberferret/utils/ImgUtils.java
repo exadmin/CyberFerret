@@ -15,8 +15,8 @@ import java.nio.file.Path;
  * Utility class for extracting metadata from image files (PNG, JPEG, etc.)
  * Extracts EXIF, IPTC, XMP, and other metadata that can be searched with regex patterns.
  */
-public class ImageMetadataExtractor {
-    private static final Logger LOGGER = LoggerFactory.getLogger(ImageMetadataExtractor.class);
+public class ImgUtils {
+    private static final Logger LOGGER = LoggerFactory.getLogger(ImgUtils.class);
 
     /**
      * Extracts all metadata from an image file and returns it as formatted text.

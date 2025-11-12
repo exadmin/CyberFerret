@@ -13,9 +13,9 @@ public class FileUtils {
     public static String readFile(Path filePath) throws IOException {
         // Check if this is an image file that should have metadata extracted
         String extension = getFileExtensionAsString(filePath);
-        if (ImageMetadataExtractor.isSupportedImageFormat(extension)) {
+        if (ImgUtils.isSupportedImageFormat(extension)) {
             // Extract and return metadata as searchable text
-            String metadata = ImageMetadataExtractor.extractMetadataAsText(filePath);
+            String metadata = ImgUtils.extractMetadataAsText(filePath);
 
             // If metadata extraction succeeded, return it
             // Otherwise fall back to reading file as text (empty metadata means extraction failed)
