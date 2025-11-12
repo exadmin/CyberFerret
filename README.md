@@ -19,7 +19,7 @@ Install JavaFX from https://gluonhq.com/products/javafx/
 java --module-path "...\JDKs\javafx-sdk-24.0.1\lib" --add-modules javafx.controls,javafx.web,javafx.graphics --enable-native-access=javafx.graphics -jar cyberferret.jar
 ```
 
-# How to run - Linux/MacOS version
+# How to run - Linux/macOS version
 ## prerequisites
 Install JDK from https://jdk.java.net/24/
 Install JavaFX from https://gluonhq.com/products/javafx/

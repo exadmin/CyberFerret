@@ -71,9 +71,10 @@ public class RunnableScanner extends ARunnable {
         Path gitConfigPath = Paths.get(dirToScan, ".git", "config");
         File gitConfigFile = gitConfigPath.toFile();
         if (!gitConfigFile.exists() || !gitConfigFile.isFile()) {
-            AlertBuilder.showWarn("You've selected not a root of a git-repository.\n" +
-                    "You can continue using scanner but exclusion file may be created/written not in the canonical place.\n" +
-                    "Existed exclusion configurations will not be shown");
+            AlertBuilder.showWarn("""
+                    You've selected not a root of a git-repository.
+                    You can continue using scanner but exclusion file may be created/written not in the canonical place.
+                    Existed exclusion configurations will not be shown""");
         }
 
         if (sigMap == null || sigMap.isEmpty()) {

@@ -49,7 +49,6 @@ public class ImgUtils {
     /**
      * Formats extracted metadata as searchable text.
      * Each metadata tag is formatted as "DirectoryName.TagName: value"
-     *
      * Example output:
      * <pre>
      * PNG-IHDR.Image Width: 1920

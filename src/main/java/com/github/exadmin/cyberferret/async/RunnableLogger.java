@@ -53,7 +53,7 @@ public class RunnableLogger implements Runnable {
 
             if (curTime - lastTimestamp < MILLIS_MUST_PASSED) {
                 sleep();
-            };
+            }
 
             if (!buf.isEmpty()) {
                 String text = buf.toString();

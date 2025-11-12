@@ -14,11 +14,15 @@ import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
-import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.MenuItem;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
 import javafx.scene.control.cell.CheckBoxTreeTableCell;
 import javafx.scene.control.cell.TreeItemPropertyValueFactory;
 import javafx.scene.input.Clipboard;
@@ -28,7 +32,7 @@ import javafx.stage.Stage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.awt.Desktop;
+import java.awt.*;
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -285,7 +289,7 @@ public class SceneBuilder {
         ttView.setShowRoot(false);
         ttView.setMinHeight(320);
 
-        ttView.setRowFactory(tv -> new TreeTableRow<FoundPathItem>() {
+        ttView.setRowFactory(tv -> new TreeTableRow<>() {
             @Override
             protected void updateItem(FoundPathItem foundPathItem, boolean isSelected) {
                 if (foundPathItem == null) {
