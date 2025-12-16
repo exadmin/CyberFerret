@@ -61,15 +61,15 @@ public class RunnableLogger implements Runnable {
 
                 Platform.runLater(() -> {
                     textArea.appendText(text);
-                    if (textArea.getText().length() > MAX_LOG_SIZE_IN_TEXT_AREA_CHARS) {
+                    if (textArea.getLength() > MAX_LOG_SIZE_IN_TEXT_AREA_CHARS * 2) {
                         String currentText = textArea.getText();
-                        currentText = currentText.substring(CUT_PORTION);
-                        int newLineIndex = currentText.indexOf("\n");
-                        currentText = currentText.substring(newLineIndex + 1);
-                        currentText = "...\n" + currentText;
-                        textArea.setText(currentText);
-                        textArea.selectPositionCaret(currentText.length());
-                        textArea.deselect();
+                        int newlinePos = currentText.lastIndexOf('\n', currentText.length() - MAX_LOG_SIZE_IN_TEXT_AREA_CHARS);
+                        if (newlinePos > 0) {
+                            currentText = currentText.substring(newlinePos + 1);
+                            textArea.setText(currentText);
+                            textArea.selectPositionCaret(currentText.length());
+                            textArea.deselect();
+                        }
                     }
                 });
 
