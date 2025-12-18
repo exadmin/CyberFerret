@@ -6,7 +6,6 @@ import javafx.scene.control.TextArea;
 
 public class RunnableLogger implements Runnable {
     private static final int MAX_LOG_SIZE_IN_TEXT_AREA_CHARS = 1024 * 5;
-    private static final int CUT_PORTION = MAX_LOG_SIZE_IN_TEXT_AREA_CHARS / 10;
 
     private long lastTimestamp = 0;
     private static final long MILLIS_MUST_PASSED = 300;

@@ -68,6 +68,8 @@ public class SceneBuilder {
         VBox vBox = new VBox(tabPane);
         Scene scene = new Scene(vBox);
 
+        scene.getStylesheets().add(getClass().getResource("/fxstyles.css").toExternalForm());
+
         return scene;
     }
 
@@ -79,11 +81,12 @@ public class SceneBuilder {
         TitledPane tpOfflineDictionare = createOfflineDictionaryPane();
         TitledPane tpRepository = createRepositoryGroup();
         TitledPane tpExplorer = createExplorerGroup(tabPane);
-        TitledPane tpLogs = createLogsPane();
+        TitledPane tpConsole = createLogsPane();
 
         VBox vBox = new VBox();
-        Pane wrapper = new StackPane(vBox);
-        tab.setContent(wrapper);
+        // Pane wrapper = new StackPane(vBox);
+        // tab.setContent(wrapper);
+        tab.setContent(vBox);
 
         Accordion accordion = new Accordion();
         {
@@ -91,16 +94,25 @@ public class SceneBuilder {
             accordion.getPanes().add(tpOfflineDictionare);
             accordion.setExpandedPane(tpOnlineDictionary);
         }
-        vBox.getChildren().add(accordion);
-        vBox.getChildren().add(tpRepository);
-
 
         SplitPane splitPane = new SplitPane();
         splitPane.setOrientation(Orientation.VERTICAL);
-        splitPane.getItems().addAll(tpExplorer, tpLogs);
-        vBox.getChildren().add(splitPane);
+        splitPane.getItems().addAll(new VBox(tpExplorer), new VBox(tpConsole));
 
+        vBox.getChildren().add(accordion);
+        vBox.getChildren().add(tpRepository);
+        vBox.getChildren().add(splitPane);
         vBox.setSpacing(2);
+
+        // make explorer pane to fill all available space
+        {
+            VBox.setVgrow(tpExplorer, Priority.ALWAYS);
+            tpExplorer.setMaxHeight(Double.MAX_VALUE);
+        }
+
+        VBox.setVgrow(splitPane, Priority.ALWAYS);
+        splitPane.setMaxHeight(Double.MAX_VALUE);
+
 
         return tab;
     }

@@ -1,0 +1,43 @@
+/* disabled > pressed > armed > hovered > focused > selected > empty > */
+/* Base font styling for all rows */
+.tree-table-row-cell {
+    -fx-font-family: "Courier New", "Courier", monospace;
+    -fx-font-size: 14px;
+    -fx-text-fill: black; /* Default font color */
+    -fx-font-weight: normal;
+}
+
+/*.tree-table-row-cell:focused:selected {
+    -fx-text-fill: black;
+    -fx-font-weight: bold;
+    -fx-border-color: blue;
+    -fx-border-width: 2px;
+}*/
+
+/* Custom style - my-allowed */
+/*.tree-table-row-cell:focused:selected:my-allowed {
+    -fx-background-color: #e6fff2; *//* Light green *//*
+    -fx-text-fill: black;
+    -fx-font-style: normal;
+}*/
+
+/* Change the background color of the entire TitledPane (affects the border areas) */
+/*.titled-pane {
+    -fx-background-color: blue;
+}*/
+
+/* Change the background color of the header/title area */
+.titled-pane > .title {
+    /*-fx-background-color: #e9f4f5;*/
+    -fx-background-color: #c6cecf;
+}
+
+/* Change the background color of the content area when expanded */
+/*.titled-pane > .content {
+    -fx-background-color: pink;
+}*/
+
+/* Change the color of the title text */
+/* .titled-pane > .title > .text {
+    -fx-fill: white;
+}*/
