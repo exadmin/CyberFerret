@@ -14,6 +14,7 @@ import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
+import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -28,6 +29,7 @@ import javafx.scene.control.cell.TreeItemPropertyValueFactory;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -104,15 +106,17 @@ public class SceneBuilder {
         vBox.getChildren().add(splitPane);
         vBox.setSpacing(2);
 
-        // make explorer pane to fill all available space
-        {
-            VBox.setVgrow(tpExplorer, Priority.ALWAYS);
-            tpExplorer.setMaxHeight(Double.MAX_VALUE);
-        }
+        // make components fill all available space
+        VBox.setVgrow(tpExplorer, Priority.ALWAYS);
+        tpExplorer.setMaxHeight(Double.MAX_VALUE);
 
         VBox.setVgrow(splitPane, Priority.ALWAYS);
         splitPane.setMaxHeight(Double.MAX_VALUE);
 
+        VBox.setVgrow(tpConsole, Priority.ALWAYS);
+        tpConsole.setMaxHeight(Double.MAX_VALUE);
+
+        VBox.setVgrow(tabPane, Priority.ALWAYS);
 
         return tab;
     }
@@ -220,7 +224,6 @@ public class SceneBuilder {
             });
 
 
-
             Button btnMark = new Button("Mark as ignored");
             btnMark.setPrefWidth(DEFAULT_BUTTON_WIDTH);
             btnMark.setOnAction(new MarkAsIgnoredEventHandler());
@@ -246,8 +249,6 @@ public class SceneBuilder {
         // explorer treetableview
 
 
-
-
         VBox vbox = new VBox();
         tpExplorer.setContent(vbox);
 
@@ -267,7 +268,7 @@ public class SceneBuilder {
         colExactSignature.setCellValueFactory(new TreeItemPropertyValueFactory<>("foundString"));
 
         colIgnore.setCellFactory(p -> {
-            CheckBoxTreeTableCell<FoundPathItem,Boolean> cell = new CheckBoxTreeTableCell<>();
+            CheckBoxTreeTableCell<FoundPathItem, Boolean> cell = new CheckBoxTreeTableCell<>();
             cell.setAlignment(Pos.CENTER);
             return cell;
         });
@@ -418,7 +419,7 @@ public class SceneBuilder {
         ttView.setRoot(rootTreeItem);
 
         vbox.getChildren().add(ttView);
-        vbox.setMaxSize(Double.MAX_VALUE,Double.MAX_VALUE);
+        vbox.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
         ttView.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
         VBox.setVgrow(vbox, Priority.ALWAYS);
         VBox.setVgrow(ttView, Priority.ALWAYS);
