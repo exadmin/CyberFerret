@@ -9,6 +9,7 @@ import com.github.exadmin.cyberferret.model.FoundItemsContainer;
 import com.github.exadmin.cyberferret.model.FoundPathItem;
 import com.github.exadmin.cyberferret.model.ItemType;
 import com.github.exadmin.cyberferret.utils.FileUtils;
+import com.github.exadmin.cyberferret.utils.GitFileDiscovery;
 import com.github.exadmin.cyberferret.utils.MiscUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,10 +18,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
@@ -94,6 +92,16 @@ public class RunnableScanner extends ARunnable {
 
         final ExcludeFileModel excludeFileModel = tmpExcludeFileModel;
 
+        // Try to discover files using git (respects .gitignore)
+        Optional<Set<Path>> gitFilesOpt = GitFileDiscovery.discoverGitFiles(rootDir);
+        Set<Path> gitFiles = gitFilesOpt.orElse(null);
+
+        if (gitFiles != null) {
+            log.info("Using git-based file discovery. Found {} files to scan (respecting .gitignore)", gitFiles.size());
+        } else {
+            log.info("Git not available or not a git repository. Using full directory scan.");
+        }
+
         // load files first
         Deque<FoundPathItem> parentsDeque = new ArrayDeque<>();
         Files.walkFileTree(rootDir, new FileVisitor<>() {
@@ -117,6 +125,12 @@ public class RunnableScanner extends ARunnable {
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)  {
                 log.debug("Visiting file {}", file);
+
+                // If using git-based discovery, skip files not in the git list
+                if (gitFiles != null && !gitFiles.contains(file)) {
+                    log.debug("Skipping git-ignored file: {}", file);
+                    return FileVisitResult.CONTINUE;
+                }
 
                 FoundPathItem parent = parentsDeque.peekLast();
                 FoundPathItem foundPathItem = new FoundPathItem(file, ItemType.FILE, parent);
