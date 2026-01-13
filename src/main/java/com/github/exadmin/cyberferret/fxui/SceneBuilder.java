@@ -165,6 +165,7 @@ public class SceneBuilder {
                 runnableScanner.setSignaturesMap(runnableSigsLoader.getRegExpMap());
                 runnableScanner.setAllowedSigMap(runnableSigsLoader.getAllowedSignaturesMap());
                 runnableScanner.setExcludeExtMap(runnableSigsLoader.getExcludeExtsMap());
+                runnableScanner.setBinaryExcludePatterns(runnableSigsLoader.getBinaryExcludePatterns());
                 btnLoadSigs.setDisable(false);
             });
 
