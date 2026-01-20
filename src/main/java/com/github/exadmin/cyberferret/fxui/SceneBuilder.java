@@ -80,7 +80,7 @@ public class SceneBuilder {
         tab.setClosable(false);
 
         TitledPane tpOnlineDictionary = createOnlineDictionaryPane();
-        TitledPane tpOfflineDictionare = createOfflineDictionaryPane();
+        TitledPane tpOfflineDictionary = createOfflineDictionaryPane();
         TitledPane tpRepository = createRepositoryGroup();
         TitledPane tpExplorer = createExplorerGroup(tabPane);
         TitledPane tpConsole = createLogsPane();
@@ -93,7 +93,7 @@ public class SceneBuilder {
         Accordion accordion = new Accordion();
         {
             accordion.getPanes().add(tpOnlineDictionary);
-            accordion.getPanes().add(tpOfflineDictionare);
+            accordion.getPanes().add(tpOfflineDictionary);
             accordion.setExpandedPane(tpOnlineDictionary);
         }
 
@@ -160,17 +160,16 @@ public class SceneBuilder {
             hBox.getChildren().add(btnLoadSigs);
             btnLoadSigs.setPrefWidth(DEFAULT_BUTTON_WIDTH);
 
+            runnableScanner.setFxCallback((type, message) -> {
+                switch (type) {
+                    case ERROR, WARNING -> AlertBuilder.showError(message);
+                    case INFO -> AlertBuilder.showInfo(message);
+                    default -> throw new IllegalStateException("Unsupported message type " + type);
+                }
+            });
+
             runnableSigsLoader.setBeforeStart(() -> btnLoadSigs.setDisable(true));
             runnableSigsLoader.setAfterFinished(() -> {
-                runnableScanner.setFxCallback((type, message) -> {
-                    switch (type) {
-                        case ERROR -> AlertBuilder.showError(message);
-                        case WARNING -> AlertBuilder.showError(message);
-                        case INFO -> AlertBuilder.showInfo(message);
-                        default -> throw new IllegalStateException("Unsupported message type " + type);
-                    }
-                });
-
                 runnableScanner.setSignaturesMap(runnableSigsLoader.getRegExpMap());
                 runnableScanner.setAllowedSigMap(runnableSigsLoader.getAllowedSignaturesMap());
                 runnableScanner.setExcludeExtMap(runnableSigsLoader.getExcludeExtsMap());

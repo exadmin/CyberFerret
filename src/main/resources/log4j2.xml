@@ -17,12 +17,12 @@
             <PatternLayout pattern="%d{HH:mm:ss} %-5level: %msg%n"/>
         </File>
 
-        <FXConsoleAppender name="FXConsoleAppender"/>
+        <FXConsoleAppender name="FXConsoleAppender" append="true"/>
     </Appenders>
     <Loggers>
         <Logger name="org.apache" level="INFO"/>
 
-        <Root level="WARN">
+        <Root level="INFO">
             <AppenderRef ref="Console"/>
             <AppenderRef ref="File"/>
             <AppenderRef ref="FXConsoleAppender" />
