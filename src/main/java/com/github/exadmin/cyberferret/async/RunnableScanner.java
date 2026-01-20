@@ -35,6 +35,9 @@ public class RunnableScanner extends ARunnable {
     private Map<String, Pattern> sigMap = null;
     private Map<String, String> allowedSigMap = null;
     private Map<String, List<String>> excludeExtMap = null;
+    private FxCallback fxCallback = (type, message) -> {
+        log.info(message);
+    };
 
     public RunnableScanner() {
     }
@@ -59,6 +62,10 @@ public class RunnableScanner extends ARunnable {
         this.foundItemsContainer = foundItemsContainer;
     }
 
+    public void setFxCallback(FxCallback fxCallback) {
+        this.fxCallback = fxCallback;
+    }
+
     @Override
     protected Logger getLog() {
         return log;
@@ -71,25 +78,28 @@ public class RunnableScanner extends ARunnable {
         Path gitConfigPath = Paths.get(dirToScan, ".git", "config");
         File gitConfigFile = gitConfigPath.toFile();
         if (!gitConfigFile.exists() || !gitConfigFile.isFile()) {
-            AlertBuilder.showWarn("""
+            fxCallback.showMessage(FxCallback.FxCallbackType.WARNING, """
                     You've selected not a root of a git-repository.
                     You can continue using scanner but exclusion file may be created/written not in the canonical place.
                     Existed exclusion configurations will not be shown""");
         }
 
         if (sigMap == null || sigMap.isEmpty()) {
-            AlertBuilder.showError("Load signatures first. Nothing to scan by.");
+            fxCallback.showMessage(FxCallback.FxCallbackType.ERROR, "Load signatures first. Nothing to scan by.");
             return;
         }
 
         // try loading exclusions-model from the file in the root of the repository
         ExcludeFileModel tmpExcludeFileModel = new ExcludeFileModel(); // create empty container
-        Path exFile = Paths.get(dirToScan, Excluder.PERSISTENCE_FOLDER, Excluder.EXCLUDES_SHORT_FILE_NAME);
+        Path exFilePath = Paths.get(dirToScan, Excluder.PERSISTENCE_FOLDER, Excluder.EXCLUDES_SHORT_FILE_NAME);
         try {
-            OBJECT_MAPPER.enable(JsonParser.Feature.INCLUDE_SOURCE_IN_LOCATION);
-            tmpExcludeFileModel = OBJECT_MAPPER.readValue(exFile.toFile(), ExcludeFileModel.class); // load new exclusion context
+            File exFile = exFilePath.toFile();
+            if (exFile.exists() && exFile.isFile()) {
+                OBJECT_MAPPER.enable(JsonParser.Feature.INCLUDE_SOURCE_IN_LOCATION);
+                tmpExcludeFileModel = OBJECT_MAPPER.readValue(exFile, ExcludeFileModel.class); // load new exclusion context
+            }
         } catch (Exception ex) {
-            log.error("Error while loading exclusions configuration from '{}' file", exFile, ex);
+            log.error("Error while loading exclusions configuration from '{}' file", exFilePath, ex);
         }
 
         final ExcludeFileModel excludeFileModel = tmpExcludeFileModel;
@@ -150,7 +160,8 @@ public class RunnableScanner extends ARunnable {
         List<FoundPathItem> list = foundItemsContainer.getFoundItemsCopy();
         final AtomicInteger numberOfThreadsInProgress = new AtomicInteger(0);
 
-        try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+        // try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+        try (var executor = Executors.newSingleThreadExecutor()) {
             list.forEach(pathItem -> {
                 executor.submit(() -> {
                     numberOfThreadsInProgress.incrementAndGet();
@@ -215,6 +226,9 @@ public class RunnableScanner extends ARunnable {
         Path filePath = pathItem.getFilePath();
         String fileBody;
         try {
+            System.out.println("Reading file " + filePath);
+
+            log.info("Reading file {}", filePath);
             fileBody = FileUtils.readFile(filePath);
         } catch (IOException ex) {
             log.error("Error while reading file '{}'. Skipping it.", filePath, ex);

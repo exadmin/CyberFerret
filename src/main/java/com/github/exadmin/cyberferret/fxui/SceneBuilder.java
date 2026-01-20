@@ -162,6 +162,15 @@ public class SceneBuilder {
 
             runnableSigsLoader.setBeforeStart(() -> btnLoadSigs.setDisable(true));
             runnableSigsLoader.setAfterFinished(() -> {
+                runnableScanner.setFxCallback((type, message) -> {
+                    switch (type) {
+                        case ERROR -> AlertBuilder.showError(message);
+                        case WARNING -> AlertBuilder.showError(message);
+                        case INFO -> AlertBuilder.showInfo(message);
+                        default -> throw new IllegalStateException("Unsupported message type " + type);
+                    }
+                });
+
                 runnableScanner.setSignaturesMap(runnableSigsLoader.getRegExpMap());
                 runnableScanner.setAllowedSigMap(runnableSigsLoader.getAllowedSignaturesMap());
                 runnableScanner.setExcludeExtMap(runnableSigsLoader.getExcludeExtsMap());

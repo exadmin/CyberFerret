@@ -10,7 +10,7 @@ public class FoundItemsContainer {
 
     public void addItem(FoundPathItem newItem) {
         foundPathItems.add(newItem);
-        onAddNewItemListener.newItemAdded(newItem);
+        if (onAddNewItemListener != null) onAddNewItemListener.newItemAdded(newItem);
     }
 
     // do not public this api
@@ -33,6 +33,6 @@ public class FoundItemsContainer {
 
     public void clearAll() {
         getFoundItems().clear();
-        onAddNewItemListener.onClearAll();
+        if (onAddNewItemListener != null) onAddNewItemListener.onClearAll();
     }
 }

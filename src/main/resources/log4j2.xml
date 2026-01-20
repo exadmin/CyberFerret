@@ -1,12 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Configuration status="WARN" packages="com.github.exadmin.cyberferret.fxui.logger">
     <Appenders>
-        <Console name="Console" target="SYSTEM_OUT">
+        <!--<Console name="Console" target="SYSTEM_OUT">
             <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] [%tid] %-5level %logger{36} - %msg%n"/>
         </Console>
 
-        <File name="File" fileName="./logs.log" append="true">
+        <File name="File" fileName="./logs2.log" append="true">
             <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] [%tid] %-5level %logger{36} - %msg%n"/>
+        </File>-->
+
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{HH:mm:ss} %-5level: %msg%n"/>
+        </Console>
+
+        <File name="File" fileName="./logs.log" append="true">
+            <PatternLayout pattern="%d{HH:mm:ss} %-5level: %msg%n"/>
         </File>
 
         <FXConsoleAppender name="FXConsoleAppender"/>
@@ -14,7 +22,7 @@
     <Loggers>
         <Logger name="org.apache" level="INFO"/>
 
-        <Root level="DEBUG">
+        <Root level="WARN">
             <AppenderRef ref="Console"/>
             <AppenderRef ref="File"/>
             <AppenderRef ref="FXConsoleAppender" />

@@ -145,7 +145,7 @@
                         </manifest>
                     </archive>
 
-                    <finalName>${artifactId}</finalName>
+                    <finalName>${project.artifactId}</finalName>
                     <appendAssemblyId>false</appendAssemblyId>
                 </configuration>
 
