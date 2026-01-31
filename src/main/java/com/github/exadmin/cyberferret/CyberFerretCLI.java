@@ -34,6 +34,7 @@ public class CyberFerretCLI {
             "cassandra-exporter"
     );
 
+
     public static void main(String[] args) throws Exception {
         log.info("Start scanning directory {} using dictionary from  {}", args[0], args[1]);
 
