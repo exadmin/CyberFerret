@@ -6,26 +6,36 @@ Scans any files for different pre-defined signatures (supporting RegExp and othe
 # Example
 [<img src="./docs/run-example.gif">]()
 
-# How to build
+# How to build from sources via command line
+## Prerequisites
+* Install JDK (24 or newer) from https://jdk.java.net/24/
+* Install JavaFX (24 or newer) from https://gluonhq.com/products/javafx/
+* Install Apache Maven (ver 3.9.x) from https://maven.apache.org/download.cgi
+* Setup M2_HOME, JAVA_HOME and PATH (add maven and java) System Variables as recommended for Java and Maven usage
+* Optional = setup JAVAFX_PATH System Variable for handy run of the application using predefined shell-scripts in ./src/shell/*.* 
+
+## Compilation & build
+Navigate to the CyberFerret folder where ./pom.xml presents and run:
 ```shell
 mvn clean package assembly:single
 ```
 
+Find built ".\target\cyberferret.jar" file which is 17+MiB of size. Use it as a single pack of whole application. 
+
 # How to run - Windows version
-## prerequisites
-Install JDK from https://jdk.java.net/24/
-Install JavaFX from https://gluonhq.com/products/javafx/
+Replace "${PATH_TO_JAVA_FX_SDK}" with correct path to JavaFx SDK
 ```shell
-java --module-path "...\JDKs\javafx-sdk-24.0.1\lib" --add-modules javafx.controls,javafx.web,javafx.graphics --enable-native-access=javafx.graphics -jar cyberferret.jar
+java --module-path "${PATH_TO_JAVA_FX_SDK}\lib" --add-modules javafx.controls,javafx.web,javafx.graphics --enable-native-access=javafx.graphics -jar cyberferret.jar
 ```
+or use ./src/shell/run-app.cmd file
 
 # How to run - Linux/macOS version
-## prerequisites
-Install JDK from https://jdk.java.net/24/
-Install JavaFX from https://gluonhq.com/products/javafx/
+Replace "$path_to_javafx_sdk" with correct path to JavaFx SDK
 ```shell
 java --module-path $path_to_javafx_sdk/lib --add-modules javafx.controls,javafx.web,javafx.graphics --enable-native-access=javafx.graphics -jar ./target/cyber-ferret.jar
 ```
+or use ./src/shell/run-app.sh file
+
 # How to run - in IntelliJ IDEA
 ## prerequisites
 Install JDK from https://jdk.java.net/24/

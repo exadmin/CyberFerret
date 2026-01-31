@@ -4,6 +4,6 @@ public interface FxCallback {
     void showMessage(FxCallbackType type, String message);
 
     enum FxCallbackType {
-        ERROR, WARNING, INFO;
+        ERROR, WARNING, INFO
     }
 }

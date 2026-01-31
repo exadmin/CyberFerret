@@ -14,7 +14,6 @@ import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
-import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -28,8 +27,10 @@ import javafx.scene.control.cell.CheckBoxTreeTableCell;
 import javafx.scene.control.cell.TreeItemPropertyValueFactory;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
-import javafx.scene.layout.*;
-import javafx.scene.paint.Color;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -80,7 +81,7 @@ public class SceneBuilder {
         tab.setClosable(false);
 
         TitledPane tpOnlineDictionary = createOnlineDictionaryPane();
-        TitledPane tpOfflineDictionare = createOfflineDictionaryPane();
+        TitledPane tpOfflineDictionary = createOfflineDictionaryPane();
         TitledPane tpRepository = createRepositoryGroup();
         TitledPane tpExplorer = createExplorerGroup(tabPane);
         TitledPane tpConsole = createLogsPane();
@@ -93,7 +94,7 @@ public class SceneBuilder {
         Accordion accordion = new Accordion();
         {
             accordion.getPanes().add(tpOnlineDictionary);
-            accordion.getPanes().add(tpOfflineDictionare);
+            accordion.getPanes().add(tpOfflineDictionary);
             accordion.setExpandedPane(tpOnlineDictionary);
         }
 
@@ -160,17 +161,16 @@ public class SceneBuilder {
             hBox.getChildren().add(btnLoadSigs);
             btnLoadSigs.setPrefWidth(DEFAULT_BUTTON_WIDTH);
 
+            runnableScanner.setFxCallback((type, message) -> {
+                switch (type) {
+                    case ERROR, WARNING -> AlertBuilder.showError(message);
+                    case INFO -> AlertBuilder.showInfo(message);
+                    default -> throw new IllegalStateException("Unsupported message type " + type);
+                }
+            });
+
             runnableSigsLoader.setBeforeStart(() -> btnLoadSigs.setDisable(true));
             runnableSigsLoader.setAfterFinished(() -> {
-                runnableScanner.setFxCallback((type, message) -> {
-                    switch (type) {
-                        case ERROR -> AlertBuilder.showError(message);
-                        case WARNING -> AlertBuilder.showError(message);
-                        case INFO -> AlertBuilder.showInfo(message);
-                        default -> throw new IllegalStateException("Unsupported message type " + type);
-                    }
-                });
-
                 runnableScanner.setSignaturesMap(runnableSigsLoader.getRegExpMap());
                 runnableScanner.setAllowedSigMap(runnableSigsLoader.getAllowedSignaturesMap());
                 runnableScanner.setExcludeExtMap(runnableSigsLoader.getExcludeExtsMap());
