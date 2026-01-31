@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Locale;
 
 /**
  * Utility class for extracting metadata from image files (PNG, JPEG, etc.)
@@ -104,7 +105,7 @@ public class ImgUtils {
             return false;
         }
 
-        String ext = extension.toLowerCase();
+        String ext = extension.toLowerCase(Locale.ROOT);
         return ext.equals("png") ||
                ext.equals("jpg") ||
                ext.equals("jpeg") ||

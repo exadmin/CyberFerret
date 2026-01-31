@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Locale;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
@@ -65,7 +66,7 @@ public class CyberFerretCLI {
             log.warn("***** *****");
 
             // check if next directory is a fork - to skip it
-            String subDirName = subDir.getFileName().toString().toLowerCase();
+            String subDirName = subDir.getFileName().toString().toLowerCase(Locale.ROOT);
             if (FORKED_REPOSITORIES.contains(subDirName)) {
                 log.info("Skipping forked repository {}", subDirName);
                 continue;

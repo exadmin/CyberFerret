@@ -225,8 +225,6 @@ public class RunnableScanner extends ARunnable {
         Path filePath = pathItem.getFilePath();
         String fileBody;
         try {
-            System.out.println("Reading file " + filePath);
-
             log.info("Reading file {}", filePath);
             fileBody = FileUtils.readFile(filePath);
         } catch (IOException ex) {

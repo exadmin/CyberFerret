@@ -18,6 +18,7 @@ import static com.github.exadmin.cyberferret.persistence.PersistentPropertiesMan
 public class CyberFerretApp extends Application {
     private static final Logger log = LoggerFactory.getLogger(CyberFerretApp.class);
     private static final String APPLICATION_PERSISTENT_CONTEXT_FILENAME = "app.properties";
+    private static final String VERSION_PROPERTIES_RESOURCE = "/version.properties";
 
     @Override
     public void start(Stage stage) {
@@ -54,11 +55,15 @@ public class CyberFerretApp extends Application {
 
     private String loadApplicationVersion() {
         Properties props = new Properties();
-        try (InputStream input = getClass().getResourceAsStream("/version.properties")) {
+        try (InputStream input = getClass().getResourceAsStream(VERSION_PROPERTIES_RESOURCE)) {
+            if (input == null) {
+                log.error("Resource {} is not found on the classpath", VERSION_PROPERTIES_RESOURCE);
+                return "UNDEFINED";
+            }
             props.load(input);
             return props.getProperty("application.version");
-        } catch (IOException | NullPointerException ex) {
-            log.error("Error while loading {}", "/version.properties", ex);
+        } catch (IOException ex) {
+            log.error("Error while loading {}", VERSION_PROPERTIES_RESOURCE, ex);
         }
 
         return "UNDEFINED";
