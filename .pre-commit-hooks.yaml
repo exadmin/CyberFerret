@@ -1,0 +1,5 @@
+-   id: cyber-ferret
+    name: CyberFerret hook
+    language: script
+    entry: ./pre-commit-script/run-checks.sh
+    verbose: true
