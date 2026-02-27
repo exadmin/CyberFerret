@@ -1,5 +1,6 @@
 package com.github.exadmin.cyberferret.utils;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -43,5 +44,10 @@ public class FileUtils {
         return (dotIndex > 0 && dotIndex < fileName.length() - 1)
                 ? fileName.substring(dotIndex + 1)
                 : null;
+    }
+
+    public static boolean isPathToDir(Path path) {
+        File file = path.toFile();
+        return (file.isDirectory());
     }
 }
