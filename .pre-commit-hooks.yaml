@@ -1,5 +1,0 @@
--   id: whole-repo-check
-    name: CyberFerret Secret Checks
-    description: 'Calls CyberFerret App via CLI and scans whole repository where commit-event is received.'
-    entry: call-cyberferret
-    language: system
