@@ -2,6 +2,11 @@ package com.github.exadmin.cyberferret.utils;
 
 public class ConsoleUtils {
 
+    public static void info(String msg, Object ... binds) {
+        String result = "[INFO ] " + format(msg, binds);
+        System.out.println(result);
+    }
+
     public static void debug(String msg, Object ... binds) {
         String result = "[DEBUG] " + format(msg, binds);
         System.out.println(result);

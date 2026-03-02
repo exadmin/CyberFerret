@@ -14,20 +14,20 @@ import java.io.IOException;
 import java.io.InputStream;
 
 public class RunnableCheckOnlineDictionary extends ARunnable {
-    private static final Logger log = LoggerFactory.getLogger(RunnableCheckOnlineDictionary.class);
+    private volatile static Logger log = null;
 
     @Override
     protected void _run() throws Exception {
-        log.info("Checking if new online dictionary exists");
+        logInfo("Checking if new online dictionary exists");
 
         File savePath = new File(FxConstants.DICTIONARY_FILE_PATH_ENCRYPTED);
 
         if (savePath.exists()) {
             boolean wasDeleted = savePath.delete();
-            if (wasDeleted) log.info("Previous version of downloaded copy was cleaned by path {}", savePath);
+            if (wasDeleted) logInfo("Previous version of downloaded copy was cleaned by path {}", savePath);
         }
 
-        log.info("Downloading latest online dictionary");
+        logInfo("Downloading latest online dictionary");
         try (CloseableHttpClient client = HttpClients.createDefault()) {
             HttpGet request = new HttpGet(FxConstants.CYBER_FERRET_ONLINE_DICTIONARY_URL);
             try (CloseableHttpResponse response = client.execute(request);
@@ -38,15 +38,18 @@ public class RunnableCheckOnlineDictionary extends ARunnable {
                 while ((byteRead = inputStream.read()) != -1) {
                     writer.write(byteRead);
                 }
-                log.info("File was downloaded successfully and saved in {}", savePath.getAbsoluteFile());
+                logInfo("File was downloaded successfully and saved in {}", savePath.getAbsoluteFile());
             }
         } catch (IOException ex) {
-            log.error("Error while downloading online dictionary file", ex);
+            logError("Error while downloading online dictionary file", ex);
         }
     }
 
     @Override
-    protected Logger getLog() {
-        return null;
+    public Logger getLog() {
+        if (log == null) {
+            log = LoggerFactory.getLogger(RunnableCheckOnlineDictionary.class);
+        }
+        return log;
     }
 }

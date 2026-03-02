@@ -66,7 +66,7 @@ public class RunnableScanner extends ARunnable {
     }
 
     @Override
-    protected Logger getLog() {
+    public Logger getLog() {
         return log;
     }
 

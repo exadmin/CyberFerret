@@ -52,7 +52,7 @@ public class RunnableSigsLoader extends ARunnable {
     }
 
     @Override
-    protected Logger getLog() {
+    public Logger getLog() {
         return log;
     }
 

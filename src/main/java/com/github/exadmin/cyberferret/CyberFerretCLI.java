@@ -1,5 +1,6 @@
 package com.github.exadmin.cyberferret;
 
+import com.github.exadmin.cyberferret.cli.RunnableCheckOnlineDictionaryProxy;
 import com.github.exadmin.cyberferret.utils.ConsoleUtils;
 import com.github.exadmin.cyberferret.utils.FileUtils;
 
@@ -26,12 +27,12 @@ public class CyberFerretCLI {
 
     public static void main(String[] args) {
         // Overall logic
-        // step1: Check required program arguments are set
-        // step2: Check required system env variables are set
-        // step2: Ensure actual dictionary is downloaded
-        // step3: Download dictionary if required
-        // step4: Decrypt dictionary
-        // step5: Run check over the git-repository
+        // Step1: Check required program arguments are set
+        // Step2: Check required system env variables are set
+        // Step3: Ensure actual dictionary is downloaded
+        // Step4: Download dictionary if required
+        // Step5: Decrypt dictionary
+        // Step6: Run check over the git-repository
 
 
         // Step1: Check required program arguments are set
@@ -48,13 +49,17 @@ public class CyberFerretCLI {
             terminateAppWithErrorCode();
         }
 
-        // step2: Check required system env variables are set
+        // Step2: Check required system env variables are set
         final String pass = System.getenv(SYS_ENV_VAR_PASSWORD);
         if (pass == null || pass.isEmpty()) {
             ConsoleUtils.error("Missing environment variable {}", SYS_ENV_VAR_PASSWORD);
             printUsage();
             terminateAppWithErrorCode();
         }
+
+        // Step3: Ensure actual dictionary is downloaded
+        Runnable dictionaryDownloader = new RunnableCheckOnlineDictionaryProxy();
+        dictionaryDownloader.run();
 
         ConsoleUtils.debug("Scan is fakely completed");
     }
