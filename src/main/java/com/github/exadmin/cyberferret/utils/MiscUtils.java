@@ -59,6 +59,10 @@ public class MiscUtils {
             return result.replace("\\", "/"); // switch to unix style in windows running case
         }
 
-        throw new IllegalStateException("Unexpected file path " + normFile);
+        throw new IllegalStateException("Unexpected file path '" + normFile + "'");
+    }
+
+    public static boolean isNotEmpty(String str) {
+        return str != null && !str.isEmpty();
     }
 }

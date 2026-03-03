@@ -2,19 +2,29 @@ package com.github.exadmin.cyberferret.utils;
 
 public class ConsoleUtils {
 
-    public static void info(String msg, Object ... binds) {
-        String result = "[INFO ] " + format(msg, binds);
+    private static void print(String prefix, String msg, Object... binds) {
+        String result = prefix + format(msg, binds);
         System.out.println(result);
+    }
+
+    public static void warn(String msg, Object ... binds) {
+        print("[WARN ]", msg, binds);
+    }
+
+    public static void trace(String msg, Object ... binds) {
+        print("[TRACE]", msg, binds);
+    }
+
+    public static void info(String msg, Object ... binds) {
+        print("[INFO ]", msg, binds);
     }
 
     public static void debug(String msg, Object ... binds) {
-        String result = "[DEBUG] " + format(msg, binds);
-        System.out.println(result);
+        print("[DEBUG]", msg, binds);
     }
 
     public static void error(String msg, Object ... binds) {
-        String result = "[ERROR] " + format(msg, binds);
-        System.out.println(result);
+        print("[ERROR]", msg, binds);
     }
 
     public static String format(String msg, Object... binds) {
@@ -48,6 +58,16 @@ public class ConsoleUtils {
 
         // Если остались неиспользованные binds, добавляем их в конец через пробел
         if (bindIndex < binds.length) {
+            // probably rest binds are exception-instances
+            for (int i = bindIndex; i < binds.length; i++) {
+                if (binds[i] instanceof Throwable) {
+                    Throwable throwable = (Throwable) binds[i];
+                    throwable.printStackTrace();
+                    return result.toString();
+                }
+            }
+
+            // seems rest binds are not linked
             result = new StringBuilder();
             result.append("Unused binds: [");
             for (int i = bindIndex; i < binds.length; i++) {

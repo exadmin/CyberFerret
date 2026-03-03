@@ -1,21 +1,19 @@
 package com.github.exadmin.cyberferret.async;
 
-import org.slf4j.Logger;
+import com.github.exadmin.cyberferret.logging.HandyLogging;
 
-public abstract class ARunnable implements Runnable, Loggable {
+public abstract class ARunnable extends HandyLogging implements Runnable {
     protected Runnable beforeStart;
     protected Runnable afterFinished;
 
     public void setBeforeStart(Runnable beforeStart) {
         this.beforeStart = beforeStart;
     }
-
     public void setAfterFinished(Runnable afterFinished) {
         this.afterFinished = afterFinished;
     }
 
     protected abstract void _run() throws Exception;
-
 
     @Override
     public final void run()  {
@@ -24,7 +22,7 @@ public abstract class ARunnable implements Runnable, Loggable {
             _run();
             if (afterFinished != null) afterFinished.run();
         } catch (Exception ex) {
-            getLog().error("Error during scan running", ex);
+            logError("Error during scan running", ex);
         }
     }
 
@@ -32,30 +30,5 @@ public abstract class ARunnable implements Runnable, Loggable {
         Thread thread = new Thread(this);
         thread.setDaemon(true);
         thread.start();
-    }
-
-    @Override
-    public void logError(String msg, Object... binds) {
-        if (getLog() != null) getLog().error(msg, binds);
-    }
-
-    @Override
-    public void logWarn(String msg, Object... binds) {
-        if (getLog() != null) getLog().warn(msg, binds);
-    }
-
-    @Override
-    public void logInfo(String msg, Object... binds) {
-        if (getLog() != null) getLog().info(msg, binds);
-    }
-
-    @Override
-    public void logDebug(String msg, Object... binds) {
-        if (getLog() != null) getLog().debug(msg, binds);
-    }
-
-    @Override
-    public void logTrace(String msg, Object... binds) {
-        if (getLog() != null) getLog().trace(msg, binds);
     }
 }

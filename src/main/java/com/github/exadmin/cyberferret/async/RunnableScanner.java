@@ -26,27 +26,34 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class RunnableScanner extends ARunnable {
-    private static final Logger log = LoggerFactory.getLogger(RunnableScanner.class);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private String dirToScan;
     private FoundItemsContainer foundItemsContainer;
     private Map<String, Pattern> sigMap = null;
-    private Map<String, String> allowedSigMap = null;
+    private Map<String, String> allowedSignaturesMap = null;
     private Map<String, List<String>> excludeExtMap = null;
     private FxCallback fxCallback = (type, message) -> {
-        log.info(message);
+        logInfo(message);
     };
 
+    // when running Scanner in CLI mode - no specific data-store to be rendered in FxUI is collected (amy be additional light operations are executed)
+    private boolean isCLIMode = false;
+    private boolean isAnySignatureFound = false;
+
     public RunnableScanner() {
+    }
+
+    public void setCLIMode(boolean CLIMode) {
+        isCLIMode = CLIMode;
     }
 
     public void setSignaturesMap(Map<String, Pattern> sigMap) {
         this.sigMap = sigMap;
     }
 
-    public void setAllowedSigMap(Map<String, String> allowedSigMap) {
-        this.allowedSigMap = allowedSigMap;
+    public void setAllowedSignaturesMap(Map<String, String> allowedSignaturesMap) {
+        this.allowedSignaturesMap = allowedSignaturesMap;
     }
 
     public void setExcludeExtMap(Map<String, List<String>> excludeExtMap) {
@@ -63,11 +70,6 @@ public class RunnableScanner extends ARunnable {
 
     public void setFxCallback(FxCallback fxCallback) {
         this.fxCallback = fxCallback;
-    }
-
-    @Override
-    public Logger getLog() {
-        return log;
     }
 
     @Override
@@ -98,7 +100,7 @@ public class RunnableScanner extends ARunnable {
                 tmpExcludeFileModel = OBJECT_MAPPER.readValue(exFile, ExcludeFileModel.class); // load new exclusion context
             }
         } catch (Exception ex) {
-            log.error("Error while loading exclusions configuration from '{}' file", exFilePath, ex);
+            logError("Error while loading exclusions configuration from '{}' file", exFilePath, ex);
         }
 
         final ExcludeFileModel excludeFileModel = tmpExcludeFileModel;
@@ -108,7 +110,7 @@ public class RunnableScanner extends ARunnable {
         Files.walkFileTree(rootDir, new FileVisitor<>() {
             @Override
             public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
-                log.debug("Visiting directory {}", dir);
+                logTrace("Visiting directory {}", dir);
 
                 // todo: move this hard code to some configurable place, priority = normal
                 if (dir.getFileName().toString().equals(".git")) return FileVisitResult.SKIP_SUBTREE;
@@ -125,7 +127,7 @@ public class RunnableScanner extends ARunnable {
 
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)  {
-                log.debug("Visiting file {}", file);
+                logTrace("Visiting file {}", file);
 
                 FoundPathItem parent = parentsDeque.peekLast();
                 FoundPathItem foundPathItem = new FoundPathItem(file, ItemType.FILE, parent);
@@ -138,7 +140,7 @@ public class RunnableScanner extends ARunnable {
 
             @Override
             public FileVisitResult visitFileFailed(Path file, IOException exc) {
-                log.error("Error while visiting {}", file);
+                logError("Error while visiting {}", file);
                 return FileVisitResult.CONTINUE;
             }
 
@@ -150,7 +152,6 @@ public class RunnableScanner extends ARunnable {
         });
 
 
-
         // start scanning for signatures
         int totalItemsCount = foundItemsContainer.getFoundItemsSize();
         final AtomicInteger processedItemsCount = new AtomicInteger(0);
@@ -159,8 +160,8 @@ public class RunnableScanner extends ARunnable {
         List<FoundPathItem> list = foundItemsContainer.getFoundItemsCopy();
         final AtomicInteger numberOfThreadsInProgress = new AtomicInteger(0);
 
-        // try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
-        try (var executor = Executors.newSingleThreadExecutor()) {
+        // try (var executor = Executors.newSingleThreadExecutor()) {
+        try (var executor = Executors.newWorkStealingPool(8)) {
             list.forEach(pathItem -> {
                 executor.submit(() -> {
                     numberOfThreadsInProgress.incrementAndGet();
@@ -169,13 +170,13 @@ public class RunnableScanner extends ARunnable {
                     int currentCount = processedItemsCount.incrementAndGet();
                     int progressRate =  currentCount * 100 / totalItemsCount;
                     if (progressRate > nextRate.get()) {
-                        // Platform.runLater(() -> {log.info("Scanned rate = {}%", progressRate);});
+                        if (isCLIMode) logInfo("Scan rate is {}%", progressRate);
 
                         nextRate.addAndGet(10); // todo: non thread safe - refactor later
                     }
 
 
-                    log.info("Threads in progress = {}, Scanning for {}", numberOfThreadsInProgress.get(), pathItem);
+                    logDebug("Threads in progress = {}, Scanning for {}", numberOfThreadsInProgress.get(), pathItem);
 
                     // do scan
                     scan(pathItem, rootDir, excludeFileModel, foundItemsContainer);
@@ -185,7 +186,7 @@ public class RunnableScanner extends ARunnable {
             });
         }
 
-        log.info("Scanning completed for 100%");
+        logInfo("Scanning completed for 100%");
     }
 
     public static int getLineNumber(String fileBody, int index) {
@@ -225,10 +226,10 @@ public class RunnableScanner extends ARunnable {
         Path filePath = pathItem.getFilePath();
         String fileBody;
         try {
-            log.info("Reading file {}", filePath);
+            logTrace("Reading file {}", filePath);
             fileBody = FileUtils.readFile(filePath);
         } catch (IOException ex) {
-            log.error("Error while reading file '{}'. Skipping it.", filePath, ex);
+            logError("Error while reading file '{}'. Skipping it.", filePath, ex);
             return;
         }
 
@@ -249,12 +250,16 @@ public class RunnableScanner extends ARunnable {
                 calculateIgnoreFlagState(newItem, pathItem, rootDir, excludeFileModel);
 
                 // check if item is in the allowed list
-                if (allowedSigMap.containsValue(newItem.getFoundString())) {
+                if (allowedSignaturesMap.containsValue(newItem.getFoundString())) {
                     newItem.setAllowedValue(true);
                 }
 
-                foundItemsContainer.addItem(newItem);
-                log.info("Signature {} is detected in {}", sigId, filePath);
+                if (!newItem.isAllowedValue() && !newItem.isIgnored()) {
+                    isAnySignatureFound = true;
+                    logError("Signature '{}' is found in {}:{}", newItem.getFoundString(), filePath, newItem.getLineNumber());
+                }
+
+                if (!isCLIMode) foundItemsContainer.addItem(newItem);
             }
         }
     }
@@ -284,5 +289,9 @@ public class RunnableScanner extends ARunnable {
         if (!isMarkedAsIgnored && parent != null) isMarkedAsIgnored = parent.isIgnored();
 
         foundPathItem.setIgnored(isMarkedAsIgnored);
+    }
+
+    public boolean isAnySignatureFound() {
+        return isAnySignatureFound;
     }
 }

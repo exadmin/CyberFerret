@@ -14,10 +14,8 @@ import java.util.regex.PatternSyntaxException;
  * Reads all signatures and compiles them
  */
 public class RunnableSigsLoader extends ARunnable {
-    private static volatile Logger log = null;
-
     private final AtomicBoolean isReady = new AtomicBoolean(false);
-    private Map<String, Pattern> regExpMap;           // map of signatures
+    private Map<String, Pattern> signaturesMap;           // map of signatures
     private Map<String, String> allowedSignaturesMap; // effectively the list of exact strings which are allowed when capturing
     private Map<String, List<String>> excludeExtsMap; // signature -> List of file extensions to ignore
     private String dictionaryVersion = "undefined";
@@ -27,8 +25,8 @@ public class RunnableSigsLoader extends ARunnable {
         this.inputStream = inputStream;
     }
 
-    public Map<String, Pattern> getRegExpMap() {
-        return regExpMap;
+    public Map<String, Pattern> getSignaturesMap() {
+        return signaturesMap;
     }
 
     public Map<String, String> getAllowedSignaturesMap() {
@@ -41,15 +39,6 @@ public class RunnableSigsLoader extends ARunnable {
 
     public boolean isReady() {
         return isReady.get();
-    }
-
-    @Override
-    public Logger getLog() {
-        if (log == null) {
-            log = LoggerFactory.getLogger(RunnableSigsLoader.class);
-        }
-
-        return log;
     }
 
     @Override
@@ -101,11 +90,11 @@ public class RunnableSigsLoader extends ARunnable {
                 }
             }
 
-            regExpMap = Collections.unmodifiableMap(regExpTmpMap);
+            signaturesMap = Collections.unmodifiableMap(regExpTmpMap);
             allowedSignaturesMap = Collections.unmodifiableMap(allowedSignaturesTmpMap);
             excludeExtsMap = Collections.unmodifiableMap(excludeExtTmpMap);
 
-            logInfo("Signatures are loaded successfully, number of signatures is {}", regExpMap.size());
+            logInfo("Signatures are loaded successfully, number of signatures is {}", signaturesMap.size());
             logInfo("Number of allowed signatures is {}", allowedSignaturesMap.size());
             logInfo("Dictionary version is {}", dictionaryVersion);
 

@@ -1,9 +1,13 @@
 package com.github.exadmin.cyberferret;
 
-import com.github.exadmin.cyberferret.cli.RunnableCheckOnlineDictionaryProxy;
-import com.github.exadmin.cyberferret.cli.RunnableSigsLoaderProxy;
+import com.github.exadmin.cyberferret.async.RunnableCheckOnlineDictionary;
+import com.github.exadmin.cyberferret.async.RunnableScanner;
+import com.github.exadmin.cyberferret.async.RunnableSigsLoader;
+import com.github.exadmin.cyberferret.model.FoundItemsContainer;
+import com.github.exadmin.cyberferret.model.FoundPathItem;
 import com.github.exadmin.cyberferret.utils.ConsoleUtils;
 import com.github.exadmin.cyberferret.utils.FileUtils;
+import com.github.exadmin.cyberferret.utils.MiscUtils;
 import com.github.exadmin.cyberferret.utils.PasswordBasedEncryption;
 
 import java.io.ByteArrayInputStream;
@@ -65,28 +69,51 @@ public class CyberFerretCLI {
         }
 
         // Step3: Ensure actual dictionary is downloaded
-        Runnable dictionaryDownloader = new RunnableCheckOnlineDictionaryProxy();
+        RunnableCheckOnlineDictionary dictionaryDownloader = new RunnableCheckOnlineDictionary();
+        dictionaryDownloader.setPrintToConsole(true);
         dictionaryDownloader.run();
 
         // Step5:
+        RunnableSigsLoader sigsLoader = new RunnableSigsLoader();
+        sigsLoader.setPrintToConsole(true);
         try {
             String encryptedBody = FileUtils.readFile(DICTIONARY_FILE_PATH_ENCRYPTED);
             String decryptedBody = PasswordBasedEncryption.decrypt(encryptedBody, pass);
 
-            RunnableSigsLoaderProxy sigsLoaderProxy = new RunnableSigsLoaderProxy();
             byte[] bytes = decryptedBody.getBytes(StandardCharsets.UTF_8);
             InputStream inputStream = new ByteArrayInputStream(bytes);
-            sigsLoaderProxy.setInputStream(inputStream);
-            sigsLoaderProxy.run();
+            sigsLoader.setInputStream(inputStream);
+            sigsLoader.run();
         } catch (Exception ex) {
             ConsoleUtils.error("Error while loading signatures. " + ex.getMessage());
             terminateAppWithErrorCode();
         }
 
+        // Step6: Run scanner
+        FoundItemsContainer foundItemsContainer = new FoundItemsContainer();
 
+        RunnableScanner runnableScanner = new RunnableScanner();
+        runnableScanner.setCLIMode(true);
+        runnableScanner.setPrintToConsole(true);
+        runnableScanner.setFoundItemsContainer(foundItemsContainer);
+        runnableScanner.setSignaturesMap(sigsLoader.getSignaturesMap());
+        runnableScanner.setAllowedSignaturesMap(sigsLoader.getAllowedSignaturesMap());
+        runnableScanner.setExcludeExtMap(sigsLoader.getExcludeExtsMap());
+        runnableScanner.setDirToScan(rootPathToScan.toString());
+        runnableScanner.run();
 
-        ConsoleUtils.debug("Scan is fakely completed");
+        // Step7: Analyze & Print results
 
+        for (FoundPathItem foundPathItem : foundItemsContainer.getFoundItemsCopy()) {
+            if (MiscUtils.isNotEmpty(foundPathItem.getFoundString())) {
+                ConsoleUtils.warn("'{}' is found in file '{}' at line {}", foundPathItem.getFoundString(), foundPathItem.getFilePath(), foundPathItem.getLineNumber());
+            }
+        }
 
+        ConsoleUtils.debug("Scan is 100% completed.");
+
+        if (runnableScanner.isAnySignatureFound()) {
+            terminateAppWithErrorCode();
+        }
     }
 }

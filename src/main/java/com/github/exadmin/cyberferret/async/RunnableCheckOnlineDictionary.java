@@ -5,8 +5,6 @@ import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -14,8 +12,6 @@ import java.io.IOException;
 import java.io.InputStream;
 
 public class RunnableCheckOnlineDictionary extends ARunnable {
-    private volatile static Logger log = null;
-
     @Override
     protected void _run() throws Exception {
         logInfo("Checking if new online dictionary exists");
@@ -43,13 +39,5 @@ public class RunnableCheckOnlineDictionary extends ARunnable {
         } catch (IOException ex) {
             logError("Error while downloading online dictionary file", ex);
         }
-    }
-
-    @Override
-    public Logger getLog() {
-        if (log == null) {
-            log = LoggerFactory.getLogger(RunnableCheckOnlineDictionary.class);
-        }
-        return log;
     }
 }
