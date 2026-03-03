@@ -3,8 +3,11 @@ package com.github.exadmin.cyberferret;
 import com.github.exadmin.cyberferret.cli.RunnableCheckOnlineDictionaryProxy;
 import com.github.exadmin.cyberferret.utils.ConsoleUtils;
 import com.github.exadmin.cyberferret.utils.FileUtils;
+import com.github.exadmin.cyberferret.utils.PasswordBasedEncryption;
 
 import java.nio.file.Path;
+
+import static com.github.exadmin.cyberferret.fxui.FxConstants.DICTIONARY_FILE_PATH_ENCRYPTED;
 
 /**
  * This is CLI version of CyberFerret app with focus on quick initialization and run triggered by pre-commit framework.
@@ -60,6 +63,15 @@ public class CyberFerretCLI {
         // Step3: Ensure actual dictionary is downloaded
         Runnable dictionaryDownloader = new RunnableCheckOnlineDictionaryProxy();
         dictionaryDownloader.run();
+
+        // Step5:
+        try {
+            String encryptedBody = FileUtils.readFile(DICTIONARY_FILE_PATH_ENCRYPTED);
+            String decryptedBody = PasswordBasedEncryption.decrypt(encryptedBody, pass);
+        } catch (Exception ex) {
+            ConsoleUtils.error("Error while loading signatures. " + ex.getMessage());
+            terminateAppWithErrorCode();
+        }
 
         ConsoleUtils.debug("Scan is fakely completed");
     }

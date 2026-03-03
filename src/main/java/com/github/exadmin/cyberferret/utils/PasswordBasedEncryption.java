@@ -22,12 +22,13 @@ public class PasswordBasedEncryption {
     private static final byte[] IV = {0, 2, 3, 4, 5, 4, 3, 2, 1, 0, 1, 2, 3, 4, 5, 0};
 
     private static final Logger log = LoggerFactory.getLogger(PasswordBasedEncryption.class);
+    private static final byte[] FAKE_SALT = "bsd87918hediu".getBytes();
 
-    public static String decrypt(String strToDecrypt, String password, String salt) {
+    public static String decrypt(String strToDecrypt, String password) {
         try {
             // Create secret key from password
             SecretKeyFactory factory = SecretKeyFactory.getInstance(SECRET_KEY_ALGORITHM);
-            KeySpec spec = new PBEKeySpec(password.toCharArray(), salt.getBytes(StandardCharsets.UTF_8), ITERATION_COUNT, KEY_LENGTH);
+            KeySpec spec = new PBEKeySpec(password.toCharArray(), FAKE_SALT, ITERATION_COUNT, KEY_LENGTH);
             SecretKey tmp = factory.generateSecret(spec);
             SecretKeySpec secretKey = new SecretKeySpec(tmp.getEncoded(), ALGORITHM);
 
