@@ -3,10 +3,8 @@ package com.github.exadmin.cyberferret.async;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.nio.file.Path;
+import java.io.InputStream;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
@@ -16,23 +14,17 @@ import java.util.regex.PatternSyntaxException;
  * Reads all signatures and compiles them
  */
 public class RunnableSigsLoader extends ARunnable {
-    private static final Logger log = LoggerFactory.getLogger(RunnableSigsLoader.class);
+    private static volatile Logger log = null;
 
-    private Path signaturesFile;
     private final AtomicBoolean isReady = new AtomicBoolean(false);
     private Map<String, Pattern> regExpMap;           // map of signatures
     private Map<String, String> allowedSignaturesMap; // effectively the list of exact strings which are allowed when capturing
     private Map<String, List<String>> excludeExtsMap; // signature -> List of file extensions to ignore
     private String dictionaryVersion = "undefined";
+    private InputStream inputStream;
 
-    public void setFileToLoad(Path filePath) {
-        File file = filePath.toFile();
-        if (file.isFile() && file.exists()) {
-            this.signaturesFile = filePath;
-            return;
-        }
-
-        throw new IllegalStateException("Can't find file " + signaturesFile);
+    public void setInputStream(InputStream inputStream) {
+        this.inputStream = inputStream;
     }
 
     public Map<String, Pattern> getRegExpMap() {
@@ -53,6 +45,10 @@ public class RunnableSigsLoader extends ARunnable {
 
     @Override
     public Logger getLog() {
+        if (log == null) {
+            log = LoggerFactory.getLogger(RunnableSigsLoader.class);
+        }
+
         return log;
     }
 
@@ -60,8 +56,10 @@ public class RunnableSigsLoader extends ARunnable {
     public void _run() throws Exception {
         isReady.set(false);
 
+        if (inputStream == null) throw new IllegalStateException("InputStream was not set before running action");
+
         Properties properties = new Properties();
-        try (FileInputStream fis = new FileInputStream(signaturesFile.toFile())) {
+        try (InputStream fis = inputStream) {
             properties.load(fis);
 
             Map<String, Pattern> regExpTmpMap = new HashMap<>();
@@ -96,7 +94,7 @@ public class RunnableSigsLoader extends ARunnable {
                 if (sigId.endsWith("(allowed)")) {
                     sigId = sigId.substring(0, sigId.length() - 9);
 
-                    log.info("Signature with id '{}' = '{}' is marked as allowed.", sigId, expression);
+                    // logInfo("Signature with id '{}' = '{}' is marked as allowed.", sigId, expression);
                     allowedSignaturesTmpMap.put(sigId, expression);
                 } else {
                     compileAndKeep(sigId, expression, regExpTmpMap);
@@ -107,20 +105,20 @@ public class RunnableSigsLoader extends ARunnable {
             allowedSignaturesMap = Collections.unmodifiableMap(allowedSignaturesTmpMap);
             excludeExtsMap = Collections.unmodifiableMap(excludeExtTmpMap);
 
-            log.info("Signatures are loaded successfully from {}. Number of signatures is {}", signaturesFile, regExpMap.size());
-            log.info("Number of allowed signatures is {}", allowedSignaturesMap.size());
-            log.info("Dictionary version is {}", dictionaryVersion);
+            logInfo("Signatures are loaded successfully, number of signatures is {}", regExpMap.size());
+            logInfo("Number of allowed signatures is {}", allowedSignaturesMap.size());
+            logInfo("Dictionary version is {}", dictionaryVersion);
 
             isReady.set(true);
         } catch (IOException ex) {
-            log.error("Error while reading file {}", signaturesFile);
+            logError("Error while reading inoput stream with signatures");
         }
     }
 
     private static final Set<Character> SPECIAL_CHARS =
             Set.of('!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '-', '+', '=', '{', '}', '[', ']', '|', '\\', ':', ';', '"', '\'', '<', '>', ',', '.', '?', '/');
 
-    private static void compileAndKeep(String key, String regExpStr, Map<String, Pattern> map) {
+    private void compileAndKeep(String key, String regExpStr, Map<String, Pattern> map) {
         final String originalKeyName = key; // for logging aims
 
         if (key.endsWith("(regexp)")) {
@@ -144,11 +142,13 @@ public class RunnableSigsLoader extends ARunnable {
         }
 
         try {
-            log.info("Compiling key '{}' effective expressions = '{}'", originalKeyName, regExpStr);
+            // logInfo("Compiling key '{}' effective expressions = '{}'", originalKeyName, regExpStr);
             Pattern regExp = Pattern.compile(regExpStr, Pattern.CASE_INSENSITIVE + Pattern.DOTALL);
             map.put(key, regExp);
         } catch (PatternSyntaxException pse) {
-            log.error("Error while compiling signature with ID = '{}', reg-exp = '{}'", originalKeyName, regExpStr);
+            logError("Error while compiling signature with ID = '{}', reg-exp = '{}'", originalKeyName, regExpStr);
         }
     }
+
+
 }

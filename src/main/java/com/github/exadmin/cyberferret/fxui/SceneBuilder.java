@@ -181,7 +181,7 @@ public class SceneBuilder {
                 if (DICTIONARY.getValue() != null && !DICTIONARY.getValue().isEmpty()) {
                     Path sigsPath = Paths.get(DICTIONARY.getValue());
 
-                    runnableSigsLoader.setFileToLoad(sigsPath);
+                    runnableSigsLoader.setInputStream(FileUtils.toFileInputStream(sigsPath));
                     runnableSigsLoader.startNowInNewThread();
                 } else {
                     log.warn("Signatures file is not selected. Please select it first.");
@@ -535,7 +535,7 @@ public class SceneBuilder {
             Path sigsPath = Paths.get(DICTIONARY_FILE_PATH_DECRYPTED);
             File sigsFile = sigsPath.toFile();
             if (sigsFile.exists() && sigsFile.isFile()) {
-                runnableSigsLoader.setFileToLoad(sigsPath);
+                runnableSigsLoader.setInputStream(FileUtils.toFileInputStream(sigsPath));
                 runnableSigsLoader.startNowInNewThread();
             }
         });

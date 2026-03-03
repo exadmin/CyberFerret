@@ -2,6 +2,7 @@ package com.github.exadmin.cyberferret.utils;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -49,5 +50,13 @@ public class FileUtils {
     public static boolean isPathToDir(Path path) {
         File file = path.toFile();
         return (file.isDirectory());
+    }
+
+    public static InputStream toFileInputStream(Path path) {
+        try {
+            return Files.newInputStream(path);
+        } catch (IOException ex) {
+            throw new IllegalStateException(ex);
+        }
     }
 }

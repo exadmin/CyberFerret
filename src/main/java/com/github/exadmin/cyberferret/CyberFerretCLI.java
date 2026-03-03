@@ -1,10 +1,14 @@
 package com.github.exadmin.cyberferret;
 
 import com.github.exadmin.cyberferret.cli.RunnableCheckOnlineDictionaryProxy;
+import com.github.exadmin.cyberferret.cli.RunnableSigsLoaderProxy;
 import com.github.exadmin.cyberferret.utils.ConsoleUtils;
 import com.github.exadmin.cyberferret.utils.FileUtils;
 import com.github.exadmin.cyberferret.utils.PasswordBasedEncryption;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 
 import static com.github.exadmin.cyberferret.fxui.FxConstants.DICTIONARY_FILE_PATH_ENCRYPTED;
@@ -68,11 +72,21 @@ public class CyberFerretCLI {
         try {
             String encryptedBody = FileUtils.readFile(DICTIONARY_FILE_PATH_ENCRYPTED);
             String decryptedBody = PasswordBasedEncryption.decrypt(encryptedBody, pass);
+
+            RunnableSigsLoaderProxy sigsLoaderProxy = new RunnableSigsLoaderProxy();
+            byte[] bytes = decryptedBody.getBytes(StandardCharsets.UTF_8);
+            InputStream inputStream = new ByteArrayInputStream(bytes);
+            sigsLoaderProxy.setInputStream(inputStream);
+            sigsLoaderProxy.run();
         } catch (Exception ex) {
             ConsoleUtils.error("Error while loading signatures. " + ex.getMessage());
             terminateAppWithErrorCode();
         }
 
+
+
         ConsoleUtils.debug("Scan is fakely completed");
+
+
     }
 }
