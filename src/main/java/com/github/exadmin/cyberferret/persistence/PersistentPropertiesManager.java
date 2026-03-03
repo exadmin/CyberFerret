@@ -1,5 +1,6 @@
 package com.github.exadmin.cyberferret.persistence;
 
+import com.github.exadmin.cyberferret.utils.MiscUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -8,6 +9,8 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+
+import static com.github.exadmin.cyberferret.CyberFerretCLI.SYS_ENV_VAR_PASSWORD;
 
 public class PersistentPropertiesManager {
     private static final Map<String, AbstractPersistentProperty<?>> REG_MAP = new HashMap<>();
@@ -50,6 +53,14 @@ public class PersistentPropertiesManager {
             log.warn("Application context file '{}' was not found. Context will be initiated with default values.", filePath);
         } catch (IOException ex) {
             log.error("Error while loading application context file '{}'", filePath, ex);
+        }
+
+        // if password property is set into system env variable - let's read it
+        if (!MiscUtils.isNotEmpty(PASSWORD.getValue())) {
+            String inMemValue = System.getenv(SYS_ENV_VAR_PASSWORD);
+            if (MiscUtils.isNotEmpty(inMemValue)) {
+                PASSWORD.setValue(inMemValue);
+            }
         }
     }
 

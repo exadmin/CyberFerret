@@ -21,7 +21,7 @@ import static com.github.exadmin.cyberferret.fxui.FxConstants.DICTIONARY_FILE_PA
  * This is CLI version of CyberFerret app with focus on quick initialization and run triggered by pre-commit framework.
  */
 public class CyberFerretCLI {
-    private static final String SYS_ENV_VAR_PASSWORD = "CYBER_FERRET_PASSWORD";
+    public static final String SYS_ENV_VAR_PASSWORD = "CYBER_FERRET_PASSWORD";
 
     private static void printUsage() {
         String errMsg = """
@@ -110,7 +110,7 @@ public class CyberFerretCLI {
             }
         }
 
-        ConsoleUtils.debug("Scan is completed. Errors are " + (runnableScanner.isAnySignatureFound() ? "found \uD83D\uDC4E" : "not found \uD83D\uDC4D"));
+        ConsoleUtils.debug("Scan is completed. Errors are " + (runnableScanner.isAnySignatureFound() ? "found (-). Breaking commit!" : "not found (+)"));
 
         if (runnableScanner.isAnySignatureFound()) {
             terminateAppWithErrorCode();
