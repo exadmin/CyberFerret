@@ -42,8 +42,7 @@ public class PasswordBasedEncryption {
             byte[] decryptedBytes = cipher.doFinal(decodedBytes);
             return new String(decryptedBytes, StandardCharsets.UTF_8);
         } catch (Exception ex) {
-            log.error("Error while decryption", ex);
+            throw new IllegalStateException("Error while decryption", ex);
         }
-        return null;
     }
 }
