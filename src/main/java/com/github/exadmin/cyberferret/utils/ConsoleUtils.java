@@ -56,7 +56,6 @@ public class ConsoleUtils {
             result.append(msg, lastIndex, msg.length());
         }
 
-        // Если остались неиспользованные binds, добавляем их в конец через пробел
         if (bindIndex < binds.length) {
             // probably rest binds are exception-instances
             for (int i = bindIndex; i < binds.length; i++) {

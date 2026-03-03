@@ -110,7 +110,7 @@ public class CyberFerretCLI {
             }
         }
 
-        ConsoleUtils.debug("Scan is completed. Errors are " + (runnableScanner.isAnySignatureFound() ? "found!" : "not found."));
+        ConsoleUtils.debug("Scan is completed. Errors are " + (runnableScanner.isAnySignatureFound() ? "found \uD83D\uDC4E" : "not found \uD83D\uDC4D"));
 
         if (runnableScanner.isAnySignatureFound()) {
             terminateAppWithErrorCode();
