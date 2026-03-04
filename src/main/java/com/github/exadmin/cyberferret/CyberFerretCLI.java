@@ -22,7 +22,7 @@ public class CyberFerretCLI {
 
     private static void printUsage() {
         String errMsg = """
-                    Usage: CyberFerretCLI $PATH_TO_REPOSITORY_TO_SCAN"
+                    Usage: CyberFerretCLI $PATH_TO_REPOSITORY_TO_SCAN $LIST_OF_FILES(optional)"
                     Also, not that '{}' System Environment variable must be set
                     """;
         errMsg = ConsoleUtils.format(errMsg, SYS_ENV_VAR_PASSWORD);
@@ -44,8 +44,8 @@ public class CyberFerretCLI {
 
 
         // Step1: Check required program arguments are set
-        if (args.length < 1) {
-            ConsoleUtils.error("Missing command line argument");
+        if (args.length < 1 || args.length > 2) {
+            ConsoleUtils.error("Unexpected number of command line arguments");
             printUsage();
             terminateAppWithErrorCode();
         }
@@ -63,6 +63,17 @@ public class CyberFerretCLI {
             ConsoleUtils.error("Missing environment variable {}", SYS_ENV_VAR_PASSWORD);
             printUsage();
             terminateAppWithErrorCode();
+        }
+
+        if (args.length > 1) {
+            String stagedFiles = args[1];
+            if (stagedFiles.startsWith("\"") && stagedFiles.endsWith("\"")) {
+                stagedFiles = stagedFiles.substring(1, stagedFiles.length() - 1);
+            }
+            String[] fileNames = stagedFiles.split(",");
+            for (String next : fileNames) {
+                System.out.println("Staged file = " + next);
+            }
         }
 
         // Step3: Ensure actual dictionary is downloaded
