@@ -11,8 +11,11 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.time.Duration;
 
 public class RunnableCheckOnlineDictionary extends ARunnable {
+    private static final Duration DICTIONARY_REFRESH_INTERVAL = Duration.ofHours(4);
 
     public RunnableCheckOnlineDictionary(boolean isCLIMode) {
         super(isCLIMode);
@@ -27,10 +30,27 @@ public class RunnableCheckOnlineDictionary extends ARunnable {
         File savePath = new File(prefix + FxConstants.DICTIONARY_FILE_PATH_ENCRYPTED);
 
         if (savePath.exists()) {
+            if (isCLIMode()) {
+                try {
+                    long lastModifiedMillis = Files.getLastModifiedTime(savePath.toPath()).toMillis();
+                    long ageMillis = System.currentTimeMillis() - lastModifiedMillis;
+                    if (ageMillis >= 0 && ageMillis < DICTIONARY_REFRESH_INTERVAL.toMillis()) {
+                        logInfo("Skipping dictionary download, local cache is still fresh: {}", savePath.getAbsolutePath());
+                        return;
+                    }
+                } catch (IOException ex) {
+                    logError("Failed to read change date for {}", savePath.getAbsolutePath(), ex);
+                }
+            }
+
             boolean wasDeleted = savePath.delete();
             if (wasDeleted) logInfo("Previous version of downloaded copy was cleaned by path {}", savePath);
         }
 
+        downloadOnlineDictionary(savePath);
+    }
+
+    protected void downloadOnlineDictionary(File savePath) {
         logInfo("Downloading latest online dictionary");
         try (CloseableHttpClient client = HttpClients.createDefault()) {
             HttpGet request = new HttpGet(FxConstants.CYBER_FERRET_ONLINE_DICTIONARY_URL);
