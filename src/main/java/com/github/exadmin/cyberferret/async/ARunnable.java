@@ -5,6 +5,12 @@ import com.github.exadmin.cyberferret.logging.HandyLogging;
 public abstract class ARunnable extends HandyLogging implements Runnable {
     protected Runnable beforeStart;
     protected Runnable afterFinished;
+    // when running Scanner in CLI mode - no specific data-store to be rendered in FxUI is collected (amy be additional light operations are executed)
+    private final boolean isCLIMode;
+
+    public ARunnable(boolean isCLIMode) {
+        this.isCLIMode = isCLIMode;
+    }
 
     public void setBeforeStart(Runnable beforeStart) {
         this.beforeStart = beforeStart;
@@ -30,5 +36,9 @@ public abstract class ARunnable extends HandyLogging implements Runnable {
         Thread thread = new Thread(this);
         thread.setDaemon(true);
         thread.start();
+    }
+
+    public boolean isCLIMode() {
+        return isCLIMode;
     }
 }

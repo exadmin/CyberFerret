@@ -1,6 +1,7 @@
 package com.github.exadmin.cyberferret.async;
 
 import com.github.exadmin.cyberferret.fxui.FxConstants;
+import com.github.exadmin.cyberferret.utils.GitUtils;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -12,11 +13,18 @@ import java.io.IOException;
 import java.io.InputStream;
 
 public class RunnableCheckOnlineDictionary extends ARunnable {
+
+    public RunnableCheckOnlineDictionary(boolean isCLIMode) {
+        super(isCLIMode);
+    }
+
     @Override
     protected void _run() throws Exception {
         logInfo("Checking if new online dictionary exists");
 
-        File savePath = new File(FxConstants.DICTIONARY_FILE_PATH_ENCRYPTED);
+        String prefix = "";
+        if (isCLIMode()) prefix = GitUtils.getGlobalConfigValue("core.hooksPath");
+        File savePath = new File(prefix + FxConstants.DICTIONARY_FILE_PATH_ENCRYPTED);
 
         if (savePath.exists()) {
             boolean wasDeleted = savePath.delete();

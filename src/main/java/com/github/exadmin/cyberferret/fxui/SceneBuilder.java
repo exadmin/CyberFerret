@@ -57,8 +57,8 @@ public class SceneBuilder {
     public SceneBuilder(Stage primaryStage) {
         this.primaryStage = primaryStage;
         this.foundItemsContainer = new FoundItemsContainer();
-        this.runnableSigsLoader = new RunnableSigsLoader();
-        this.runnableScanner = new RunnableScanner();
+        this.runnableSigsLoader = new RunnableSigsLoader(false);
+        this.runnableScanner = new RunnableScanner(false);
     }
 
     public Scene buildScene() {
@@ -499,7 +499,7 @@ public class SceneBuilder {
         // tfSalt.textProperty().setValue(SALT.getValue());
 
         btnCheckUpdates.setOnAction((event) -> {
-            ARunnable runnable = new RunnableCheckOnlineDictionary();
+            ARunnable runnable = new RunnableCheckOnlineDictionary(false);
             runnable.setBeforeStart(() -> btnCheckUpdates.setDisable(true));
             runnable.setAfterFinished(() -> btnCheckUpdates.setDisable(false));
             runnable.startNowInNewThread();

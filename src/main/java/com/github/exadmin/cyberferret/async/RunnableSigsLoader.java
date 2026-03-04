@@ -21,6 +21,10 @@ public class RunnableSigsLoader extends ARunnable {
     private String dictionaryVersion = "undefined";
     private InputStream inputStream;
 
+    public RunnableSigsLoader(boolean isCLIMode) {
+        super(isCLIMode);
+    }
+
     public void setInputStream(InputStream inputStream) {
         this.inputStream = inputStream;
     }

@@ -36,16 +36,10 @@ public class RunnableScanner extends ARunnable {
     private FxCallback fxCallback = (type, message) -> {
         logInfo(message);
     };
-
-    // when running Scanner in CLI mode - no specific data-store to be rendered in FxUI is collected (amy be additional light operations are executed)
-    private boolean isCLIMode = false;
     private boolean isAnySignatureFound = false;
 
-    public RunnableScanner() {
-    }
-
-    public void setCLIMode(boolean CLIMode) {
-        isCLIMode = CLIMode;
+    public RunnableScanner(boolean isCLIMode) {
+        super(isCLIMode);
     }
 
     public void setSignaturesMap(Map<String, Pattern> sigMap) {
@@ -170,7 +164,7 @@ public class RunnableScanner extends ARunnable {
                     int currentCount = processedItemsCount.incrementAndGet();
                     int progressRate =  currentCount * 100 / totalItemsCount;
                     if (progressRate > nextRate.get()) {
-                        if (isCLIMode) logInfo("Scan rate is {}%", progressRate);
+                        if (isCLIMode()) logInfo("Scan rate is {}%", progressRate);
 
                         nextRate.addAndGet(10); // todo: non thread safe - refactor later
                     }
@@ -259,7 +253,7 @@ public class RunnableScanner extends ARunnable {
                     logError("Signature '{}' is found in {}:{}", newItem.getFoundString(), filePath, newItem.getLineNumber());
                 }
 
-                if (!isCLIMode) foundItemsContainer.addItem(newItem);
+                if (!isCLIMode()) foundItemsContainer.addItem(newItem);
             }
         }
     }

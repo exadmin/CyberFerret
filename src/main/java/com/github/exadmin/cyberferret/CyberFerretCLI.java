@@ -5,10 +5,7 @@ import com.github.exadmin.cyberferret.async.RunnableScanner;
 import com.github.exadmin.cyberferret.async.RunnableSigsLoader;
 import com.github.exadmin.cyberferret.model.FoundItemsContainer;
 import com.github.exadmin.cyberferret.model.FoundPathItem;
-import com.github.exadmin.cyberferret.utils.ConsoleUtils;
-import com.github.exadmin.cyberferret.utils.FileUtils;
-import com.github.exadmin.cyberferret.utils.MiscUtils;
-import com.github.exadmin.cyberferret.utils.PasswordBasedEncryption;
+import com.github.exadmin.cyberferret.utils.*;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -69,15 +66,16 @@ public class CyberFerretCLI {
         }
 
         // Step3: Ensure actual dictionary is downloaded
-        RunnableCheckOnlineDictionary dictionaryDownloader = new RunnableCheckOnlineDictionary();
+        RunnableCheckOnlineDictionary dictionaryDownloader = new RunnableCheckOnlineDictionary(true);
         dictionaryDownloader.setPrintToConsole(true);
         dictionaryDownloader.run();
 
         // Step5:
-        RunnableSigsLoader sigsLoader = new RunnableSigsLoader();
+        RunnableSigsLoader sigsLoader = new RunnableSigsLoader(true);
         sigsLoader.setPrintToConsole(true);
         try {
-            String encryptedBody = FileUtils.readFile(DICTIONARY_FILE_PATH_ENCRYPTED);
+            String prefix = GitUtils.getGlobalConfigValue("core.hooksPath");
+            String encryptedBody = FileUtils.readFile(prefix + DICTIONARY_FILE_PATH_ENCRYPTED);
             String decryptedBody = PasswordBasedEncryption.decrypt(encryptedBody, pass);
 
             byte[] bytes = decryptedBody.getBytes(StandardCharsets.UTF_8);
@@ -92,8 +90,7 @@ public class CyberFerretCLI {
         // Step6: Run scanner
         FoundItemsContainer foundItemsContainer = new FoundItemsContainer();
 
-        RunnableScanner runnableScanner = new RunnableScanner();
-        runnableScanner.setCLIMode(true);
+        RunnableScanner runnableScanner = new RunnableScanner(true);
         runnableScanner.setPrintToConsole(true);
         runnableScanner.setFoundItemsContainer(foundItemsContainer);
         runnableScanner.setSignaturesMap(sigsLoader.getSignaturesMap());
