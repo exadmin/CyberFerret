@@ -12,6 +12,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Duration;
 
 public class RunnableCheckOnlineDictionary extends ARunnable {
@@ -27,7 +29,9 @@ public class RunnableCheckOnlineDictionary extends ARunnable {
 
         String prefix = "";
         if (isCLIMode()) prefix = GitUtils.getGlobalConfigValue("core.hooksPath");
-        File savePath = new File(prefix + FxConstants.DICTIONARY_FILE_PATH_ENCRYPTED);
+        if (prefix == null) prefix = "";
+        Path path = Paths.get(prefix, FxConstants.DICTIONARY_FILE_PATH_ENCRYPTED);
+        File savePath = path.toFile();
 
         if (savePath.exists()) {
             if (isCLIMode()) {

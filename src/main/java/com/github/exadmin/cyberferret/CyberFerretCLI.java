@@ -3,6 +3,7 @@ package com.github.exadmin.cyberferret;
 import com.github.exadmin.cyberferret.async.RunnableCheckOnlineDictionary;
 import com.github.exadmin.cyberferret.async.RunnableScanner;
 import com.github.exadmin.cyberferret.async.RunnableSigsLoader;
+import com.github.exadmin.cyberferret.fxui.FxConstants;
 import com.github.exadmin.cyberferret.model.FoundItemsContainer;
 import com.github.exadmin.cyberferret.model.FoundPathItem;
 import com.github.exadmin.cyberferret.utils.*;
@@ -11,8 +12,7 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-
-import static com.github.exadmin.cyberferret.fxui.FxConstants.DICTIONARY_FILE_PATH_ENCRYPTED;
+import java.nio.file.Paths;
 
 /**
  * This is CLI version of CyberFerret app with focus on quick initialization and run triggered by pre-commit framework.
@@ -86,7 +86,12 @@ public class CyberFerretCLI {
         sigsLoader.setPrintToConsole(true);
         try {
             String prefix = GitUtils.getGlobalConfigValue("core.hooksPath");
-            String encryptedBody = FileUtils.readFile(prefix + DICTIONARY_FILE_PATH_ENCRYPTED);
+            if (MiscUtils.isEmpty(prefix)) {
+                ConsoleUtils.error("Global hooksPath is not empty");
+                terminateAppWithErrorCode();
+            }
+            Path path = Paths.get(prefix, FxConstants.DICTIONARY_FILE_PATH_ENCRYPTED);
+            String encryptedBody = FileUtils.readFile(path);
             String decryptedBody = PasswordBasedEncryption.decrypt(encryptedBody, pass);
 
             byte[] bytes = decryptedBody.getBytes(StandardCharsets.UTF_8);
