@@ -28,9 +28,7 @@ public class RunnableScanner extends ARunnable {
     private Map<String, Pattern> sigMap = null;
     private Map<String, String> allowedSignaturesMap = null;
     private Map<String, List<String>> excludeExtMap = null;
-    private FxCallback fxCallback = (type, message) -> {
-        logInfo(message);
-    };
+    private FxCallback fxCallback = (type, message) -> logInfo(message);
     private boolean isAnySignatureFound = false;
     private List<Path> stagedFiles;
 

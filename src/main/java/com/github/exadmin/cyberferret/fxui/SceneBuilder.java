@@ -87,8 +87,6 @@ public class SceneBuilder {
         TitledPane tpConsole = createLogsPane();
 
         VBox vBox = new VBox();
-        // Pane wrapper = new StackPane(vBox);
-        // tab.setContent(wrapper);
         tab.setContent(vBox);
 
         Accordion accordion = new Accordion();
@@ -465,8 +463,6 @@ public class SceneBuilder {
         Button btnCheckUpdates = new Button("Download");
         Button btnDecrypt = new Button("Decrypt");
         Button btnApply = new Button("Load decrypted");
-        // Label lbSalt = new Label("Salt");
-        // TextField tfSalt = new PasswordField();
 
         HBox hBox = new HBox();
         hBox.setSpacing(8);
@@ -477,8 +473,6 @@ public class SceneBuilder {
 
         hBox.getChildren().add(lbPassw);
         hBox.getChildren().add(tfPassword);
-        // hBox.getChildren().add(lbSalt);
-        // hBox.getChildren().add(tfSalt);
         hBox.getChildren().add(new Separator(Orientation.VERTICAL));
 
         hBox.getChildren().add(btnDecrypt);
@@ -494,9 +488,6 @@ public class SceneBuilder {
 
         tfPassword.textProperty().addListener((bean, oldValue, newValue) -> PASSWORD.setValue(newValue));
         tfPassword.textProperty().setValue(PASSWORD.getValue());
-
-        // tfSalt.textProperty().addListener((bean, oldValue, newValue) -> SALT.setValue(newValue));
-        // tfSalt.textProperty().setValue(SALT.getValue());
 
         btnCheckUpdates.setOnAction((event) -> {
             ARunnable runnable = new RunnableCheckOnlineDictionary(false);
@@ -521,7 +512,7 @@ public class SceneBuilder {
                     String encryptedBody = FileUtils.readFile(DICTIONARY_FILE_PATH_ENCRYPTED);
                     String decryptedBody = PasswordBasedEncryption.decrypt(encryptedBody, tfPassword.getText());
 
-                    if (decryptedBody != null && !decryptedBody.isEmpty()) {
+                    if (!decryptedBody.isEmpty()) {
                         FileUtils.saveToFile(decryptedBody, FxConstants.DICTIONARY_FILE_PATH_DECRYPTED);
                         log.info("New decrypted dictionary cache-file was successfully created at {}", fileDecrypted);
                     }

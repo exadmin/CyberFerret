@@ -59,8 +59,7 @@ public class ConsoleUtils {
         if (bindIndex < binds.length) {
             // probably rest binds are exception-instances
             for (int i = bindIndex; i < binds.length; i++) {
-                if (binds[i] instanceof Throwable) {
-                    Throwable throwable = (Throwable) binds[i];
+                if (binds[i] instanceof Throwable throwable) {
                     throwable.printStackTrace();
                     return result.toString();
                 }

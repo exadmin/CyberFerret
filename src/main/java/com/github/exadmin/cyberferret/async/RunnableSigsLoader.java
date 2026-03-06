@@ -1,8 +1,5 @@
 package com.github.exadmin.cyberferret.async;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
@@ -46,7 +43,7 @@ public class RunnableSigsLoader extends ARunnable {
     }
 
     @Override
-    public void _run() throws Exception {
+    public void _run() {
         isReady.set(false);
 
         if (inputStream == null) throw new IllegalStateException("InputStream was not set before running action");

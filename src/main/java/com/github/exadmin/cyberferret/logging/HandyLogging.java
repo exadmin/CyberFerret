@@ -13,7 +13,7 @@ public class HandyLogging {
 
     protected volatile Logger logger;
     protected boolean printToConsole = false;
-    protected int loggingLevel = LEVEL_INFO;
+    protected final int loggingLevel = LEVEL_INFO;
 
     public void setPrintToConsole(boolean printToConsole) {
         this.printToConsole = printToConsole;

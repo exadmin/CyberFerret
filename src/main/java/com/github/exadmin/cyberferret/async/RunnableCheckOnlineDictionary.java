@@ -24,7 +24,7 @@ public class RunnableCheckOnlineDictionary extends ARunnable {
     }
 
     @Override
-    protected void _run() throws Exception {
+    protected void _run() {
         logInfo("Checking if new online dictionary exists");
 
         String prefix = "";
