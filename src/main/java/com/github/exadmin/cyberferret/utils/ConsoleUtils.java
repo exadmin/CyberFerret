@@ -1,6 +1,13 @@
 package com.github.exadmin.cyberferret.utils;
 
 public class ConsoleUtils {
+    private static final int LEVEL_ERROR = 0;
+    private static final int LEVEL_WARN  = 1;
+    private static final int LEVEL_INFO  = 2;
+    private static final int LEVEL_DEBUG = 3;
+    private static final int LEVEL_TRACE = 4;
+
+    private static final int CUR_LOG_LEVEL = LEVEL_INFO;
 
     private static void print(String prefix, String msg, Object... binds) {
         String result = prefix + format(msg, binds);
@@ -8,23 +15,28 @@ public class ConsoleUtils {
     }
 
     public static void warn(String msg, Object ... binds) {
-        print("[WARN ]", msg, binds);
+        if (CUR_LOG_LEVEL == LEVEL_WARN)
+            print("[WARN ]", msg, binds);
     }
 
     public static void trace(String msg, Object ... binds) {
-        print("[TRACE]", msg, binds);
+        if (CUR_LOG_LEVEL >= LEVEL_TRACE)
+            print("[TRACE]", msg, binds);
     }
 
     public static void info(String msg, Object ... binds) {
-        print("[INFO ]", msg, binds);
+        if (CUR_LOG_LEVEL >= LEVEL_INFO)
+            print("[INFO ]", msg, binds);
     }
 
     public static void debug(String msg, Object ... binds) {
-        print("[DEBUG]", msg, binds);
+        if (CUR_LOG_LEVEL >= LEVEL_DEBUG)
+            print("[DEBUG]", msg, binds);
     }
 
     public static void error(String msg, Object ... binds) {
-        print("[ERROR]", msg, binds);
+        if (CUR_LOG_LEVEL >= LEVEL_ERROR)
+            print("[ERROR]", msg, binds);
     }
 
     public static String format(String msg, Object... binds) {

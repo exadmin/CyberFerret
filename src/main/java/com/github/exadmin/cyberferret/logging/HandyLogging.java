@@ -5,15 +5,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class HandyLogging {
-    private static final int LEVEL_ERROR = 0;
-    private static final int LEVEL_WARN  = 1;
-    private static final int LEVEL_INFO  = 2;
-    private static final int LEVEL_DEBUG = 3;
-    private static final int LEVEL_TRACE = 4;
+
 
     protected volatile Logger logger;
     protected boolean printToConsole = false;
-    protected final int loggingLevel = LEVEL_INFO;
+
 
     public void setPrintToConsole(boolean printToConsole) {
         this.printToConsole = printToConsole;
@@ -22,7 +18,7 @@ public class HandyLogging {
     public void logError(String msg, Object... binds) {
         if (getLogger() != null) {
             getLogger().error(msg, binds);
-        } else if (loggingLevel >= LEVEL_ERROR) {
+        } else {
             ConsoleUtils.error(msg, binds);
         }
     }
@@ -30,7 +26,7 @@ public class HandyLogging {
     public void logWarn(String msg, Object... binds) {
         if (getLogger() != null) {
             getLogger().warn(msg, binds);
-        } else if (loggingLevel >= LEVEL_WARN) {
+        } else {
             ConsoleUtils.warn(msg, binds);
         }
     }
@@ -38,7 +34,7 @@ public class HandyLogging {
     public void logInfo(String msg, Object... binds) {
         if (getLogger() != null) {
             getLogger().info(msg, binds);
-        } else if (loggingLevel >= LEVEL_INFO) {
+        } else {
             ConsoleUtils.info(msg, binds);
         }
     }
@@ -46,7 +42,7 @@ public class HandyLogging {
     public void logDebug(String msg, Object... binds) {
         if (getLogger() != null) {
             getLogger().debug(msg, binds);
-        } else if (loggingLevel >= LEVEL_DEBUG) {
+        } else {
             ConsoleUtils.debug(msg, binds);
         }
     }
@@ -54,7 +50,7 @@ public class HandyLogging {
     public void logTrace(String msg, Object... binds) {
         if (getLogger() != null) {
             getLogger().trace(msg, binds);
-        } else if (loggingLevel >= LEVEL_TRACE) {
+        } else {
             ConsoleUtils.trace(msg, binds);
         }
     }
