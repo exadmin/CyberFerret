@@ -9,17 +9,12 @@ import com.github.exadmin.cyberferret.model.FoundPathItem;
 import com.github.exadmin.cyberferret.model.ItemType;
 import com.github.exadmin.cyberferret.utils.FileUtils;
 import com.github.exadmin.cyberferret.utils.MiscUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
@@ -37,6 +32,7 @@ public class RunnableScanner extends ARunnable {
         logInfo(message);
     };
     private boolean isAnySignatureFound = false;
+    private List<Path> stagedFiles;
 
     public RunnableScanner(boolean isCLIMode) {
         super(isCLIMode);
@@ -64,6 +60,10 @@ public class RunnableScanner extends ARunnable {
 
     public void setFxCallback(FxCallback fxCallback) {
         this.fxCallback = fxCallback;
+    }
+
+    public void setStagedFiles(List<Path> stagedFiles) {
+        this.stagedFiles = new ArrayList<>(stagedFiles);
     }
 
     @Override
@@ -98,6 +98,7 @@ public class RunnableScanner extends ARunnable {
         }
 
         final ExcludeFileModel excludeFileModel = tmpExcludeFileModel;
+        final boolean checkOnlySelectedFiles = isCLIMode() && (stagedFiles != null && !stagedFiles.isEmpty());
 
         // load files first
         Deque<FoundPathItem> parentsDeque = new ArrayDeque<>();
@@ -122,6 +123,11 @@ public class RunnableScanner extends ARunnable {
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)  {
                 logTrace("Visiting file {}", file);
+
+                // In CLI mode we check only staged files provided via program arguments
+                if (isCLIMode() && checkOnlySelectedFiles && !stagedFiles.contains(file)) {
+                    return FileVisitResult.CONTINUE;
+                }
 
                 FoundPathItem parent = parentsDeque.peekLast();
                 FoundPathItem foundPathItem = new FoundPathItem(file, ItemType.FILE, parent);

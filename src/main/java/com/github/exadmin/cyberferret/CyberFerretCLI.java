@@ -13,6 +13,8 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * This is CLI version of CyberFerret app with focus on quick initialization and run triggered by pre-commit framework.
@@ -65,14 +67,18 @@ public class CyberFerretCLI {
             terminateAppWithErrorCode();
         }
 
+        List<Path> stagedFiles = new ArrayList<>();
         if (args.length > 1) {
-            String stagedFiles = args[1];
-            if (stagedFiles.startsWith("\"") && stagedFiles.endsWith("\"")) {
-                stagedFiles = stagedFiles.substring(1, stagedFiles.length() - 1);
+            String stagedFilesStr = args[1];
+            if (stagedFilesStr.startsWith("\"") && stagedFilesStr.endsWith("\"")) {
+                stagedFilesStr = stagedFilesStr.substring(1, stagedFilesStr.length() - 1);
             }
-            String[] fileNames = stagedFiles.split(",");
+            String[] fileNames = stagedFilesStr.split(",");
+            String rootPathStr = rootPathToScan.toString();
             for (String next : fileNames) {
-                System.out.println("Staged file = " + next);
+                Path path = Paths.get(rootPathStr, next);
+                stagedFiles.add(path);
+                ConsoleUtils.trace("Staged file = " + path);
             }
         }
 
@@ -113,6 +119,7 @@ public class CyberFerretCLI {
         runnableScanner.setAllowedSignaturesMap(sigsLoader.getAllowedSignaturesMap());
         runnableScanner.setExcludeExtMap(sigsLoader.getExcludeExtsMap());
         runnableScanner.setDirToScan(rootPathToScan.toString());
+        runnableScanner.setStagedFiles(stagedFiles);
         runnableScanner.run();
 
         // Step7: Analyze & Print results
@@ -123,7 +130,7 @@ public class CyberFerretCLI {
             }
         }
 
-        ConsoleUtils.debug("Scan is completed. Errors are " + (runnableScanner.isAnySignatureFound() ? "found (-). Breaking commit!" : "not found (+)"));
+        ConsoleUtils.debug("Scan is completed. Errors are " + (runnableScanner.isAnySignatureFound() ? "found (-). Breaking commit!" : "NOT found (+)"));
 
         if (runnableScanner.isAnySignatureFound()) {
             terminateAppWithErrorCode();
