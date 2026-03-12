@@ -9,8 +9,10 @@ import com.github.exadmin.cyberferret.model.FoundPathItem;
 import com.github.exadmin.cyberferret.utils.*;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -24,8 +26,8 @@ public class CyberFerretCLI {
 
     private static void printUsage() {
         String errMsg = """
-                    Usage: CyberFerretCLI $PATH_TO_REPOSITORY_TO_SCAN $LIST_OF_FILES(optional)"
-                    Also, not that '{}' System Environment variable must be set
+                    Usage: CyberFerretCLI $PATH_TO_REPOSITORY_TO_SCAN $PATH_TO_FILE_WITH_LIST_OF_FILES(optional)"
+                    Also, note that '{}' System Environment variable must be set
                     """;
         errMsg = ConsoleUtils.format(errMsg, SYS_ENV_VAR_PASSWORD);
         System.out.println(errMsg);
@@ -69,16 +71,17 @@ public class CyberFerretCLI {
 
         List<Path> stagedFiles = new ArrayList<>();
         if (args.length > 1) {
-            String stagedFilesStr = args[1];
-            if (stagedFilesStr.startsWith("\"") && stagedFilesStr.endsWith("\"")) {
-                stagedFilesStr = stagedFilesStr.substring(1, stagedFilesStr.length() - 1);
+            Path stagedFilesListPath = Path.of(args[1]);
+            if (!Files.isRegularFile(stagedFilesListPath)) {
+                ConsoleUtils.error("Invalid path to file list {}", stagedFilesListPath);
+                printUsage();
+                terminateAppWithErrorCode();
             }
-            String[] fileNames = stagedFilesStr.split(",");
-            String rootPathStr = rootPathToScan.toString();
-            for (String next : fileNames) {
-                Path path = Paths.get(rootPathStr, next);
-                stagedFiles.add(path);
-                ConsoleUtils.trace("Staged file = " + path);
+            try {
+                stagedFiles = loadStagedFiles(rootPathToScan, stagedFilesListPath);
+            } catch (IOException ex) {
+                ConsoleUtils.error("Error while reading staged files list. " + ex.getMessage());
+                terminateAppWithErrorCode();
             }
         }
 
@@ -135,5 +138,27 @@ public class CyberFerretCLI {
         if (runnableScanner.isAnySignatureFound()) {
             terminateAppWithErrorCode();
         }
+    }
+
+    static List<Path> loadStagedFiles(Path rootPathToScan, Path stagedFilesListPath) throws IOException {
+        List<Path> stagedFiles = new ArrayList<>();
+        List<String> lines = Files.readAllLines(stagedFilesListPath, StandardCharsets.UTF_8);
+        for (String line : lines) {
+            if (line == null) continue;
+            String value = line.trim();
+            if (value.isEmpty()) continue;
+            if (value.startsWith("\"") && value.endsWith("\"") && value.length() > 1) {
+                value = value.substring(1, value.length() - 1).trim();
+            }
+            if (value.isEmpty()) continue;
+            Path path = Paths.get(value);
+            if (!path.isAbsolute()) {
+                path = rootPathToScan.resolve(path);
+            }
+            path = path.normalize();
+            stagedFiles.add(path);
+            ConsoleUtils.trace("Staged file = " + path);
+        }
+        return stagedFiles;
     }
 }
