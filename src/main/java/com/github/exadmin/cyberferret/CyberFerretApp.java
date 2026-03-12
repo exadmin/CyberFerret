@@ -8,17 +8,15 @@ import javafx.stage.Stage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Paths;
-import java.util.Properties;
 
 import static com.github.exadmin.cyberferret.persistence.PersistentPropertiesManager.*;
+import static com.github.exadmin.cyberferret.utils.MiscUtils.loadApplicationVersion;
 
 public class CyberFerretApp extends Application {
     private static final Logger log = LoggerFactory.getLogger(CyberFerretApp.class);
     private static final String APPLICATION_PERSISTENT_CONTEXT_FILENAME = "app.properties";
-    private static final String VERSION_PROPERTIES_RESOURCE = "/version.properties";
+
 
     @Override
     public void start(Stage stage) {
@@ -53,19 +51,5 @@ public class CyberFerretApp extends Application {
         launch();
     }
 
-    private String loadApplicationVersion() {
-        Properties props = new Properties();
-        try (InputStream input = getClass().getResourceAsStream(VERSION_PROPERTIES_RESOURCE)) {
-            if (input == null) {
-                log.error("Resource {} is not found on the classpath", VERSION_PROPERTIES_RESOURCE);
-                return "UNDEFINED";
-            }
-            props.load(input);
-            return props.getProperty("application.version");
-        } catch (IOException ex) {
-            log.error("Error while loading {}", VERSION_PROPERTIES_RESOURCE, ex);
-        }
 
-        return "UNDEFINED";
-    }
 }

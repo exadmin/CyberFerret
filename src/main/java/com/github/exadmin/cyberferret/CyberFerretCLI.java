@@ -26,9 +26,9 @@ public class CyberFerretCLI {
 
     private static void printUsage() {
         String errMsg = """
-                    Usage: CyberFerretCLI $PATH_TO_REPOSITORY_TO_SCAN $PATH_TO_FILE_WITH_LIST_OF_FILES(optional)"
-                    Also, note that '{}' System Environment variable must be set
-                    """;
+                Usage: CyberFerretCLI $PATH_TO_REPOSITORY_TO_SCAN $PATH_TO_FILE_WITH_LIST_OF_FILES(optional)"
+                Also, note that '{}' System Environment variable must be set
+                """;
         errMsg = ConsoleUtils.format(errMsg, SYS_ENV_VAR_PASSWORD);
         System.out.println(errMsg);
     }
@@ -46,9 +46,11 @@ public class CyberFerretCLI {
         // Step5: Decrypt dictionary
         // Step6: Run check over the git-repository
 
+        String appVer = MiscUtils.loadApplicationVersion();
+        ConsoleUtils.info("CyberFerretCLI version: " + appVer);
 
         // Step1: Check required program arguments are set
-        if (args.length < 1 || args.length > 2) {
+        if (args.length != 2) {
             ConsoleUtils.error("Unexpected number of command line arguments");
             printUsage();
             terminateAppWithErrorCode();
@@ -70,20 +72,25 @@ public class CyberFerretCLI {
         }
 
         List<Path> stagedFiles = new ArrayList<>();
-        if (args.length > 1) {
-            Path stagedFilesListPath = Path.of(args[1]);
-            if (!Files.isRegularFile(stagedFilesListPath)) {
-                ConsoleUtils.error("Invalid path to file list {}", stagedFilesListPath);
-                printUsage();
-                terminateAppWithErrorCode();
-            }
-            try {
-                stagedFiles = loadStagedFiles(rootPathToScan, stagedFilesListPath);
-            } catch (IOException ex) {
-                ConsoleUtils.error("Error while reading staged files list. " + ex.getMessage());
-                terminateAppWithErrorCode();
-            }
+
+        Path stagedFilesListPath = Path.of(args[1]);
+        if (!Files.isRegularFile(stagedFilesListPath)) {
+            ConsoleUtils.error("Invalid path to file list {}", stagedFilesListPath);
+            printUsage();
+            terminateAppWithErrorCode();
         }
+        try {
+            stagedFiles = loadStagedFiles(rootPathToScan, stagedFilesListPath);
+        } catch (IOException ex) {
+            ConsoleUtils.error("Error while reading staged files list. " + ex.getMessage());
+            terminateAppWithErrorCode();
+        }
+
+        if (stagedFiles.isEmpty()) {
+            ConsoleUtils.error("No staged files found in the file {}", stagedFilesListPath);
+            terminateAppWithErrorCode();
+        }
+
 
         // Step3: Ensure actual dictionary is downloaded
         RunnableCheckOnlineDictionary dictionaryDownloader = new RunnableCheckOnlineDictionary(true);
@@ -133,7 +140,7 @@ public class CyberFerretCLI {
             }
         }
 
-        ConsoleUtils.debug("Scan is completed. Errors are " + (runnableScanner.isAnySignatureFound() ? "found (-). Breaking commit!" : "NOT found (+)"));
+        ConsoleUtils.info("Scan is completed. Errors are " + (runnableScanner.isAnySignatureFound() ? "found :( Breaking commit!" : "not found :)"));
 
         if (runnableScanner.isAnySignatureFound()) {
             terminateAppWithErrorCode();
