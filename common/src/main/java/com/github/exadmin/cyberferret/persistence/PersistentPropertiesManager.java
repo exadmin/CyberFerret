@@ -1,8 +1,7 @@
 package com.github.exadmin.cyberferret.persistence;
 
+import com.github.exadmin.cyberferret.logging.LoggerProxy;
 import com.github.exadmin.cyberferret.utils.MiscUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.nio.file.Path;
@@ -24,7 +23,7 @@ public class PersistentPropertiesManager {
     public static final AbstractPersistentProperty<String>  PASSWORD            = new AppStringProperty("dictionary.password", "", REG_MAP);
     // public static final AbstractPersistentProperty<String>  SALT                = new AppStringProperty("dictionary.salt", "", REG_MAP);
 
-    private static final Logger log = LoggerFactory.getLogger(PersistentPropertiesManager.class);
+    private static final LoggerProxy LOG = new LoggerProxy(PersistentPropertiesManager.class);
     private final Path filePath;
 
     public PersistentPropertiesManager(Path persistenFilePath) {
@@ -42,7 +41,7 @@ public class PersistentPropertiesManager {
                 String strKey = key.toString();
                 AbstractPersistentProperty<?> pProperty = REG_MAP.get(strKey);
                 if (pProperty == null) {
-                    log.warn("Unknown key in the persistent properties list '{}'", strKey);
+                    LOG.warn("Unknown key in the persistent properties list '{}'", strKey);
                     continue;
                 }
 
@@ -50,9 +49,9 @@ public class PersistentPropertiesManager {
                 pProperty.parseValue(strValue);
             }
         } catch (FileNotFoundException fnfe) {
-            log.warn("Application context file '{}' was not found. Context will be initiated with default values.", filePath);
+            LOG.warn("Application context file '{}' was not found. Context will be initiated with default values.", filePath);
         } catch (IOException ex) {
-            log.error("Error while loading application context file '{}'", filePath, ex);
+            LOG.error("Error while loading application context file '{}'", filePath, ex);
         }
 
         // if password property is set into system env variable - let's read it
@@ -73,7 +72,7 @@ public class PersistentPropertiesManager {
         try (OutputStream os = new FileOutputStream(filePath.toFile())) {
             properties.store(os, "");
         } catch (IOException ex) {
-            log.error("Error while saving application context properties into the file '{}'", filePath, ex);
+            LOG.error("Error while saving application context properties into the file '{}'", filePath, ex);
         }
     }
 }

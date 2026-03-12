@@ -5,8 +5,7 @@ import com.drew.imaging.ImageProcessingException;
 import com.drew.metadata.Directory;
 import com.drew.metadata.Metadata;
 import com.drew.metadata.Tag;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.github.exadmin.cyberferret.logging.LoggerProxy;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -17,7 +16,7 @@ import java.util.Locale;
  * Extracts EXIF, IPTC, XMP, and other metadata that can be searched with regex patterns.
  */
 public class ImgUtils {
-    private static final Logger LOGGER = LoggerFactory.getLogger(ImgUtils.class);
+    private static final LoggerProxy LOG = new LoggerProxy(ImgUtils.class);
 
     /**
      * Extracts all metadata from an image file and returns it as formatted text.
@@ -28,7 +27,7 @@ public class ImgUtils {
      */
     public static String extractMetadataAsText(Path imagePath) {
         if (imagePath == null) {
-            LOGGER.warn("Image path is null");
+            LOG.warn("Image path is null");
             return "";
         }
 
@@ -36,13 +35,13 @@ public class ImgUtils {
             Metadata metadata = ImageMetadataReader.readMetadata(imagePath.toFile());
             return formatMetadataAsText(metadata);
         } catch (ImageProcessingException e) {
-            LOGGER.debug("Failed to process image metadata for {}: {}", imagePath, e.getMessage());
+            LOG.debug("Failed to process image metadata for {}: {}", imagePath, e.getMessage());
             return "";
         } catch (IOException e) {
-            LOGGER.debug("Failed to read image file {}: {}", imagePath, e.getMessage());
+            LOG.debug("Failed to read image file {}: {}", imagePath, e.getMessage());
             return "";
         } catch (Exception e) {
-            LOGGER.warn("Unexpected error extracting metadata from {}: {}", imagePath, e.getMessage());
+            LOG.warn("Unexpected error extracting metadata from {}: {}", imagePath, e.getMessage());
             return "";
         }
     }
@@ -86,7 +85,7 @@ public class ImgUtils {
             // Add any errors encountered
             if (directory.hasErrors()) {
                 for (String error : directory.getErrors()) {
-                    LOGGER.debug("Metadata directory '{}' error: {}", directoryName, error);
+                    LOG.debug("Metadata directory '{}' error: {}", directoryName, error);
                 }
             }
         }

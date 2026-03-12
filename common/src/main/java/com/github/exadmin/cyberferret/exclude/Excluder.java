@@ -6,17 +6,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.github.exadmin.cyberferret.model.FoundPathItem;
 import com.github.exadmin.cyberferret.model.ItemType;
+import com.github.exadmin.cyberferret.logging.LoggerProxy;
 import com.github.exadmin.cyberferret.utils.FileUtils;
 import com.github.exadmin.cyberferret.utils.MiscUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public class Excluder {
-    private static final Logger log = LoggerFactory.getLogger(Excluder.class);
+    private static final LoggerProxy LOG = new LoggerProxy(Excluder.class);
     public static final String PERSISTENCE_FOLDER = ".qubership";
     public static final String EXCLUDES_SHORT_FILE_NAME = "grand-report.json";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -41,7 +40,7 @@ public class Excluder {
         Path excludesFile = Paths.get(rootDir.toString(), Excluder.PERSISTENCE_FOLDER, EXCLUDES_SHORT_FILE_NAME);
         ExcludeFileModel excludeFileModel = getModelToWorkWith(excludesFile);
         if (excludeFileModel == null) {
-            log.error("Can't load existed exclusion configuration, please check logs and fix errors. If can't - then delete erroneous file.");
+            LOG.error("Can't load existed exclusion configuration, please check logs and fix errors. If can't - then delete erroneous file.");
             return null;
         }
 
@@ -68,7 +67,7 @@ public class Excluder {
             text = text + "\n";
             FileUtils.saveToFile(text, excludesFile.toString());
         } catch (Exception ex) {
-            log.error("Error while saving exclusions into the file {}", excludesFile, ex);
+            LOG.error("Error while saving exclusions into the file {}", excludesFile, ex);
         }
 
         return excludesFile;
@@ -91,7 +90,7 @@ public class Excluder {
                 return new ExcludeFileModel();
             }
         } catch (Exception ex) {
-            log.error("Error happened during configuration loading from {}", filePath, ex);
+            LOG.error("Error happened during configuration loading from {}", filePath, ex);
         }
 
         return null;

@@ -1,6 +1,7 @@
 package com.github.exadmin.cyberferret;
 
 import com.github.exadmin.cyberferret.fxui.SceneBuilder;
+import com.github.exadmin.cyberferret.logging.LoggerProxy;
 import com.github.exadmin.cyberferret.persistence.PersistentPropertiesManager;
 import javafx.application.Application;
 import javafx.scene.Scene;
@@ -48,6 +49,7 @@ public class CyberFerretApp extends Application {
     }
 
     public static void main(String[] args) {
+        LoggerProxy.injectLoggerFactory(LoggerFactory.getILoggerFactory());
         launch();
     }
 

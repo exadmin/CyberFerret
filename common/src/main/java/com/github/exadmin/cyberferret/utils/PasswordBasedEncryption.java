@@ -1,8 +1,5 @@
 package com.github.exadmin.cyberferret.utils;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
@@ -21,7 +18,6 @@ public class PasswordBasedEncryption {
     private static final int KEY_LENGTH = 256;
     private static final byte[] IV = {0, 2, 3, 4, 5, 4, 3, 2, 1, 0, 1, 2, 3, 4, 5, 0};
 
-    private static final Logger log = LoggerFactory.getLogger(PasswordBasedEncryption.class);
     private static final byte[] FAKE_SALT = "bsd87918hediu".getBytes();
 
     public static String decrypt(String strToDecrypt, String password) {
