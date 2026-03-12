@@ -3,7 +3,11 @@ package com.github.exadmin.cyberferret.persistence;
 import com.github.exadmin.cyberferret.logging.LoggerProxy;
 import com.github.exadmin.cyberferret.utils.MiscUtils;
 
-import java.io.*;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
@@ -13,15 +17,14 @@ import static com.github.exadmin.cyberferret.AppConstants.SYS_ENV_VAR_PASSWORD;
 
 public class PersistentPropertiesManager {
     private static final Map<String, AbstractPersistentProperty<?>> REG_MAP = new HashMap<>();
-    public static final AbstractPersistentProperty<Number>  STAGE_WIDTH         = new AppDoubleProperty("stage.width", 640d, REG_MAP);
-    public static final AbstractPersistentProperty<Number>  STAGE_HEIGHT        = new AppDoubleProperty("stage.height", 480d, REG_MAP);
-    public static final AbstractPersistentProperty<Number>  STAGE_POSX          = new AppDoubleProperty("stage.posX", 0d, REG_MAP);
-    public static final AbstractPersistentProperty<Number>  STAGE_POSY          = new AppDoubleProperty("stage.posY", 0d, REG_MAP);
-    public static final AbstractPersistentProperty<String>  DICTIONARY          = new AppStringProperty("dictionary", "", REG_MAP);
-    public static final AbstractPersistentProperty<String>  DIR_TO_SCAN         = new AppStringProperty("dir-to-scan", "", REG_MAP);
-    public static final AbstractPersistentProperty<Boolean> STAGE_IS_MAXIMIZED  = new AppBooleanProperty("stage.maximized", false, REG_MAP);
-    public static final AbstractPersistentProperty<String>  PASSWORD            = new AppStringProperty("dictionary.password", "", REG_MAP);
-    // public static final AbstractPersistentProperty<String>  SALT                = new AppStringProperty("dictionary.salt", "", REG_MAP);
+    public static final AbstractPersistentProperty<Number> STAGE_WIDTH = new AppDoubleProperty("stage.width", 640d, REG_MAP);
+    public static final AbstractPersistentProperty<Number> STAGE_HEIGHT = new AppDoubleProperty("stage.height", 480d, REG_MAP);
+    public static final AbstractPersistentProperty<Number> STAGE_POSX = new AppDoubleProperty("stage.posX", 0d, REG_MAP);
+    public static final AbstractPersistentProperty<Number> STAGE_POSY = new AppDoubleProperty("stage.posY", 0d, REG_MAP);
+    public static final AbstractPersistentProperty<String> DICTIONARY = new AppStringProperty("dictionary", "", REG_MAP);
+    public static final AbstractPersistentProperty<String> DIR_TO_SCAN = new AppStringProperty("dir-to-scan", "", REG_MAP);
+    public static final AbstractPersistentProperty<Boolean> STAGE_IS_MAXIMIZED = new AppBooleanProperty("stage.maximized", false, REG_MAP);
+    public static final AbstractPersistentProperty<String> PASSWORD = new AppStringProperty("dictionary.password", "", REG_MAP);
 
     private static final LoggerProxy LOG = new LoggerProxy(PersistentPropertiesManager.class);
     private final Path filePath;
@@ -54,7 +57,6 @@ public class PersistentPropertiesManager {
             LOG.error("Error while loading application context file '{}'", filePath, ex);
         }
 
-        // if password property is set into system env variable - let's read it
         if (!MiscUtils.isNotEmpty(PASSWORD.getValue())) {
             String inMemValue = System.getenv(SYS_ENV_VAR_PASSWORD);
             if (MiscUtils.isNotEmpty(inMemValue)) {

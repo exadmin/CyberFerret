@@ -8,7 +8,7 @@ public abstract class AbstractPersistentProperty<T> {
     private final String keyName;
     protected final T defaultValue;
 
-    AbstractPersistentProperty(String keyName, T defaultValue , Map<String, AbstractPersistentProperty<?>> regMap) {
+    AbstractPersistentProperty(String keyName, T defaultValue, Map<String, AbstractPersistentProperty<?>> regMap) {
         this.keyName = keyName;
         this.defaultValue = defaultValue;
 

@@ -1,28 +1,27 @@
 package com.github.exadmin.cyberferret.model;
 
-import javafx.beans.property.*;
-
 import java.nio.file.Path;
 
 public class FoundPathItem {
     private final Path filePath;
     private final FoundPathItem parent;
-    private final StringProperty visualName = new SimpleStringProperty();
-    private final ObjectProperty<ItemType> type = new SimpleObjectProperty<>();
-    private final LongProperty lineNumber = new SimpleLongProperty();
-    private final StringProperty displayText = new SimpleStringProperty(); // this text will be shown in the report including all chars around
-    private final StringProperty foundString = new SimpleStringProperty(); // this is exactly found signature
-    private final BooleanProperty ignored = new SimpleBooleanProperty();
-    private final BooleanProperty allowedValue = new SimpleBooleanProperty();
+    private String visualName;
+    private ItemType type;
+    private long lineNumber;
+    private String displayText; // this text will be shown in the report including all chars around
+    private String foundString; // this is exactly found signature
+    private boolean ignored;
+    private boolean allowedValue;
 
     public FoundPathItem(Path filePath, ItemType type, FoundPathItem parent) {
         this.parent = parent;
         this.filePath = filePath;
-        this.visualName.setValue(filePath.getFileName().toString());
-        this.type.setValue(type);
-        this.lineNumber.setValue(0);
-        this.displayText.setValue("");
-        this.allowedValue.setValue(false);
+        this.visualName = filePath.getFileName() == null ? filePath.toString() : filePath.getFileName().toString();
+        this.type = type;
+        this.lineNumber = 0;
+        this.displayText = "";
+        this.foundString = "";
+        this.allowedValue = false;
     }
 
     public FoundPathItem getParent() {
@@ -34,75 +33,51 @@ public class FoundPathItem {
     }
 
     public String getVisualName() {
-        return visualName.get();
-    }
-
-    public StringProperty visualNameProperty() {
         return visualName;
     }
 
     public void setVisualName(String visualName) {
-        this.visualName.set(visualName);
+        this.visualName = visualName;
     }
 
     public ItemType getType() {
-        return type.get();
-    }
-
-    public ObjectProperty<ItemType> typeProperty() {
         return type;
     }
 
     public void setType(ItemType type) {
-        this.type.set(type);
+        this.type = type;
     }
 
     public long getLineNumber() {
-        return lineNumber.get();
-    }
-
-    public LongProperty lineNumberProperty() {
         return lineNumber;
     }
 
     public void setLineNumber(long lineNumber) {
-        this.lineNumber.set(lineNumber);
+        this.lineNumber = lineNumber;
     }
 
     public String getDisplayText() {
-        return displayText.get();
-    }
-
-    public StringProperty displayTextProperty() {
         return displayText;
     }
 
     public void setDisplayText(String displayText) {
-        this.displayText.set(displayText);
+        this.displayText = displayText;
     }
 
     public boolean isIgnored() {
-        return ignored.get();
-    }
-
-    public BooleanProperty ignoredProperty() {
         return ignored;
     }
 
     public void setIgnored(boolean ignored) {
-        this.ignored.set(ignored);
+        this.ignored = ignored;
     }
 
     public String getFoundString() {
-        return foundString.get();
-    }
-
-    public StringProperty foundStringProperty() {
         return foundString;
     }
 
     public void setFoundString(String foundString) {
-        this.foundString.set(foundString);
+        this.foundString = foundString;
     }
 
     @Override
@@ -111,16 +86,10 @@ public class FoundPathItem {
     }
 
     public boolean isAllowedValue() {
-        return allowedValue.get();
-    }
-
-    public BooleanProperty allowedValueProperty() {
         return allowedValue;
     }
 
     public void setAllowedValue(boolean newValue) {
-        this.allowedValue.setValue(newValue);
+        this.allowedValue = newValue;
     }
-
-
 }

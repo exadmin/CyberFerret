@@ -11,6 +11,8 @@ import com.github.exadmin.cyberferret.model.FoundPathItem;
 import com.github.exadmin.cyberferret.model.ItemType;
 import com.github.exadmin.cyberferret.utils.FileUtils;
 import com.github.exadmin.cyberferret.utils.PasswordBasedEncryption;
+import javafx.beans.property.ReadOnlyObjectWrapper;
+import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.event.ActionEvent;
@@ -25,7 +27,6 @@ import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.CheckBoxTreeTableCell;
-import javafx.scene.control.cell.TreeItemPropertyValueFactory;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.BorderPane;
@@ -268,12 +269,12 @@ public class SceneBuilder {
         TreeTableColumn<FoundPathItem, String> colDisplayText = new TreeTableColumn<>("Found Text");
         TreeTableColumn<FoundPathItem, String> colExactSignature = new TreeTableColumn<>("Exact Signature");
 
-        colVisualName.setCellValueFactory(new TreeItemPropertyValueFactory<>("visualName"));
-        colIgnore.setCellValueFactory(new TreeItemPropertyValueFactory<>("ignored"));
-        colAllowed.setCellValueFactory(new TreeItemPropertyValueFactory<>("allowedValue"));
-        colLine.setCellValueFactory(new TreeItemPropertyValueFactory<>("lineNumber"));
-        colDisplayText.setCellValueFactory(new TreeItemPropertyValueFactory<>("displayText"));
-        colExactSignature.setCellValueFactory(new TreeItemPropertyValueFactory<>("foundString"));
+        colVisualName.setCellValueFactory(param -> new ReadOnlyStringWrapper(param.getValue().getValue().getVisualName()));
+        colIgnore.setCellValueFactory(param -> new ReadOnlyObjectWrapper<>(param.getValue().getValue().isIgnored()));
+        colAllowed.setCellValueFactory(param -> new ReadOnlyObjectWrapper<>(param.getValue().getValue().isAllowedValue()));
+        colLine.setCellValueFactory(param -> new ReadOnlyObjectWrapper<>(param.getValue().getValue().getLineNumber()));
+        colDisplayText.setCellValueFactory(param -> new ReadOnlyStringWrapper(param.getValue().getValue().getDisplayText()));
+        colExactSignature.setCellValueFactory(param -> new ReadOnlyStringWrapper(param.getValue().getValue().getFoundString()));
 
         colIgnore.setCellFactory(p -> {
             CheckBoxTreeTableCell<FoundPathItem, Boolean> cell = new CheckBoxTreeTableCell<>();
@@ -321,7 +322,7 @@ public class SceneBuilder {
                         setStyle("-fx-background-color: #5cb574;");
                     } else if (!isSelected && foundPathItem.isAllowedValue()) {
                         setStyle("-fx-background-color: #c1f7cf;");
-                    } else if (!isSelected && !foundPathItem.foundStringProperty().isEmpty().get()) {
+                    } else if (!isSelected && foundPathItem.getFoundString() != null && !foundPathItem.getFoundString().isEmpty()) {
                         setStyle("-fx-background-color: #f2d0d0;");
                     } else {
                         setStyle("");
