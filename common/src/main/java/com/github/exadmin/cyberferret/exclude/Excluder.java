@@ -1,12 +1,8 @@
 package com.github.exadmin.cyberferret.exclude;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.core.StreamReadFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
+import com.github.exadmin.cyberferret.logging.LoggerProxy;
 import com.github.exadmin.cyberferret.model.FoundPathItem;
 import com.github.exadmin.cyberferret.model.ItemType;
-import com.github.exadmin.cyberferret.logging.LoggerProxy;
 import com.github.exadmin.cyberferret.utils.FileUtils;
 import com.github.exadmin.cyberferret.utils.MiscUtils;
 
@@ -18,7 +14,6 @@ public class Excluder {
     private static final LoggerProxy LOG = new LoggerProxy(Excluder.class);
     public static final String PERSISTENCE_FOLDER = ".qubership";
     public static final String EXCLUDES_SHORT_FILE_NAME = "grand-report.json";
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     public static final String HASH_IGNORE_CONTENT = "00000000";
 
     /**
@@ -59,12 +54,7 @@ public class Excluder {
         excludesFile.toFile().getParentFile().mkdirs();
         try {
             excludeFileModel.doSortBeforeSaving();
-
-            OBJECT_MAPPER.setSerializationInclusion(JsonInclude.Include.NON_NULL);
-            OBJECT_MAPPER.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-            OBJECT_MAPPER.enable(SerializationFeature.INDENT_OUTPUT);
-            String text = OBJECT_MAPPER.writeValueAsString(excludeFileModel);
-            text = text + "\n";
+            String text = ExcludeFileJsonCodec.toJson(excludeFileModel) + "\n";
             FileUtils.saveToFile(text, excludesFile.toString());
         } catch (Exception ex) {
             LOG.error("Error while saving exclusions into the file {}", excludesFile, ex);
@@ -84,8 +74,7 @@ public class Excluder {
         try {
             File file = filePath.toFile();
             if (file.exists() && file.isFile()) {
-                OBJECT_MAPPER.enable(StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION.mappedFeature());
-                return OBJECT_MAPPER.readValue(filePath.toFile(), ExcludeFileModel.class);
+                return ExcludeFileJsonCodec.fromJson(FileUtils.readFile(filePath));
             } else {
                 return new ExcludeFileModel();
             }

@@ -1,14 +1,10 @@
 package com.github.exadmin.cyberferret.exclude;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.util.Objects;
 
 public class ExcludeSignatureItem {
-    @JsonProperty("t-hash")
     private String textHash;
 
-    @JsonProperty("f-hash")
     private String fileHash;
 
     public ExcludeSignatureItem() {

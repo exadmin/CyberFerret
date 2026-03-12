@@ -1,12 +1,9 @@
 package com.github.exadmin.cyberferret.exclude;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.util.ArrayList;
 import java.util.List;
 
 public class ExcludeFileModel {
-    @JsonProperty("exclusions")
     private List<ExcludeSignatureItem> signatures;
 
     public ExcludeFileModel() {

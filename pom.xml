@@ -19,7 +19,6 @@
         <javafx.maven.plugin.version>0.0.8</javafx.maven.plugin.version>
         <slf4j.version>2.0.16</slf4j.version>
         <log4j.version>2.22.0</log4j.version>
-        <jackson.version>2.17.2</jackson.version>
         <httpclient.version>4.5.14</httpclient.version>
         <metadata.extractor.version>2.19.0</metadata.extractor.version>
         <controlsfx.version>11.2.1</controlsfx.version>
@@ -87,11 +86,6 @@
                 <groupId>org.apache.logging.log4j</groupId>
                 <artifactId>log4j-core</artifactId>
                 <version>${log4j.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.fasterxml.jackson.core</groupId>
-                <artifactId>jackson-databind</artifactId>
-                <version>${jackson.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.httpcomponents</groupId>

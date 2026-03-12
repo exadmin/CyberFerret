@@ -1,8 +1,6 @@
 package com.github.exadmin.cyberferret.async;
-
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.exadmin.cyberferret.exclude.ExcludeFileModel;
+import com.github.exadmin.cyberferret.exclude.ExcludeFileJsonCodec;
 import com.github.exadmin.cyberferret.exclude.Excluder;
 import com.github.exadmin.cyberferret.model.FoundItemsContainer;
 import com.github.exadmin.cyberferret.model.FoundPathItem;
@@ -21,8 +19,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class RunnableScanner extends ARunnable {
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-
     private String dirToScan;
     private FoundItemsContainer foundItemsContainer;
     private Map<String, Pattern> sigMap = null;
@@ -88,8 +84,7 @@ public class RunnableScanner extends ARunnable {
         try {
             File exFile = exFilePath.toFile();
             if (exFile.exists() && exFile.isFile()) {
-                OBJECT_MAPPER.enable(JsonParser.Feature.INCLUDE_SOURCE_IN_LOCATION);
-                tmpExcludeFileModel = OBJECT_MAPPER.readValue(exFile, ExcludeFileModel.class); // load new exclusion context
+                tmpExcludeFileModel = ExcludeFileJsonCodec.fromJson(FileUtils.readFile(exFilePath));
             }
         } catch (Exception ex) {
             logError("Error while loading exclusions configuration from '{}' file", exFilePath, ex);
