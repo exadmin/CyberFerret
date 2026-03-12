@@ -12,7 +12,7 @@ Scans any files for different pre-defined signatures (supporting RegExp and othe
 * Install JavaFX (24 or newer) from https://gluonhq.com/products/javafx/
 * Install Apache Maven (ver 3.9.x) from https://maven.apache.org/download.cgi
 * Setup M2_HOME, JAVA_HOME and PATH (add maven and java) System Variables as recommended for Java and Maven usage
-* Optional = setup JAVAFX_PATH System Variable for handy run of the application using predefined shell-scripts in ./src/shell/*.* 
+* Optional = setup JAVAFX_PATH System Variable for handy run of the application using predefined shell-scripts in ./fx/src/shell/*.* 
 
 ## Compilation & build
 Navigate to the CyberFerret folder where ./pom.xml presents and run:
@@ -20,21 +20,35 @@ Navigate to the CyberFerret folder where ./pom.xml presents and run:
 mvn clean package assembly:single
 ```
 
-Find built ".\target\cyberferret.jar" file which is 17+MiB of size. Use it as a single pack of whole application. 
+After build you will get module-specific JARs under `fx/target` and `cli/target`.
+
+Build only CLI:
+```shell
+mvn -pl cli -am clean package assembly:single
+```
+
+Build only JavaFX:
+```shell
+mvn -pl fx -am clean package assembly:single
+```
+
+After modularization, build artifacts are:
+* JavaFX app: `.\fx\target\cyberferret-fx.jar`
+* CLI app: `.\cli\target\cyberferret-cli.jar`
 
 # How to run - Windows version
 Replace "${PATH_TO_JAVA_FX_SDK}" with correct path to JavaFx SDK
 ```shell
-java --module-path "${PATH_TO_JAVA_FX_SDK}\lib" --add-modules javafx.controls,javafx.web,javafx.graphics --enable-native-access=javafx.graphics -jar cyberferret.jar
+java --module-path "${PATH_TO_JAVA_FX_SDK}\lib" --add-modules javafx.controls,javafx.web,javafx.graphics --enable-native-access=javafx.graphics -jar .\fx\target\cyberferret-fx.jar
 ```
-or use ./src/shell/run-app.cmd file
+or use ./fx/src/shell/run-app.cmd file
 
 # How to run - Linux/macOS version
 Replace "$path_to_javafx_sdk" with correct path to JavaFx SDK
 ```shell
-java --module-path $path_to_javafx_sdk/lib --add-modules javafx.controls,javafx.web,javafx.graphics --enable-native-access=javafx.graphics -jar ./target/cyber-ferret.jar
+java --module-path $path_to_javafx_sdk/lib --add-modules javafx.controls,javafx.web,javafx.graphics --enable-native-access=javafx.graphics -jar ./fx/target/cyberferret-fx.jar
 ```
-or use ./src/shell/run-app.sh file
+or use ./fx/src/shell/run-app.sh file
 
 # How to run - in IntelliJ IDEA
 ## prerequisites
