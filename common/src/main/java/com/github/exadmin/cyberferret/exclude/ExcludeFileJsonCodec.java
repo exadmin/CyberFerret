@@ -1,5 +1,7 @@
 package com.github.exadmin.cyberferret.exclude;
 
+import com.github.exadmin.cyberferret.utils.ConsoleUtils;
+
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -11,12 +13,15 @@ public final class ExcludeFileJsonCodec {
     }
 
     public static ExcludeFileModel fromJson(String json) {
+        ExcludeFileModel model = new ExcludeFileModel();
+
         Matcher rootMatcher = ROOT_PATTERN.matcher(json);
         if (!rootMatcher.matches()) {
-            throw new IllegalArgumentException("Invalid exclusions json format");
+            ConsoleUtils.warn("Failed to parse json configuration with exclusions. Fall back into empty configuration.");
+            return model;
         }
 
-        ExcludeFileModel model = new ExcludeFileModel();
+
         String body = rootMatcher.group(1).trim();
         if (body.isEmpty()) {
             return model;

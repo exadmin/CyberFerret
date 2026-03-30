@@ -15,7 +15,7 @@ public class ConsoleUtils {
     }
 
     public static void warn(String msg, Object ... binds) {
-        if (CUR_LOG_LEVEL == LEVEL_WARN)
+        if (CUR_LOG_LEVEL >= LEVEL_WARN)
             print("[WARN ]", msg, binds);
     }
 

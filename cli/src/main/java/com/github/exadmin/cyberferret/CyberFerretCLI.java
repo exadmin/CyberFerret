@@ -21,22 +21,30 @@ import java.util.List;
  * This is CLI version of CyberFerret app with focus on quick initialization and run triggered by pre-commit framework.
  */
 public class CyberFerretCLI {
-    public static final String SYS_ENV_VAR_PASSWORD = AppConstants.SYS_ENV_VAR_PASSWORD;
-
     private static void printUsage() {
         String errMsg = """
-                Usage: CyberFerretCLI $PATH_TO_REPOSITORY_TO_SCAN $PATH_TO_FILE_WITH_LIST_OF_FILES(optional)"
+                Usage: CyberFerretCLI $PATH_TO_REPOSITORY_TO_SCAN $PATH_TO_FILE_WITH_LIST_OF_FILES"
                 Also, note that '{}' System Environment variable must be set
                 """;
-        errMsg = ConsoleUtils.format(errMsg, SYS_ENV_VAR_PASSWORD);
+        errMsg = ConsoleUtils.format(errMsg, AppConstants.SYS_ENV_VAR_PASSWORD);
         System.out.println(errMsg);
     }
 
-    private static void terminateAppWithErrorCode() {
+    private static void terminateAppWithErrorCode(boolean printUsage) {
+        if (printUsage) printUsage();
         System.exit(1);
     }
 
     public static void main(String[] args) {
+        try {
+            _main(args);
+        } catch (Throwable t) {
+            System.out.println("Error: " + t.getMessage());
+            System.exit(1);
+        }
+    }
+
+    private static void _main(String[] args) {
         // Overall logic
         // Step1: Check required program arguments are set
         // Step2: Check required system env variables are set
@@ -51,59 +59,61 @@ public class CyberFerretCLI {
         // Step1: Check required program arguments are set
         if (args.length != 2) {
             ConsoleUtils.error("Unexpected number of command line arguments");
-            printUsage();
-            terminateAppWithErrorCode();
+            terminateAppWithErrorCode(true);
         }
 
-        final Path rootPathToScan = Path.of(args[0]);
-        if (!FileUtils.isPathToDir(rootPathToScan)) {
-            ConsoleUtils.error("Invalid path to scan directory {}", rootPathToScan);
-            printUsage();
-            terminateAppWithErrorCode();
+        final Path repoPathToScan = Path.of(args[0]);
+        if (!FileUtils.isPathToDir(repoPathToScan)) {
+            ConsoleUtils.error("Invalid path to scan directory {}", repoPathToScan);
+            terminateAppWithErrorCode(true);
         }
 
-        // Step2: Check required system env variables are set
-        final String pass = System.getenv(SYS_ENV_VAR_PASSWORD);
+        // Step2: Check required system env variable is set
+        final String pass = System.getenv(AppConstants.SYS_ENV_VAR_PASSWORD);
         if (pass == null || pass.isEmpty()) {
-            ConsoleUtils.error("Missing environment variable {}", SYS_ENV_VAR_PASSWORD);
-            printUsage();
-            terminateAppWithErrorCode();
+            ConsoleUtils.error("Environment variable '{}' must be set", AppConstants.SYS_ENV_VAR_PASSWORD);
+            terminateAppWithErrorCode(true);
+        }
+
+        // Check that file with staged files is set
+        Path stagedFilesListPath = Path.of(args[1]);
+        if (!Files.isRegularFile(stagedFilesListPath)) {
+            ConsoleUtils.error("Invalid path to files list {}", stagedFilesListPath);
+            terminateAppWithErrorCode(true);
         }
 
         List<Path> stagedFiles = new ArrayList<>();
-
-        Path stagedFilesListPath = Path.of(args[1]);
-        if (!Files.isRegularFile(stagedFilesListPath)) {
-            ConsoleUtils.error("Invalid path to file list {}", stagedFilesListPath);
-            printUsage();
-            terminateAppWithErrorCode();
-        }
+        boolean isErrorFound = false;
         try {
-            stagedFiles = loadStagedFiles(rootPathToScan, stagedFilesListPath);
+            stagedFiles = loadStagedFiles(repoPathToScan, stagedFilesListPath);
+
+            if (stagedFiles.isEmpty()) {
+                ConsoleUtils.error("No staged files found in the file {}", stagedFilesListPath);
+                isErrorFound = true;
+            }
         } catch (IOException ex) {
             ConsoleUtils.error("Error while reading staged files list. " + ex.getMessage());
-            terminateAppWithErrorCode();
+            isErrorFound = true;
+        } finally {
+            if (isErrorFound) {
+                terminateAppWithErrorCode(false);
+            }
         }
-
-        if (stagedFiles.isEmpty()) {
-            ConsoleUtils.error("No staged files found in the file {}", stagedFilesListPath);
-            terminateAppWithErrorCode();
-        }
-
 
         // Step3: Ensure actual dictionary is downloaded
+        // The dictionarry will be downloaded into Git Global Hook path (only once per 4 hours)
         RunnableCheckOnlineDictionary dictionaryDownloader = new RunnableCheckOnlineDictionary(true);
         dictionaryDownloader.setPrintToConsole(true);
         dictionaryDownloader.run();
 
-        // Step5:
+        // Step5: Run checks
         RunnableSigsLoader sigsLoader = new RunnableSigsLoader(true);
         sigsLoader.setPrintToConsole(true);
         try {
             String prefix = GitUtils.getGlobalConfigValue("core.hooksPath");
             if (MiscUtils.isEmpty(prefix)) {
                 ConsoleUtils.error("Global hooksPath is not empty");
-                terminateAppWithErrorCode();
+                terminateAppWithErrorCode(false);
             }
             Path path = Paths.get(prefix, AppConstants.DICTIONARY_FILE_PATH_ENCRYPTED);
             String encryptedBody = FileUtils.readFile(path);
@@ -115,7 +125,7 @@ public class CyberFerretCLI {
             sigsLoader.run();
         } catch (Exception ex) {
             ConsoleUtils.error("Error while loading signatures. " + ex.getMessage());
-            terminateAppWithErrorCode();
+            terminateAppWithErrorCode(false);
         }
 
         // Step6: Run scanner
@@ -127,12 +137,11 @@ public class CyberFerretCLI {
         runnableScanner.setSignaturesMap(sigsLoader.getSignaturesMap());
         runnableScanner.setAllowedSignaturesMap(sigsLoader.getAllowedSignaturesMap());
         runnableScanner.setExcludeExtMap(sigsLoader.getExcludeExtsMap());
-        runnableScanner.setDirToScan(rootPathToScan.toString());
+        runnableScanner.setDirToScan(repoPathToScan.toString());
         runnableScanner.setStagedFiles(stagedFiles);
         runnableScanner.run();
 
         // Step7: Analyze & Print results
-
         for (FoundPathItem foundPathItem : foundItemsContainer.getFoundItemsCopy()) {
             if (MiscUtils.isNotEmpty(foundPathItem.getFoundString())) {
                 ConsoleUtils.warn("'{}' is found in file '{}' at line {}", foundPathItem.getFoundString(), foundPathItem.getFilePath(), foundPathItem.getLineNumber());
@@ -142,7 +151,7 @@ public class CyberFerretCLI {
         ConsoleUtils.info("Scan is completed. Errors are " + (runnableScanner.isAnySignatureFound() ? "found :( Breaking commit!" : "not found :)"));
 
         if (runnableScanner.isAnySignatureFound()) {
-            terminateAppWithErrorCode();
+            terminateAppWithErrorCode(false);
         }
     }
 

@@ -2,9 +2,7 @@ package com.github.exadmin.cyberferret.exclude;
 
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class ExcludeFileModelTests {
     @Test
@@ -63,7 +61,8 @@ public class ExcludeFileModelTests {
     }
 
     @Test
-    public void codecShouldRejectInvalidJson() {
-        assertThrows(IllegalArgumentException.class, () -> ExcludeFileJsonCodec.fromJson("{\"unexpected\":true}"));
+    public void codecShouldReturnEmptyModelForInvalidJson() {
+        ExcludeFileModel model = ExcludeFileJsonCodec.fromJson("{\"unexpected\":true}");
+        assertNotNull(model);
     }
 }
