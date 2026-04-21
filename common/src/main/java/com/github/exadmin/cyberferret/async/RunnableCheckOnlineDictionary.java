@@ -28,7 +28,7 @@ public class RunnableCheckOnlineDictionary extends ARunnable {
         logInfo("Checking if new online dictionary exists");
 
         String prefix = "";
-        if (isCLIMode()) prefix = GitUtils.getGlobalConfigValue("core.hooksPath");
+        if (isCLIMode()) prefix = GitUtils.getConfigValue("core.hooksPath");
         if (prefix == null) prefix = "";
         Path path = Paths.get(prefix, AppConstants.DICTIONARY_FILE_PATH_ENCRYPTED);
         File savePath = path.toFile();
