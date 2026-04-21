@@ -89,7 +89,7 @@ public class CyberFerretCLI {
 
             if (stagedFiles.isEmpty()) {
                 ConsoleUtils.error("No staged files found in the file {}", stagedFilesListPath);
-                isErrorFound = true;
+                return; // do not return error - this may happen when "Commit & Push with Amend is used with no changes in files"
             }
         } catch (IOException ex) {
             ConsoleUtils.error("Error while reading staged files list. " + ex.getMessage());
