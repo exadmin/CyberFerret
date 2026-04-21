@@ -11,7 +11,7 @@
     <name>cyber-ferret</name>
 
     <properties>
-        <revision>1.2.3</revision>
+        <revision>1.2.4</revision>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <junit.version>5.10.2</junit.version>
         <maven.compiler.source>21</maven.compiler.source>

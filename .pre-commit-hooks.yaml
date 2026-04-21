@@ -1,0 +1,10 @@
+- id: cyberferret
+  name: CyberFerret Sensitive Data Scanner
+  description: >
+    Downloads the latest CyberFerret CLI jar from https://github.com/exadmin/CyberFerret
+    and scans staged files for sensitive data (passwords, tokens, keys, etc.).
+    Requires CYBER_FERRET_PASSWORD environment variable to be set.
+  language: script
+  entry: hooks/cyberferret.sh
+  pass_filenames: false
+  stages: [pre-commit]

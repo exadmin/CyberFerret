@@ -2,6 +2,7 @@ package com.github.exadmin.cyberferret.utils;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -65,6 +66,36 @@ public class GitUtils {
         }
 
         return null;
+    }
+
+    /**
+     * Returns the value of a git config key by delegating to the {@code git config} process,
+     * which respects the full resolution order: system → global (with conditional includes) → local.
+     *
+     * @param key config key in "section.property" format
+     * @return trimmed value, or {@code null} if not set or git is unavailable
+     */
+    public static String getConfigValue(String key) {
+        if (key == null || !key.contains(".")) {
+            throw new IllegalArgumentException("Key must have format 'section.property'");
+        }
+        try {
+            Process process = new ProcessBuilder("git", "config", key)
+                    .redirectErrorStream(false)
+                    .start();
+            String value;
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                value = reader.readLine();
+            }
+            int exitCode = process.waitFor();
+            if (exitCode != 0) {
+                return null;
+            }
+            return (value != null) ? value.trim() : null;
+        } catch (IOException | InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return null;
+        }
     }
 
     private static Path findGlobalGitConfig() {

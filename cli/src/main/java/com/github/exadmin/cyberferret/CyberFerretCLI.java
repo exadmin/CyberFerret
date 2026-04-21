@@ -110,12 +110,9 @@ public class CyberFerretCLI {
         RunnableSigsLoader sigsLoader = new RunnableSigsLoader(true);
         sigsLoader.setPrintToConsole(true);
         try {
-            String prefix = GitUtils.getGlobalConfigValue("core.hooksPath");
-            if (MiscUtils.isEmpty(prefix)) {
-                ConsoleUtils.error("Global hooksPath is not empty");
-                terminateAppWithErrorCode(false);
-            }
-            Path path = Paths.get(prefix, AppConstants.DICTIONARY_FILE_PATH_ENCRYPTED);
+            String prefix = GitUtils.getConfigValue("core.hooksPath");
+            if (prefix == null) prefix = "";
+            Path path = Paths.get(prefix.isEmpty() ? "." : prefix, AppConstants.DICTIONARY_FILE_PATH_ENCRYPTED);
             String encryptedBody = FileUtils.readFile(path);
             String decryptedBody = PasswordBasedEncryption.decrypt(encryptedBody, pass);
 

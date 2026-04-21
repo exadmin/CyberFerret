@@ -1,0 +1,9 @@
+repos:
+  - repo: local
+    hooks:
+      - id: cyberferret
+        name: CyberFerret Sensitive Data Scanner
+        language: script
+        entry: hooks/cyberferret.sh
+        pass_filenames: false
+        stages: [pre-commit]
