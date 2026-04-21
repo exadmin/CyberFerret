@@ -6,8 +6,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public final class ExcludeFileJsonCodec {
-    private static final Pattern OBJECT_PATTERN = Pattern.compile("\\{\\s*\"t-hash\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"\\s*,\\s*\"f-hash\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"\\s*}");
-    private static final Pattern ROOT_PATTERN = Pattern.compile("^\\s*\\{\\s*\"exclusions\"\\s*:\\s*\\[(.*)]\\s*}\\s*$", Pattern.DOTALL);
+    private static final Pattern OBJECT_REGEXP = Pattern.compile("\\{\\s*\"t-hash\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"\\s*,\\s*\"f-hash\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"\\s*}");
+    private static final Pattern ROOT_REGEXP = Pattern.compile("^\\s*\\{\\s*\"exclusions\"\\s*:\\s*\\[(.*)]\\s*}\\s*$", Pattern.DOTALL);
+    private static final Pattern EMPTY_MODEL_REGEX = Pattern.compile("^\\s*\\{\\s*}\\s*$", Pattern.DOTALL);
 
     private ExcludeFileJsonCodec() {
     }
@@ -15,7 +16,13 @@ public final class ExcludeFileJsonCodec {
     public static ExcludeFileModel fromJson(String json) {
         ExcludeFileModel model = new ExcludeFileModel();
 
-        Matcher rootMatcher = ROOT_PATTERN.matcher(json);
+        // Check if string contains an empty model like "{}".
+        Matcher emptyModelMatcher = EMPTY_MODEL_REGEX.matcher(json);
+        if (emptyModelMatcher.matches()) {
+            return model;
+        }
+
+        Matcher rootMatcher = ROOT_REGEXP.matcher(json);
         if (!rootMatcher.matches()) {
             ConsoleUtils.warn("Failed to parse json configuration with exclusions. Fall back into empty configuration.");
             return model;
@@ -27,7 +34,7 @@ public final class ExcludeFileJsonCodec {
             return model;
         }
 
-        Matcher objectMatcher = OBJECT_PATTERN.matcher(body);
+        Matcher objectMatcher = OBJECT_REGEXP.matcher(body);
         int currentIndex = 0;
         while (objectMatcher.find()) {
             String gap = body.substring(currentIndex, objectMatcher.start()).trim();
