@@ -59,6 +59,10 @@ public class RunnableScanner extends ARunnable {
     }
 
     public void setStagedFiles(List<Path> stagedFiles) {
+        if (stagedFiles == null) {
+            this.stagedFiles = List.of();
+            return;
+        }
         this.stagedFiles = new ArrayList<>(stagedFiles);
     }
 
@@ -93,8 +97,7 @@ public class RunnableScanner extends ARunnable {
         }
 
         final ExcludeFileModel excludeFileModel = tmpExcludeFileModel;
-        final boolean checkOnlySelectedFiles = isCLIMode() && (stagedFiles != null && !stagedFiles.isEmpty());
-        if (checkOnlySelectedFiles) {
+        if (isCLIMode()) {
             loadOnlyStagedFiles(rootDir, excludeFileModel);
         } else {
             loadAllFiles(rootDir, excludeFileModel);
@@ -103,6 +106,10 @@ public class RunnableScanner extends ARunnable {
 
         // start scanning for signatures
         int totalItemsCount = foundItemsContainer.getFoundItemsSize();
+        if (totalItemsCount == 0) {
+            logInfo("No files selected for scanning");
+            return;
+        }
         final AtomicInteger processedItemsCount = new AtomicInteger(0);
         final AtomicInteger nextRate = new AtomicInteger(0);
 
@@ -139,6 +146,11 @@ public class RunnableScanner extends ARunnable {
     }
 
     private void loadOnlyStagedFiles(Path rootDir, ExcludeFileModel excludeFileModel) {
+        if (stagedFiles == null || stagedFiles.isEmpty()) {
+            logInfo("No staged files provided for CLI scanning");
+            return;
+        }
+
         Set<String> addedFiles = new HashSet<>();
         for (Path stagedFile : stagedFiles) {
             Path normalizedFile = stagedFile.toAbsolutePath().normalize();
