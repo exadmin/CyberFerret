@@ -3,6 +3,8 @@ package com.github.exadmin.cyberferret.utils;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -28,7 +30,8 @@ public class FileUtils {
 
         // For non-image files or if metadata extraction failed, read as text
         byte[] bytes = Files.readAllBytes(filePath);
-        return new String(bytes);
+        DecodedText decodedText = decodeText(bytes);
+        return new String(bytes, decodedText.offset(), bytes.length - decodedText.offset(), decodedText.charset());
     }
 
     public static void saveToFile(String content, String fileToWriteInto) throws IOException {
@@ -58,5 +61,69 @@ public class FileUtils {
         } catch (IOException ex) {
             throw new IllegalStateException(ex);
         }
+    }
+
+    private static DecodedText decodeText(byte[] bytes) {
+        if (startsWith(bytes, (byte) 0xEF, (byte) 0xBB, (byte) 0xBF)) {
+            return new DecodedText(StandardCharsets.UTF_8, 3);
+        }
+        if (startsWith(bytes, (byte) 0xFF, (byte) 0xFE)) {
+            return new DecodedText(StandardCharsets.UTF_16LE, 2);
+        }
+        if (startsWith(bytes, (byte) 0xFE, (byte) 0xFF)) {
+            return new DecodedText(StandardCharsets.UTF_16BE, 2);
+        }
+
+        if (looksLikeUtf16Le(bytes)) {
+            return new DecodedText(StandardCharsets.UTF_16LE, 0);
+        }
+        if (looksLikeUtf16Be(bytes)) {
+            return new DecodedText(StandardCharsets.UTF_16BE, 0);
+        }
+
+        return new DecodedText(StandardCharsets.UTF_8, 0);
+    }
+
+    private static boolean startsWith(byte[] bytes, byte... prefix) {
+        if (bytes.length < prefix.length) {
+            return false;
+        }
+        for (int i = 0; i < prefix.length; i++) {
+            if (bytes[i] != prefix[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean looksLikeUtf16Le(byte[] bytes) {
+        if (bytes.length < 2 || bytes.length % 2 != 0) {
+            return false;
+        }
+
+        int zeroBytesOnOddIndexes = 0;
+        for (int i = 1; i < bytes.length; i += 2) {
+            if (bytes[i] == 0) {
+                zeroBytesOnOddIndexes++;
+            }
+        }
+        return zeroBytesOnOddIndexes * 2 >= bytes.length - 2;
+    }
+
+    private static boolean looksLikeUtf16Be(byte[] bytes) {
+        if (bytes.length < 2 || bytes.length % 2 != 0) {
+            return false;
+        }
+
+        int zeroBytesOnEvenIndexes = 0;
+        for (int i = 0; i < bytes.length; i += 2) {
+            if (bytes[i] == 0) {
+                zeroBytesOnEvenIndexes++;
+            }
+        }
+        return zeroBytesOnEvenIndexes * 2 >= bytes.length - 2;
+    }
+
+    private record DecodedText(Charset charset, int offset) {
     }
 }

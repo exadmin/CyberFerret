@@ -29,7 +29,6 @@ public class RunnableScanner extends ARunnable {
     private FxCallback fxCallback = (type, message) -> logInfo(message);
     private boolean isAnySignatureFound = false;
     private List<Path> stagedFiles;
-    private Set<String> stagedFilesNormalized;
 
     public RunnableScanner(boolean isCLIMode) {
         super(isCLIMode);
@@ -61,10 +60,6 @@ public class RunnableScanner extends ARunnable {
 
     public void setStagedFiles(List<Path> stagedFiles) {
         this.stagedFiles = new ArrayList<>(stagedFiles);
-        this.stagedFilesNormalized = new HashSet<>();
-        for (Path stagedFile : stagedFiles) {
-            this.stagedFilesNormalized.add(normalizePathForComparison(stagedFile));
-        }
     }
 
     @Override
@@ -99,57 +94,11 @@ public class RunnableScanner extends ARunnable {
 
         final ExcludeFileModel excludeFileModel = tmpExcludeFileModel;
         final boolean checkOnlySelectedFiles = isCLIMode() && (stagedFiles != null && !stagedFiles.isEmpty());
-
-        // load files first
-        Deque<FoundPathItem> parentsDeque = new ArrayDeque<>();
-        Files.walkFileTree(rootDir, new FileVisitor<>() {
-            @Override
-            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
-                logTrace("Visiting directory {}", dir);
-
-                // todo: move this hard code to some configurable place, priority = normal
-                if (dir.getFileName().toString().equals(".git")) return FileVisitResult.SKIP_SUBTREE;
-
-                FoundPathItem parent = parentsDeque.peekLast();
-                FoundPathItem foundPathItem = new FoundPathItem(dir, ItemType.DIRECTORY, parent);
-                foundItemsContainer.addItem(foundPathItem);
-                parentsDeque.add(foundPathItem);
-
-                calculateIgnoreFlagState(foundPathItem, parent, rootDir, excludeFileModel);
-
-                return FileVisitResult.CONTINUE;
-            }
-
-            @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)  {
-                logTrace("Visiting file {}", file);
-
-                // In CLI mode we check only staged files provided via program arguments
-                if (isCLIMode() && checkOnlySelectedFiles && !isStagedFile(file)) {
-                    return FileVisitResult.CONTINUE;
-                }
-
-                FoundPathItem parent = parentsDeque.peekLast();
-                FoundPathItem foundPathItem = new FoundPathItem(file, ItemType.FILE, parent);
-                foundItemsContainer.addItem(foundPathItem);
-
-                calculateIgnoreFlagState(foundPathItem, parent, rootDir, excludeFileModel);
-
-                return FileVisitResult.CONTINUE;
-            }
-
-            @Override
-            public FileVisitResult visitFileFailed(Path file, IOException exc) {
-                logError("Error while visiting {}", file);
-                return FileVisitResult.CONTINUE;
-            }
-
-            @Override
-            public FileVisitResult postVisitDirectory(Path dir, IOException exc) {
-                parentsDeque.removeLast();
-                return FileVisitResult.CONTINUE;
-            }
-        });
+        if (checkOnlySelectedFiles) {
+            loadOnlyStagedFiles(rootDir, excludeFileModel);
+        } else {
+            loadAllFiles(rootDir, excludeFileModel);
+        }
 
 
         // start scanning for signatures
@@ -187,6 +136,77 @@ public class RunnableScanner extends ARunnable {
         }
 
         logInfo("Scanning completed for 100%");
+    }
+
+    private void loadOnlyStagedFiles(Path rootDir, ExcludeFileModel excludeFileModel) {
+        Set<String> addedFiles = new HashSet<>();
+        for (Path stagedFile : stagedFiles) {
+            Path normalizedFile = stagedFile.toAbsolutePath().normalize();
+            logTrace("Visiting staged file {}", normalizedFile);
+
+            if (!addedFiles.add(normalizePathForComparison(normalizedFile))) {
+                continue;
+            }
+            if (!Files.isRegularFile(normalizedFile)) {
+                logTrace("Skipping staged path because it is not a regular file {}", normalizedFile);
+                continue;
+            }
+            if (!normalizedFile.startsWith(rootDir.toAbsolutePath().normalize())) {
+                logTrace("Skipping staged path because it is out of repository root {}", normalizedFile);
+                continue;
+            }
+
+            FoundPathItem foundPathItem = new FoundPathItem(normalizedFile, ItemType.FILE, null);
+            foundItemsContainer.addItem(foundPathItem);
+            calculateIgnoreFlagState(foundPathItem, null, rootDir, excludeFileModel);
+        }
+    }
+
+    private void loadAllFiles(Path rootDir, ExcludeFileModel excludeFileModel) throws IOException {
+        Deque<FoundPathItem> parentsDeque = new ArrayDeque<>();
+        Files.walkFileTree(rootDir, new FileVisitor<>() {
+            @Override
+            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
+                logTrace("Visiting directory {}", dir);
+
+                // todo: move this hard code to some configurable place, priority = normal
+                if (dir.getFileName().toString().equals(".git")) return FileVisitResult.SKIP_SUBTREE;
+
+                FoundPathItem parent = parentsDeque.peekLast();
+                FoundPathItem foundPathItem = new FoundPathItem(dir, ItemType.DIRECTORY, parent);
+                foundItemsContainer.addItem(foundPathItem);
+                parentsDeque.add(foundPathItem);
+
+                calculateIgnoreFlagState(foundPathItem, parent, rootDir, excludeFileModel);
+
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                logTrace("Visiting file {}", file);
+
+                FoundPathItem parent = parentsDeque.peekLast();
+                FoundPathItem foundPathItem = new FoundPathItem(file, ItemType.FILE, parent);
+                foundItemsContainer.addItem(foundPathItem);
+
+                calculateIgnoreFlagState(foundPathItem, parent, rootDir, excludeFileModel);
+
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult visitFileFailed(Path file, IOException exc) {
+                logError("Error while visiting {}", file);
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult postVisitDirectory(Path dir, IOException exc) {
+                parentsDeque.removeLast();
+                return FileVisitResult.CONTINUE;
+            }
+        });
     }
 
     public static int getLineNumber(String fileBody, int index) {
@@ -273,11 +293,6 @@ public class RunnableScanner extends ARunnable {
         if (fileExt == null) return false;
 
         return list.contains(fileExt);
-    }
-
-    private boolean isStagedFile(Path file) {
-        if (stagedFilesNormalized == null || stagedFilesNormalized.isEmpty()) return false;
-        return stagedFilesNormalized.contains(normalizePathForComparison(file));
     }
 
     private static String normalizePathForComparison(Path path) {
