@@ -19,6 +19,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class RunnableScanner extends ARunnable {
+    private static final boolean IS_WINDOWS =
+            System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("win");
     private String dirToScan;
     private FoundItemsContainer foundItemsContainer;
     private Map<String, Pattern> sigMap = null;
@@ -27,6 +29,7 @@ public class RunnableScanner extends ARunnable {
     private FxCallback fxCallback = (type, message) -> logInfo(message);
     private boolean isAnySignatureFound = false;
     private List<Path> stagedFiles;
+    private Set<String> stagedFilesNormalized;
 
     public RunnableScanner(boolean isCLIMode) {
         super(isCLIMode);
@@ -58,6 +61,10 @@ public class RunnableScanner extends ARunnable {
 
     public void setStagedFiles(List<Path> stagedFiles) {
         this.stagedFiles = new ArrayList<>(stagedFiles);
+        this.stagedFilesNormalized = new HashSet<>();
+        for (Path stagedFile : stagedFiles) {
+            this.stagedFilesNormalized.add(normalizePathForComparison(stagedFile));
+        }
     }
 
     @Override
@@ -118,7 +125,7 @@ public class RunnableScanner extends ARunnable {
                 logTrace("Visiting file {}", file);
 
                 // In CLI mode we check only staged files provided via program arguments
-                if (isCLIMode() && checkOnlySelectedFiles && !stagedFiles.contains(file)) {
+                if (isCLIMode() && checkOnlySelectedFiles && !isStagedFile(file)) {
                     return FileVisitResult.CONTINUE;
                 }
 
@@ -266,6 +273,16 @@ public class RunnableScanner extends ARunnable {
         if (fileExt == null) return false;
 
         return list.contains(fileExt);
+    }
+
+    private boolean isStagedFile(Path file) {
+        if (stagedFilesNormalized == null || stagedFilesNormalized.isEmpty()) return false;
+        return stagedFilesNormalized.contains(normalizePathForComparison(file));
+    }
+
+    private static String normalizePathForComparison(Path path) {
+        String normalized = path.toAbsolutePath().normalize().toString();
+        return IS_WINDOWS ? normalized.toLowerCase(Locale.ROOT) : normalized;
     }
 
     private static void calculateIgnoreFlagState(FoundPathItem foundPathItem, FoundPathItem parent, Path rootDir, ExcludeFileModel excludeFileModel) {
