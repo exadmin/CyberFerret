@@ -272,7 +272,7 @@ public class RunnableScanner extends ARunnable {
             if (isToIgnoreFile(sigId, filePath)) continue;
 
             Matcher matcher = regExp.matcher(fileBody);
-            if (matcher.find()) {
+            while (matcher.find()) {
                 FoundPathItem newItem = new FoundPathItem(filePath, ItemType.SIGNATURE, pathItem);
                 newItem.setVisualName(sigId);
                 newItem.setLineNumber(getLineNumber(fileBody, matcher.start()));
