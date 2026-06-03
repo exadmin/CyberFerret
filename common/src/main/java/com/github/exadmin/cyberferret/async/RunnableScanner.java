@@ -68,9 +68,9 @@ public class RunnableScanner extends ARunnable {
 
     @Override
     protected void _run() throws IOException {
-        final Path rootDir = Paths.get(dirToScan);
+        final Path rootDir = Paths.get(dirToScan).toAbsolutePath().normalize();
         // check that root of the git-repository is selected - otherwise show warning
-        Path gitConfigPath = Paths.get(dirToScan, ".git", "config");
+        Path gitConfigPath = rootDir.resolve(".git").resolve("config");
         File gitConfigFile = gitConfigPath.toFile();
         if (!gitConfigFile.exists() || !gitConfigFile.isFile()) {
             fxCallback.showMessage(FxCallback.FxCallbackType.WARNING, """
@@ -86,7 +86,7 @@ public class RunnableScanner extends ARunnable {
 
         // try loading exclusions-model from the file in the root of the repository
         ExcludeFileModel tmpExcludeFileModel = new ExcludeFileModel(); // create empty container
-        Path exFilePath = Paths.get(dirToScan, Excluder.PERSISTENCE_FOLDER, Excluder.EXCLUDES_SHORT_FILE_NAME);
+        Path exFilePath = rootDir.resolve(Excluder.PERSISTENCE_FOLDER).resolve(Excluder.EXCLUDES_SHORT_FILE_NAME);
         try {
             File exFile = exFilePath.toFile();
             if (exFile.exists() && exFile.isFile()) {

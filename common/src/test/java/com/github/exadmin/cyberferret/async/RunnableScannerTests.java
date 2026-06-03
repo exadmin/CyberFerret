@@ -100,6 +100,32 @@ public class RunnableScannerTests {
         assertTrue(runnableScanner.isAnySignatureFound());
     }
 
+    @Test
+    public void cliMode_handlesAbsoluteStagedFileWhenScanDirectoryIsRelative() throws IOException {
+        Path repoRoot = tempDir.resolve("repo");
+        Files.createDirectories(repoRoot.resolve(".git"));
+        Files.writeString(repoRoot.resolve(".git/config"), "[core]", StandardCharsets.UTF_8);
+        Path stagedFile = repoRoot.resolve("staged.txt");
+        Files.writeString(stagedFile, "clean", StandardCharsets.UTF_8);
+        Path relativeRepoRoot = Path.of("").toAbsolutePath().normalize()
+                .relativize(repoRoot.toAbsolutePath().normalize());
+
+        FoundItemsContainer foundItemsContainer = new FoundItemsContainer();
+        RunnableScanner runnableScanner = new RunnableScanner(true);
+        runnableScanner.setDirToScan(relativeRepoRoot.toString());
+        runnableScanner.setFoundItemsContainer(foundItemsContainer);
+        runnableScanner.setSignaturesMap(Map.of("test", Pattern.compile("secret")));
+        runnableScanner.setAllowedSignaturesMap(Map.of());
+        runnableScanner.setExcludeExtMap(Map.of());
+        runnableScanner.setStagedFiles(List.of(stagedFile.toAbsolutePath().normalize()));
+
+        runnableScanner.run();
+
+        List<FoundPathItem> foundItems = foundItemsContainer.getFoundItemsCopy();
+        assertEquals(1, foundItems.size());
+        assertEquals(stagedFile.toAbsolutePath().normalize(), foundItems.getFirst().getFilePath());
+    }
+
     private static byte[] utf16LeWithBom(String value) {
         byte[] content = value.getBytes(StandardCharsets.UTF_16LE);
         ByteBuffer buffer = ByteBuffer.allocate(content.length + 2).order(ByteOrder.LITTLE_ENDIAN);

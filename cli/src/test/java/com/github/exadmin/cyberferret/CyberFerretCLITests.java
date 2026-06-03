@@ -56,4 +56,23 @@ public class CyberFerretCLITests {
         assertTrue(staged.get(0).isAbsolute());
         assertEquals(absoluteFile.normalize(), staged.get(0));
     }
+
+    @Test
+    public void loadFilesFromRepository_readsFilesRecursivelyAndSkipsGitDirectory() throws IOException {
+        Path root = tempDir.resolve("repo");
+        Files.createDirectories(root.resolve("sub"));
+        Files.createDirectories(root.resolve(".git/objects"));
+        Path rootFile = root.resolve("file1.txt");
+        Path nestedFile = root.resolve("sub/file2.txt");
+        Path gitFile = root.resolve(".git/objects/object1");
+        Files.writeString(rootFile, "data", StandardCharsets.UTF_8);
+        Files.writeString(nestedFile, "data", StandardCharsets.UTF_8);
+        Files.writeString(gitFile, "data", StandardCharsets.UTF_8);
+
+        List<Path> files = CyberFerretCLI.loadFilesFromRepository(root);
+
+        assertEquals(2, files.size());
+        assertTrue(files.contains(rootFile.normalize()));
+        assertTrue(files.contains(nestedFile.normalize()));
+    }
 }

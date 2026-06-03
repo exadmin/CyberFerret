@@ -11,9 +11,12 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -23,7 +26,7 @@ import java.util.List;
 public class CyberFerretCLI {
     private static void printUsage() {
         String errMsg = """
-                Usage: CyberFerretCLI $PATH_TO_REPOSITORY_TO_SCAN $PATH_TO_FILE_WITH_LIST_OF_FILES"
+                Usage: CyberFerretCLI $PATH_TO_REPOSITORY_TO_SCAN [$PATH_TO_FILE_WITH_LIST_OF_FILES]
                 Also, note that '{}' System Environment variable must be set
                 """;
         errMsg = ConsoleUtils.format(errMsg, AppConstants.SYS_ENV_VAR_PASSWORD);
@@ -57,7 +60,7 @@ public class CyberFerretCLI {
         ConsoleUtils.info("CyberFerretCLI version: " + appVer);
 
         // Step1: Check required program arguments are set
-        if (args.length != 2) {
+        if (args.length < 1 || args.length > 2) {
             ConsoleUtils.error("Unexpected number of command line arguments");
             terminateAppWithErrorCode(true);
         }
@@ -75,24 +78,26 @@ public class CyberFerretCLI {
             terminateAppWithErrorCode(true);
         }
 
-        // Check that file with staged files is set
-        Path stagedFilesListPath = Path.of(args[1]);
-        if (!Files.isRegularFile(stagedFilesListPath)) {
-            ConsoleUtils.error("Invalid path to files list {}", stagedFilesListPath);
-            terminateAppWithErrorCode(true);
-        }
-
         List<Path> stagedFiles = new ArrayList<>();
         boolean isErrorFound = false;
         try {
-            stagedFiles = loadStagedFiles(repoPathToScan, stagedFilesListPath);
+            if (args.length == 2) {
+                Path stagedFilesListPath = Path.of(args[1]);
+                if (!Files.isRegularFile(stagedFilesListPath)) {
+                    ConsoleUtils.error("Invalid path to files list {}", stagedFilesListPath);
+                    terminateAppWithErrorCode(true);
+                }
+                stagedFiles = loadStagedFiles(repoPathToScan, stagedFilesListPath);
+            } else {
+                stagedFiles = loadFilesFromRepository(repoPathToScan);
+            }
 
             if (stagedFiles.isEmpty()) {
-                ConsoleUtils.error("No staged files found in the file {}", stagedFilesListPath);
+                ConsoleUtils.error("No files found to scan");
                 return; // do not return error - this may happen when "Commit & Push with Amend is used with no changes in files"
             }
         } catch (IOException ex) {
-            ConsoleUtils.error("Error while reading staged files list. " + ex.getMessage());
+            ConsoleUtils.error("Error while loading files list. " + ex.getMessage());
             isErrorFound = true;
         } finally {
             if (isErrorFound) {
@@ -145,7 +150,7 @@ public class CyberFerretCLI {
             }
         }
 
-        ConsoleUtils.info("Scan is completed. Errors are " + (runnableScanner.isAnySignatureFound() ? "found :( Breaking commit!" : "not found :)"));
+        ConsoleUtils.info("Scanning is finished." + (runnableScanner.isAnySignatureFound() ? " Errors were found" : ""));
 
         if (runnableScanner.isAnySignatureFound()) {
             terminateAppWithErrorCode(false);
@@ -172,5 +177,29 @@ public class CyberFerretCLI {
             ConsoleUtils.trace("Staged file = " + path);
         }
         return stagedFiles;
+    }
+
+    static List<Path> loadFilesFromRepository(Path rootPathToScan) throws IOException {
+        List<Path> files = new ArrayList<>();
+        Files.walkFileTree(rootPathToScan, new SimpleFileVisitor<>() {
+            @Override
+            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
+                if (dir.getFileName().toString().equals(".git")) {
+                    return FileVisitResult.SKIP_SUBTREE;
+                }
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                if (attrs.isRegularFile()) {
+                    Path path = file.normalize();
+                    files.add(path);
+                    ConsoleUtils.trace("Repository file = " + path);
+                }
+                return FileVisitResult.CONTINUE;
+            }
+        });
+        return files;
     }
 }
