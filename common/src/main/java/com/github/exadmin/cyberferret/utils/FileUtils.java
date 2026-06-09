@@ -8,6 +8,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.List;
+import java.util.regex.Pattern;
 
 public class FileUtils {
     public static String readFile(String filePath) throws IOException {
@@ -61,6 +64,51 @@ public class FileUtils {
         } catch (IOException ex) {
             throw new IllegalStateException(ex);
         }
+    }
+
+    public static boolean isBinaryFile(Path path) throws IOException {
+        if (!Files.isRegularFile(path)) {
+            return false;
+        }
+
+        byte[] buffer = new byte[16 * 1024];
+        int bytesRead;
+        try (InputStream is = Files.newInputStream(path)) {
+            bytesRead = is.read(buffer);
+        }
+        if (bytesRead <= 0) {
+            return false;
+        }
+
+        byte[] head = bytesRead == buffer.length ? buffer : Arrays.copyOf(buffer, bytesRead);
+
+        // UTF-16 text legitimately contains NUL bytes, so classify the head the same way
+        // readFile does and skip the NUL check when it is recognised as UTF-16.
+        Charset charset = decodeText(head).charset();
+        if (charset == StandardCharsets.UTF_16LE || charset == StandardCharsets.UTF_16BE) {
+            return false;
+        }
+
+        for (byte b : head) {
+            if (b == 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static boolean matchesAnyPattern(Path path, List<Pattern> patterns) {
+        if (path == null || patterns == null || patterns.isEmpty()) {
+            return false;
+        }
+
+        String fileName = path.getFileName().toString();
+        for (Pattern pattern : patterns) {
+            if (pattern.matcher(fileName).matches()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static DecodedText decodeText(byte[] bytes) {

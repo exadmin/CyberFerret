@@ -6,6 +6,7 @@ import com.github.exadmin.cyberferret.model.FoundItemsContainer;
 import com.github.exadmin.cyberferret.model.FoundPathItem;
 import com.github.exadmin.cyberferret.model.ItemType;
 import com.github.exadmin.cyberferret.utils.FileUtils;
+import com.github.exadmin.cyberferret.utils.ImgUtils;
 import com.github.exadmin.cyberferret.utils.MiscUtils;
 
 import java.io.File;
@@ -29,6 +30,7 @@ public class RunnableScanner extends ARunnable {
     private FxCallback fxCallback = (type, message) -> logInfo(message);
     private boolean isAnySignatureFound = false;
     private List<Path> stagedFiles;
+    private List<Pattern> binaryExcludePatterns = null;
 
     public RunnableScanner(boolean isCLIMode) {
         super(isCLIMode);
@@ -44,6 +46,10 @@ public class RunnableScanner extends ARunnable {
 
     public void setExcludeExtMap(Map<String, List<String>> excludeExtMap) {
         this.excludeExtMap = excludeExtMap;
+    }
+
+    public void setBinaryExcludePatterns(List<Pattern> binaryExcludePatterns) {
+        this.binaryExcludePatterns = binaryExcludePatterns;
     }
 
     public void setDirToScan(String dirToScan) {
@@ -256,6 +262,41 @@ public class RunnableScanner extends ARunnable {
         if (pathItem.getType() == ItemType.DIRECTORY || pathItem.getType() == ItemType.SIGNATURE) return;
 
         Path filePath = pathItem.getFilePath();
+
+        // Binary files are usually committed by accident, so report them as artifacts instead of
+        // text-scanning them. Supported images are the exception: readFile() extracts their metadata
+        // (e.g. EXIF) and scans that text, so they must fall through to the normal path below.
+        boolean isBinary = false;
+        try {
+            isBinary = FileUtils.isBinaryFile(filePath);
+        } catch (IOException ex) {
+            logWarn("Could not determine if file '{}' is binary. Treating as text.", filePath);
+        }
+
+        String extension = FileUtils.getFileExtensionAsString(filePath);
+        if (isBinary && !ImgUtils.isSupportedImageFormat(extension)) {
+            if (FileUtils.matchesAnyPattern(filePath, binaryExcludePatterns)) {
+                logDebug("Binary file '{}' is excluded from detection", filePath);
+                return;
+            }
+
+            FoundPathItem binaryItem = new FoundPathItem(filePath, ItemType.SIGNATURE, pathItem);
+            binaryItem.setVisualName("BINARY_ARTIFACT");
+            binaryItem.setLineNumber(0);
+            binaryItem.setDisplayText("Binary file detected (contains zero bytes in first 16KiB)");
+            binaryItem.setFoundString(filePath.getFileName().toString());
+
+            calculateIgnoreFlagState(binaryItem, pathItem, rootDir, excludeFileModel);
+            foundItemsContainer.addItem(binaryItem);
+
+            // a non-ignored artifact must fail the scan so the CLI/pre-commit hook exits non-zero
+            if (!binaryItem.isIgnored()) {
+                isAnySignatureFound = true;
+                logWarn("Binary artifact detected: {}", filePath);
+            }
+            return;
+        }
+
         String fileBody;
         try {
             logTrace("Reading file {}", filePath);

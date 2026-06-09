@@ -65,11 +65,12 @@ Set VM options "--module-path "...\JDKs\javafx-sdk-24.0.1\lib" --add-modules  ja
 # Reserved key 'VERSION' is used for users notifications only, may be skipped
 VERSION=1.1
 
-# All key names may be in 3 formats
+# All key names may be in 4 formats
 # KEY_NAME=VALUE - means the ferret will search for VALUE-string case-insensitive, the VALUE-string will be converted to RegExp pattern '\bVALUE\b'. Note: all spaces inside will be replaced with '\\s+', all special chars (&, -, +) will be escaped by '\\'
 # KEY_NAME(regexp)=VALUE - means you have finally defined RegExp pattern, and it will be used as is
 # KEY_NAME(allowed)=VALUE - means you have defined exact string - which may be found during scanned, but must be treated as allowed. Actually no matter what key name will be used - the value is a global string.
 # KEY_NAME(exclude-ext)=VALUE1,VALUE2,etc.. - list of file extentions to be ignored for the "KEY_NAME" signature
+# BINARY_ARTIFACTS(binary-exclude)=PATTERN1,PATTERN2,etc.. - list of regex patterns for binary files to exclude from detection (e.g., gradle-wrapper\.jar)
 # Notes: all key names must be unique
 
 Examples
@@ -93,4 +94,9 @@ PASSW-003=qwerty123
 IP-ADDR(regexp)=((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)
 IP-ADDR-1(allowed)=0.0.0.0
 IP-ADDR-2(allowed)=127.0.0.1
+
+# Binary Artifacts Detection
+# The tool automatically detects binary files (files with zero bytes in first 16KiB)
+# Use binary-exclude to whitelist binaries that are committed on purpose, e.g. the Gradle and Maven wrapper jars
+BINARY_ARTIFACTS(binary-exclude)=gradle-wrapper\\.jar,maven-wrapper\\.jar
 ```
