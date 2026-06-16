@@ -43,6 +43,7 @@ public class CyberFerretApp extends Application {
         Scene scene = sceneBuilder.buildScene();
         stage.setScene(scene);
         stage.show();
+        sceneBuilder.loadDecryptedDictionaryIfExists();
 
         String appVer = loadApplicationVersion();
         stage.setTitle("Cyber Ferret (version " + appVer + ")");

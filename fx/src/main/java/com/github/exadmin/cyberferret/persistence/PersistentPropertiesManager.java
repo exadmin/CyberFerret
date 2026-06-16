@@ -25,6 +25,8 @@ public class PersistentPropertiesManager {
     public static final AbstractPersistentProperty<String> DIR_TO_SCAN = new AppStringProperty("dir-to-scan", "", REG_MAP);
     public static final AbstractPersistentProperty<Boolean> STAGE_IS_MAXIMIZED = new AppBooleanProperty("stage.maximized", false, REG_MAP);
     public static final AbstractPersistentProperty<String> PASSWORD = new AppStringProperty("dictionary.password", "", REG_MAP);
+    public static final AbstractPersistentProperty<Number> EXACT_SIGNATURE_COLUMN_WIDTH =
+            new AppDoubleProperty("tree-table.exact-signature-column.width", 200d, REG_MAP);
 
     private static final LoggerProxy LOG = new LoggerProxy(PersistentPropertiesManager.class);
     private final Path filePath;

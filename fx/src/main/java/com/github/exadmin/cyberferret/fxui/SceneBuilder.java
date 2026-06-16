@@ -79,6 +79,15 @@ public class SceneBuilder {
         return scene;
     }
 
+    public void loadDecryptedDictionaryIfExists() {
+        Path sigsPath = Paths.get(AppConstants.DICTIONARY_FILE_PATH_DECRYPTED);
+        File sigsFile = sigsPath.toFile();
+        if (sigsFile.exists() && sigsFile.isFile()) {
+            log.info("Loading decrypted dictionary from {}", sigsFile.getAbsolutePath());
+            loadDecryptedDictionary();
+        }
+    }
+
     protected Tab createAnalyzerTab(TabPane tabPane) {
         Tab tab = new Tab("Signatures Analyzer");
         tab.setClosable(false);
@@ -299,14 +308,17 @@ public class SceneBuilder {
         colAllowed.setSortable(false);
 
         colVisualName.prefWidthProperty().setValue(200d);
+        colExactSignature.prefWidthProperty().setValue(EXACT_SIGNATURE_COLUMN_WIDTH.getValue().doubleValue());
+        colExactSignature.prefWidthProperty().addListener(
+                (value, oldValue, newValue) -> EXACT_SIGNATURE_COLUMN_WIDTH.parseValue(newValue));
 
         TreeTableView<FoundPathItem> ttView = new TreeTableView<>();
         ttView.getColumns().add(colVisualName);
         ttView.getColumns().add(colIgnore);
         ttView.getColumns().add(colAllowed);
         ttView.getColumns().add(colLine);
-        ttView.getColumns().add(colDisplayText);
         ttView.getColumns().add(colExactSignature);
+        ttView.getColumns().add(colDisplayText);
 
         ttView.setEditable(false);
         ttView.setShowRoot(false);
@@ -468,78 +480,78 @@ public class SceneBuilder {
         Label lbVersion = new Label("Online dictionary");
         Label lbPassw = new Label("Password");
         TextField tfPassword = new PasswordField();
-        Button btnCheckUpdates = new Button("Download");
-        Button btnDecrypt = new Button("Decrypt");
-        Button btnApply = new Button("Load decrypted");
+        Button btnApply = new Button("Download latest dictionarry");
 
         HBox hBox = new HBox();
         hBox.setSpacing(8);
 
         hBox.getChildren().add(lbVersion);
-        hBox.getChildren().add(btnCheckUpdates);
-        hBox.getChildren().add(new Separator(Orientation.VERTICAL));
-
         hBox.getChildren().add(lbPassw);
         hBox.getChildren().add(tfPassword);
         hBox.getChildren().add(new Separator(Orientation.VERTICAL));
 
-        hBox.getChildren().add(btnDecrypt);
         hBox.getChildren().add(btnApply);
 
         HBox.setHgrow(tfPassword, Priority.ALWAYS);
         lbVersion.setPrefWidth(DEFAULT_LABEL_WIDTH);
-        btnCheckUpdates.setPrefWidth(DEFAULT_BUTTON_WIDTH);
         btnApply.setPrefWidth(DEFAULT_BUTTON_WIDTH);
-        btnDecrypt.setPrefWidth(DEFAULT_BUTTON_WIDTH);
 
         tfPassword.setEditable(true);
 
         tfPassword.textProperty().addListener((bean, oldValue, newValue) -> PASSWORD.setValue(newValue));
         tfPassword.textProperty().setValue(PASSWORD.getValue());
 
-        btnCheckUpdates.setOnAction((event) -> {
-            ARunnable runnable = new RunnableCheckOnlineDictionary(false);
-            runnable.setBeforeStart(() -> btnCheckUpdates.setDisable(true));
-            runnable.setAfterFinished(() -> btnCheckUpdates.setDisable(false));
-            runnable.startNowInNewThread();
-        });
-
-        btnDecrypt.setOnAction((event) -> {
+        btnApply.setOnAction((event) -> {
             // check password and salt are set
             if (tfPassword.getText().isEmpty()) {
                 AlertBuilder.showWarn("You need provide password for dictionary encryption");
             } else {
-                File fileDecrypted = new File(AppConstants.DICTIONARY_FILE_PATH_DECRYPTED);
-                if (fileDecrypted.exists()) {
-                    boolean wasDeleted = fileDecrypted.delete();
-                    if (wasDeleted)
-                        log.info("Existed decrypted dictionary cache-file was deleted by {}", fileDecrypted);
-                }
-
-                try {
-                    String encryptedBody = FileUtils.readFile(AppConstants.DICTIONARY_FILE_PATH_ENCRYPTED);
-                    String decryptedBody = PasswordBasedEncryption.decrypt(encryptedBody, tfPassword.getText());
-
-                    if (!decryptedBody.isEmpty()) {
-                        FileUtils.saveToFile(decryptedBody, AppConstants.DICTIONARY_FILE_PATH_DECRYPTED);
-                        log.info("New decrypted dictionary cache-file was successfully created at {}", fileDecrypted);
+                String password = tfPassword.getText();
+                ARunnable runnable = new RunnableCheckOnlineDictionary(false);
+                runnable.setBeforeStart(() -> runOnFxThread(() -> btnApply.setDisable(true)));
+                runnable.setAfterFinished(() -> {
+                    try {
+                        decryptOnlineDictionary(password);
+                        loadDecryptedDictionary();
+                    } finally {
+                        runOnFxThread(() -> btnApply.setDisable(false));
                     }
-                } catch (Exception ex) {
-                    log.error("Error while decrypting file {}. Check password and salt values!", fileDecrypted, ex);
-                }
-            }
-        });
-
-        btnApply.setOnAction((event) -> {
-            Path sigsPath = Paths.get(AppConstants.DICTIONARY_FILE_PATH_DECRYPTED);
-            File sigsFile = sigsPath.toFile();
-            if (sigsFile.exists() && sigsFile.isFile()) {
-                runnableSigsLoader.setInputStream(FileUtils.toFileInputStream(sigsPath));
-                runnableSigsLoader.startNowInNewThread();
+                });
+                runnable.startNowInNewThread();
             }
         });
 
         return hBox;
+    }
+
+    private void decryptOnlineDictionary(String password) {
+        File fileDecrypted = new File(AppConstants.DICTIONARY_FILE_PATH_DECRYPTED);
+        if (fileDecrypted.exists()) {
+            boolean wasDeleted = fileDecrypted.delete();
+            if (wasDeleted)
+                log.info("Existed decrypted dictionary cache-file was deleted by {}", fileDecrypted);
+        }
+
+        try {
+            String encryptedBody = FileUtils.readFile(AppConstants.DICTIONARY_FILE_PATH_ENCRYPTED);
+            String decryptedBody = PasswordBasedEncryption.decrypt(encryptedBody, password);
+
+            if (!decryptedBody.isEmpty()) {
+                FileUtils.saveToFile(decryptedBody, AppConstants.DICTIONARY_FILE_PATH_DECRYPTED);
+                log.info("New decrypted dictionary cache-file was successfully created at {}", fileDecrypted);
+            }
+        } catch (Exception ex) {
+            log.error("Error while decrypting file {}. Check password and salt values!", fileDecrypted, ex);
+        }
+    }
+
+    private void loadDecryptedDictionary() {
+        Path sigsPath = Paths.get(AppConstants.DICTIONARY_FILE_PATH_DECRYPTED);
+        File sigsFile = sigsPath.toFile();
+        if (sigsFile.exists() && sigsFile.isFile()) {
+            runnableSigsLoader.setInputStream(FileUtils.toFileInputStream(sigsPath));
+            runnableSigsLoader.startNowInNewThread();
+        }
     }
 
     private void runOnFxThread(Runnable runnable) {
