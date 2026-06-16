@@ -134,10 +134,9 @@ public class RunnableScanner extends ARunnable {
                     // update progress rate
                     int currentCount = processedItemsCount.incrementAndGet();
                     int progressRate =  currentCount * 100 / totalItemsCount;
-                    if (progressRate > nextRate.get()) {
+                    int rateToLog = nextRate.updateAndGet(rate -> progressRate > rate ? rate + 10 : rate);
+                    if (progressRate > rateToLog - 10) {
                         if (isCLIMode()) logInfo("Scan rate is {}%", progressRate);
-
-                        nextRate.addAndGet(10); // todo: non thread safe - refactor later
                     }
 
 
