@@ -416,6 +416,7 @@ public class SceneBuilder {
             @Override
             public void onClearAll() {
                 rootTreeItem.getChildren().clear();
+                map.clear();
             }
         });
 
