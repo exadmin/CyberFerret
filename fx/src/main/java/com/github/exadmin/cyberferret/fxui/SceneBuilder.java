@@ -307,11 +307,6 @@ public class SceneBuilder {
         colAllowed.setEditable(false);
         colAllowed.setSortable(false);
 
-        colVisualName.prefWidthProperty().setValue(200d);
-        colExactSignature.prefWidthProperty().setValue(EXACT_SIGNATURE_COLUMN_WIDTH.getValue().doubleValue());
-        colExactSignature.prefWidthProperty().addListener(
-                (value, oldValue, newValue) -> EXACT_SIGNATURE_COLUMN_WIDTH.parseValue(newValue));
-
         TreeTableView<FoundPathItem> ttView = new TreeTableView<>();
         ttView.getColumns().add(colVisualName);
         ttView.getColumns().add(colIgnore);
@@ -319,6 +314,35 @@ public class SceneBuilder {
         ttView.getColumns().add(colLine);
         ttView.getColumns().add(colExactSignature);
         ttView.getColumns().add(colDisplayText);
+
+        colVisualName.setPrefWidth(PATH_NAME_COLUMN_WIDTH.getValue().doubleValue());
+        colIgnore.setPrefWidth(IGNORE_COLUMN_WIDTH.getValue().doubleValue());
+        colAllowed.setPrefWidth(ALLOWED_COLUMN_WIDTH.getValue().doubleValue());
+        colLine.setPrefWidth(LINE_COLUMN_WIDTH.getValue().doubleValue());
+        colExactSignature.setPrefWidth(EXACT_SIGNATURE_COLUMN_WIDTH.getValue().doubleValue());
+        colDisplayText.setPrefWidth(FOUND_TEXT_COLUMN_WIDTH.getValue().doubleValue());
+
+        Platform.runLater(() -> {
+            colVisualName.setPrefWidth(PATH_NAME_COLUMN_WIDTH.getValue().doubleValue());
+            colIgnore.setPrefWidth(IGNORE_COLUMN_WIDTH.getValue().doubleValue());
+            colAllowed.setPrefWidth(ALLOWED_COLUMN_WIDTH.getValue().doubleValue());
+            colLine.setPrefWidth(LINE_COLUMN_WIDTH.getValue().doubleValue());
+            colExactSignature.setPrefWidth(EXACT_SIGNATURE_COLUMN_WIDTH.getValue().doubleValue());
+            colDisplayText.setPrefWidth(FOUND_TEXT_COLUMN_WIDTH.getValue().doubleValue());
+
+            colVisualName.widthProperty().addListener(
+                    (value, oldValue, newValue) -> PATH_NAME_COLUMN_WIDTH.parseValue(newValue));
+            colIgnore.widthProperty().addListener(
+                    (value, oldValue, newValue) -> IGNORE_COLUMN_WIDTH.parseValue(newValue));
+            colAllowed.widthProperty().addListener(
+                    (value, oldValue, newValue) -> ALLOWED_COLUMN_WIDTH.parseValue(newValue));
+            colLine.widthProperty().addListener(
+                    (value, oldValue, newValue) -> LINE_COLUMN_WIDTH.parseValue(newValue));
+            colExactSignature.widthProperty().addListener(
+                    (value, oldValue, newValue) -> EXACT_SIGNATURE_COLUMN_WIDTH.parseValue(newValue));
+            colDisplayText.widthProperty().addListener(
+                    (value, oldValue, newValue) -> FOUND_TEXT_COLUMN_WIDTH.parseValue(newValue));
+        });
 
         ttView.setEditable(false);
         ttView.setShowRoot(false);

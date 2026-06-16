@@ -25,8 +25,18 @@ public class PersistentPropertiesManager {
     public static final AbstractPersistentProperty<String> DIR_TO_SCAN = new AppStringProperty("dir-to-scan", "", REG_MAP);
     public static final AbstractPersistentProperty<Boolean> STAGE_IS_MAXIMIZED = new AppBooleanProperty("stage.maximized", false, REG_MAP);
     public static final AbstractPersistentProperty<String> PASSWORD = new AppStringProperty("dictionary.password", "", REG_MAP);
+    public static final AbstractPersistentProperty<Number> PATH_NAME_COLUMN_WIDTH =
+            new AppDoubleProperty("tree-table.path-name-column.width", 200d, REG_MAP);
+    public static final AbstractPersistentProperty<Number> IGNORE_COLUMN_WIDTH =
+            new AppDoubleProperty("tree-table.ignore-column.width", 80d, REG_MAP);
+    public static final AbstractPersistentProperty<Number> ALLOWED_COLUMN_WIDTH =
+            new AppDoubleProperty("tree-table.allowed-column.width", 80d, REG_MAP);
+    public static final AbstractPersistentProperty<Number> LINE_COLUMN_WIDTH =
+            new AppDoubleProperty("tree-table.line-column.width", 80d, REG_MAP);
     public static final AbstractPersistentProperty<Number> EXACT_SIGNATURE_COLUMN_WIDTH =
             new AppDoubleProperty("tree-table.exact-signature-column.width", 200d, REG_MAP);
+    public static final AbstractPersistentProperty<Number> FOUND_TEXT_COLUMN_WIDTH =
+            new AppDoubleProperty("tree-table.found-text-column.width", 80d, REG_MAP);
 
     private static final LoggerProxy LOG = new LoggerProxy(PersistentPropertiesManager.class);
     private final Path filePath;
