@@ -11,6 +11,7 @@ import com.github.exadmin.cyberferret.model.FoundPathItem;
 import com.github.exadmin.cyberferret.model.ItemType;
 import com.github.exadmin.cyberferret.utils.FileUtils;
 import com.github.exadmin.cyberferret.utils.PasswordBasedEncryption;
+import javafx.application.Platform;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.beans.property.ObjectProperty;
@@ -386,37 +387,41 @@ public class SceneBuilder {
         foundItemsContainer.setOnAddNewItemListener(new FoundFileItemListener() {
             @Override
             public void newItemAdded(FoundPathItem newItem) {
-                TreeItem<FoundPathItem> newTreeItem = new TreeItem<>(newItem);
+                runOnFxThread(() -> {
+                    TreeItem<FoundPathItem> newTreeItem = new TreeItem<>(newItem);
 
-                TreeItem<FoundPathItem> parentTreeItem = map.get(newItem.getParent());
-                if (parentTreeItem == null) parentTreeItem = rootTreeItem;
+                    TreeItem<FoundPathItem> parentTreeItem = map.get(newItem.getParent());
+                    if (parentTreeItem == null) parentTreeItem = rootTreeItem;
 
-                parentTreeItem.getChildren().add(newTreeItem);
+                    parentTreeItem.getChildren().add(newTreeItem);
 
-                // automatically expand all parents for the node with signatures inside
-                if (newItem.getType() == ItemType.SIGNATURE) {
-                    TreeItem<FoundPathItem> tItem = parentTreeItem;
-                    while (tItem != null) {
-                        tItem.setExpanded(true);
-                        tItem = tItem.getParent();
+                    // automatically expand all parents for the node with signatures inside
+                    if (newItem.getType() == ItemType.SIGNATURE) {
+                        TreeItem<FoundPathItem> tItem = parentTreeItem;
+                        while (tItem != null) {
+                            tItem.setExpanded(true);
+                            tItem = tItem.getParent();
+                        }
                     }
-                }
 
-                // do sort
-                parentTreeItem.getChildren().sort((item1, item2) -> {
-                    FoundPathItem fItem1 = item1.getValue();
-                    FoundPathItem fItem2 = item2.getValue();
+                    // do sort
+                    parentTreeItem.getChildren().sort((item1, item2) -> {
+                        FoundPathItem fItem1 = item1.getValue();
+                        FoundPathItem fItem2 = item2.getValue();
 
-                    return fItem1.getType().getSortOrder() - fItem2.getType().getSortOrder();
+                        return fItem1.getType().getSortOrder() - fItem2.getType().getSortOrder();
+                    });
+
+                    map.put(newItem, newTreeItem);
                 });
-
-                map.put(newItem, newTreeItem);
             }
 
             @Override
             public void onClearAll() {
-                rootTreeItem.getChildren().clear();
-                map.clear();
+                runOnFxThread(() -> {
+                    rootTreeItem.getChildren().clear();
+                    map.clear();
+                });
             }
         });
 
@@ -535,6 +540,14 @@ public class SceneBuilder {
         });
 
         return hBox;
+    }
+
+    private void runOnFxThread(Runnable runnable) {
+        if (Platform.isFxApplicationThread()) {
+            runnable.run();
+        } else {
+            Platform.runLater(runnable);
+        }
     }
 
     private class MarkAsIgnoredEventHandler implements EventHandler<ActionEvent> {
