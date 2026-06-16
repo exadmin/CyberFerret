@@ -6,11 +6,18 @@ import java.util.List;
 
 public class FoundItemsContainer {
     private final List<FoundPathItem> foundPathItems = Collections.synchronizedList(new ArrayList<>());
-    private FoundFileItemListener onAddNewItemListener;
+    private volatile FoundFileItemListener onAddNewItemListener;
+    private long generation;
 
     public void addItem(FoundPathItem newItem) {
-        foundPathItems.add(newItem);
-        if (onAddNewItemListener != null) onAddNewItemListener.newItemAdded(newItem);
+        long itemGeneration;
+        synchronized (foundPathItems) {
+            foundPathItems.add(newItem);
+            itemGeneration = generation;
+        }
+
+        FoundFileItemListener listener = onAddNewItemListener;
+        if (listener != null) listener.newItemAdded(newItem, itemGeneration);
     }
 
     // do not public this api
@@ -19,11 +26,15 @@ public class FoundItemsContainer {
     }
 
     public int getFoundItemsSize() {
-        return foundPathItems.size();
+        synchronized (foundPathItems) {
+            return foundPathItems.size();
+        }
     }
 
     public List<FoundPathItem> getFoundItemsCopy() {
-        return new ArrayList<>(foundPathItems);
+        synchronized (foundPathItems) {
+            return new ArrayList<>(foundPathItems);
+        }
     }
 
 
@@ -32,7 +43,20 @@ public class FoundItemsContainer {
     }
 
     public void clearAll() {
-        getFoundItems().clear();
-        if (onAddNewItemListener != null) onAddNewItemListener.onClearAll();
+        long clearGeneration;
+        synchronized (foundPathItems) {
+            getFoundItems().clear();
+            generation++;
+            clearGeneration = generation;
+        }
+
+        FoundFileItemListener listener = onAddNewItemListener;
+        if (listener != null) listener.onClearAll(clearGeneration);
+    }
+
+    public long getGeneration() {
+        synchronized (foundPathItems) {
+            return generation;
+        }
     }
 }

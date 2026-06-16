@@ -42,8 +42,11 @@ import java.awt.*;
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.regex.Pattern;
 
 import static com.github.exadmin.cyberferret.fxui.FxConstants.*;
 import static com.github.exadmin.cyberferret.persistence.PersistentPropertiesManager.*;
@@ -54,14 +57,15 @@ public class SceneBuilder {
     private final Stage primaryStage;
     private final FoundItemsContainer foundItemsContainer;
     private final ObjectProperty<TreeItem<FoundPathItem>> selectedItemProperty = new SimpleObjectProperty<>();
-    private final RunnableSigsLoader runnableSigsLoader;
-    private final RunnableScanner runnableScanner;
+    private final AtomicBoolean dictionaryLoading = new AtomicBoolean(false);
+    private final AtomicBoolean scannerRunning = new AtomicBoolean(false);
+    private volatile Map<String, Pattern> signaturesMap = Map.of();
+    private volatile Map<String, String> allowedSignaturesMap = Map.of();
+    private volatile Map<String, List<String>> excludeExtMap = Map.of();
 
     public SceneBuilder(Stage primaryStage) {
         this.primaryStage = primaryStage;
         this.foundItemsContainer = new FoundItemsContainer();
-        this.runnableSigsLoader = new RunnableSigsLoader(false);
-        this.runnableScanner = new RunnableScanner(false);
     }
 
     public Scene buildScene() {
@@ -171,28 +175,10 @@ public class SceneBuilder {
             hBox.getChildren().add(btnLoadSigs);
             btnLoadSigs.setPrefWidth(DEFAULT_BUTTON_WIDTH);
 
-            runnableScanner.setFxCallback((type, message) -> {
-                switch (type) {
-                    case ERROR, WARNING -> AlertBuilder.showError(message);
-                    case INFO -> AlertBuilder.showInfo(message);
-                    default -> throw new IllegalStateException("Unsupported message type " + type);
-                }
-            });
-
-            runnableSigsLoader.setBeforeStart(() -> btnLoadSigs.setDisable(true));
-            runnableSigsLoader.setAfterFinished(() -> {
-                runnableScanner.setSignaturesMap(runnableSigsLoader.getSignaturesMap());
-                runnableScanner.setAllowedSignaturesMap(runnableSigsLoader.getAllowedSignaturesMap());
-                runnableScanner.setExcludeExtMap(runnableSigsLoader.getExcludeExtsMap());
-                btnLoadSigs.setDisable(false);
-            });
-
             btnLoadSigs.setOnAction(event -> {
                 if (DICTIONARY.getValue() != null && !DICTIONARY.getValue().isEmpty()) {
                     Path sigsPath = Paths.get(DICTIONARY.getValue());
-
-                    runnableSigsLoader.setInputStream(FileUtils.toFileInputStream(sigsPath));
-                    runnableSigsLoader.startNowInNewThread();
+                    loadSignatures(sigsPath, btnLoadSigs);
                 } else {
                     log.warn("Signatures file is not selected. Please select it first.");
                 }
@@ -228,18 +214,30 @@ public class SceneBuilder {
             Button btnRun = new Button("Start Scanning");
             btnRun.setPrefWidth(DEFAULT_BUTTON_WIDTH);
 
-            runnableScanner.setBeforeStart(() -> btnRun.setDisable(true));
-            runnableScanner.setAfterFinished(() -> btnRun.setDisable(false));
-
             btnRun.setOnAction(actionEvent -> {
                 log.debug("Start button is pressed using dictionary {}, dir-to-scan = {}", DICTIONARY.getValue(), DIR_TO_SCAN.getValue());
+
+                if (!scannerRunning.compareAndSet(false, true)) {
+                    log.warn("Scanning is already in progress");
+                    return;
+                }
 
                 // drop previous scan result
                 foundItemsContainer.clearAll();
 
-                runnableScanner.setDirToScan(DIR_TO_SCAN.getValue());
-                runnableScanner.setFoundItemsContainer(foundItemsContainer);
-                runnableScanner.startNowInNewThread();
+                RunnableScanner scanner = new RunnableScanner(false);
+                scanner.setFxCallback(this::showScannerMessage);
+                scanner.setSignaturesMap(signaturesMap);
+                scanner.setAllowedSignaturesMap(allowedSignaturesMap);
+                scanner.setExcludeExtMap(excludeExtMap);
+                scanner.setDirToScan(DIR_TO_SCAN.getValue());
+                scanner.setFoundItemsContainer(foundItemsContainer);
+                scanner.setBeforeStart(() -> runOnFxThread(() -> btnRun.setDisable(true)));
+                scanner.setAfterFinished(() -> {
+                    scannerRunning.set(false);
+                    runOnFxThread(() -> btnRun.setDisable(false));
+                });
+                scanner.startNowInNewThread();
             });
 
 
@@ -423,7 +421,14 @@ public class SceneBuilder {
         foundItemsContainer.setOnAddNewItemListener(new FoundFileItemListener() {
             @Override
             public void newItemAdded(FoundPathItem newItem) {
+                newItemAdded(newItem, foundItemsContainer.getGeneration());
+            }
+
+            @Override
+            public void newItemAdded(FoundPathItem newItem, long generation) {
                 runOnFxThread(() -> {
+                    if (generation != foundItemsContainer.getGeneration()) return;
+
                     TreeItem<FoundPathItem> newTreeItem = new TreeItem<>(newItem);
 
                     TreeItem<FoundPathItem> parentTreeItem = map.get(newItem.getParent());
@@ -454,7 +459,14 @@ public class SceneBuilder {
 
             @Override
             public void onClearAll() {
+                onClearAll(foundItemsContainer.getGeneration());
+            }
+
+            @Override
+            public void onClearAll(long generation) {
                 runOnFxThread(() -> {
+                    if (generation != foundItemsContainer.getGeneration()) return;
+
                     rootTreeItem.getChildren().clear();
                     map.clear();
                 });
@@ -573,8 +585,54 @@ public class SceneBuilder {
         Path sigsPath = Paths.get(AppConstants.DICTIONARY_FILE_PATH_DECRYPTED);
         File sigsFile = sigsPath.toFile();
         if (sigsFile.exists() && sigsFile.isFile()) {
-            runnableSigsLoader.setInputStream(FileUtils.toFileInputStream(sigsPath));
-            runnableSigsLoader.startNowInNewThread();
+            loadSignatures(sigsPath, null);
+        }
+    }
+
+    private void loadSignatures(Path sigsPath, Button buttonToDisable) {
+        if (!dictionaryLoading.compareAndSet(false, true)) {
+            log.warn("Dictionary loading is already in progress");
+            return;
+        }
+
+        RunnableSigsLoader loader = new RunnableSigsLoader(false);
+        try {
+            loader.setInputStream(FileUtils.toFileInputStream(sigsPath));
+        } catch (RuntimeException ex) {
+            dictionaryLoading.set(false);
+            if (buttonToDisable != null) {
+                runOnFxThread(() -> buttonToDisable.setDisable(false));
+            }
+            log.error("Failed to open dictionary file {}", sigsPath, ex);
+            return;
+        }
+        loader.setBeforeStart(() -> {
+            if (buttonToDisable != null) {
+                runOnFxThread(() -> buttonToDisable.setDisable(true));
+            }
+        });
+        loader.setAfterFinished(() -> {
+            try {
+                if (loader.isReady()) {
+                    signaturesMap = loader.getSignaturesMap();
+                    allowedSignaturesMap = loader.getAllowedSignaturesMap();
+                    excludeExtMap = loader.getExcludeExtsMap();
+                }
+            } finally {
+                dictionaryLoading.set(false);
+                if (buttonToDisable != null) {
+                    runOnFxThread(() -> buttonToDisable.setDisable(false));
+                }
+            }
+        });
+        loader.startNowInNewThread();
+    }
+
+    private void showScannerMessage(FxCallback.FxCallbackType type, String message) {
+        switch (type) {
+            case ERROR, WARNING -> AlertBuilder.showError(message);
+            case INFO -> AlertBuilder.showInfo(message);
+            default -> throw new IllegalStateException("Unsupported message type " + type);
         }
     }
 

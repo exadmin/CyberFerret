@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
@@ -23,11 +24,11 @@ public class RunnableScanner extends ARunnable {
             System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("win");
     private String dirToScan;
     private FoundItemsContainer foundItemsContainer;
-    private Map<String, Pattern> sigMap = null;
-    private Map<String, String> allowedSignaturesMap = null;
-    private Map<String, List<String>> excludeExtMap = null;
+    private Map<String, Pattern> sigMap = Map.of();
+    private Map<String, String> allowedSignaturesMap = Map.of();
+    private Map<String, List<String>> excludeExtMap = Map.of();
     private FxCallback fxCallback = (type, message) -> logInfo(message);
-    private boolean isAnySignatureFound = false;
+    private final AtomicBoolean isAnySignatureFound = new AtomicBoolean(false);
     private List<Path> stagedFiles;
 
     public RunnableScanner(boolean isCLIMode) {
@@ -35,15 +36,15 @@ public class RunnableScanner extends ARunnable {
     }
 
     public void setSignaturesMap(Map<String, Pattern> sigMap) {
-        this.sigMap = sigMap;
+        this.sigMap = sigMap == null ? Map.of() : Map.copyOf(sigMap);
     }
 
     public void setAllowedSignaturesMap(Map<String, String> allowedSignaturesMap) {
-        this.allowedSignaturesMap = allowedSignaturesMap;
+        this.allowedSignaturesMap = allowedSignaturesMap == null ? Map.of() : Map.copyOf(allowedSignaturesMap);
     }
 
     public void setExcludeExtMap(Map<String, List<String>> excludeExtMap) {
-        this.excludeExtMap = excludeExtMap;
+        this.excludeExtMap = excludeExtMap == null ? Map.of() : Map.copyOf(excludeExtMap);
     }
 
     public void setDirToScan(String dirToScan) {
@@ -68,7 +69,15 @@ public class RunnableScanner extends ARunnable {
 
     @Override
     protected void _run() throws IOException {
-        final Path rootDir = Paths.get(dirToScan).toAbsolutePath().normalize();
+        isAnySignatureFound.set(false);
+
+        final String scanDir = dirToScan;
+        final FoundItemsContainer itemsContainer = foundItemsContainer;
+        final Map<String, Pattern> currentSigMap = sigMap;
+        final Map<String, String> currentAllowedSignaturesMap = allowedSignaturesMap;
+        final Map<String, List<String>> currentExcludeExtMap = excludeExtMap;
+
+        final Path rootDir = Paths.get(scanDir).toAbsolutePath().normalize();
         // check that root of the git-repository is selected - otherwise show warning
         Path gitConfigPath = rootDir.resolve(".git").resolve("config");
         File gitConfigFile = gitConfigPath.toFile();
@@ -79,7 +88,7 @@ public class RunnableScanner extends ARunnable {
                     Existed exclusion configurations will not be shown""");
         }
 
-        if (sigMap == null || sigMap.isEmpty()) {
+        if (currentSigMap.isEmpty()) {
             fxCallback.showMessage(FxCallback.FxCallbackType.ERROR, "Load signatures first. Nothing to scan by.");
             return;
         }
@@ -98,14 +107,14 @@ public class RunnableScanner extends ARunnable {
 
         final ExcludeFileModel excludeFileModel = tmpExcludeFileModel;
         if (isCLIMode()) {
-            loadOnlyStagedFiles(rootDir, excludeFileModel);
+            loadOnlyStagedFiles(rootDir, excludeFileModel, itemsContainer);
         } else {
-            loadAllFiles(rootDir, excludeFileModel);
+            loadAllFiles(rootDir, excludeFileModel, itemsContainer);
         }
 
 
         // start scanning for signatures
-        int totalItemsCount = foundItemsContainer.getFoundItemsSize();
+        int totalItemsCount = itemsContainer.getFoundItemsSize();
         if (totalItemsCount == 0) {
             logInfo("No files selected for scanning");
             return;
@@ -113,7 +122,7 @@ public class RunnableScanner extends ARunnable {
         final AtomicInteger processedItemsCount = new AtomicInteger(0);
         final AtomicInteger nextRate = new AtomicInteger(0);
 
-        List<FoundPathItem> list = foundItemsContainer.getFoundItemsCopy();
+        List<FoundPathItem> list = itemsContainer.getFoundItemsCopy();
         final AtomicInteger numberOfThreadsInProgress = new AtomicInteger(0);
 
         // try (var executor = Executors.newSingleThreadExecutor()) {
@@ -135,7 +144,8 @@ public class RunnableScanner extends ARunnable {
                     logDebug("Threads in progress = {}, Scanning for {}", numberOfThreadsInProgress.get(), pathItem);
 
                     // do scan
-                    scan(pathItem, rootDir, excludeFileModel, foundItemsContainer);
+                    scan(pathItem, rootDir, excludeFileModel, itemsContainer,
+                            currentSigMap, currentAllowedSignaturesMap, currentExcludeExtMap);
 
                     numberOfThreadsInProgress.decrementAndGet();
                 });
@@ -145,7 +155,10 @@ public class RunnableScanner extends ARunnable {
         logInfo("Scanning completed for 100%");
     }
 
-    private void loadOnlyStagedFiles(Path rootDir, ExcludeFileModel excludeFileModel) {
+    private void loadOnlyStagedFiles(
+            Path rootDir,
+            ExcludeFileModel excludeFileModel,
+            FoundItemsContainer foundItemsContainer) {
         if (stagedFiles == null || stagedFiles.isEmpty()) {
             logInfo("No staged files provided for CLI scanning");
             return;
@@ -174,7 +187,10 @@ public class RunnableScanner extends ARunnable {
         }
     }
 
-    private void loadAllFiles(Path rootDir, ExcludeFileModel excludeFileModel) throws IOException {
+    private void loadAllFiles(
+            Path rootDir,
+            ExcludeFileModel excludeFileModel,
+            FoundItemsContainer foundItemsContainer) throws IOException {
         Deque<FoundPathItem> parentsDeque = new ArrayDeque<>();
         Files.walkFileTree(rootDir, new FileVisitor<>() {
             @Override
@@ -251,7 +267,14 @@ public class RunnableScanner extends ARunnable {
         return text;
     }
 
-    private void scan(FoundPathItem pathItem, Path rootDir, ExcludeFileModel excludeFileModel, FoundItemsContainer foundItemsContainer) {
+    private void scan(
+            FoundPathItem pathItem,
+            Path rootDir,
+            ExcludeFileModel excludeFileModel,
+            FoundItemsContainer foundItemsContainer,
+            Map<String, Pattern> sigMap,
+            Map<String, String> allowedSignaturesMap,
+            Map<String, List<String>> excludeExtMap) {
         // we do scan only file-items
         if (pathItem.getType() == ItemType.DIRECTORY || pathItem.getType() == ItemType.SIGNATURE) return;
 
@@ -269,7 +292,7 @@ public class RunnableScanner extends ARunnable {
             String sigId = me.getKey();
             Pattern regExp = me.getValue();
 
-            if (isToIgnoreFile(sigId, filePath)) continue;
+            if (isToIgnoreFile(sigId, filePath, excludeExtMap)) continue;
 
             Matcher matcher = regExp.matcher(fileBody);
             while (matcher.find()) {
@@ -287,7 +310,7 @@ public class RunnableScanner extends ARunnable {
                 }
 
                 if (!newItem.isAllowedValue() && !newItem.isIgnored()) {
-                    isAnySignatureFound = true;
+                    isAnySignatureFound.set(true);
                     logError("Signature '{}' is found in {}:{}", newItem.getFoundString(), filePath, newItem.getLineNumber());
                 }
 
@@ -296,7 +319,10 @@ public class RunnableScanner extends ARunnable {
         }
     }
 
-    private boolean isToIgnoreFile(String signatureId, Path currentFile) {
+    private boolean isToIgnoreFile(
+            String signatureId,
+            Path currentFile,
+            Map<String, List<String>> excludeExtMap) {
         if (excludeExtMap == null) return false;
         List<String> list = excludeExtMap.get(signatureId);
         if (list == null) return false;
@@ -329,6 +355,6 @@ public class RunnableScanner extends ARunnable {
     }
 
     public boolean isAnySignatureFound() {
-        return isAnySignatureFound;
+        return isAnySignatureFound.get();
     }
 }

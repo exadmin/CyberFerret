@@ -10,7 +10,7 @@ public class RunnableLogger implements Runnable {
     private long lastTimestamp = 0;
     private static final long MILLIS_MUST_PASSED = 300;
 
-    private boolean stop = false;
+    private volatile boolean stop = false;
     private FXConsoleAppender fxAppender = null;
     private final TextArea textArea;
 

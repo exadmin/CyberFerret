@@ -9,6 +9,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -16,7 +17,7 @@ import java.util.Properties;
 import static com.github.exadmin.cyberferret.AppConstants.SYS_ENV_VAR_PASSWORD;
 
 public class PersistentPropertiesManager {
-    private static final Map<String, AbstractPersistentProperty<?>> REG_MAP = new HashMap<>();
+    private static final Map<String, AbstractPersistentProperty<?>> REG_MAP = Collections.synchronizedMap(new HashMap<>());
     public static final AbstractPersistentProperty<Number> STAGE_WIDTH = new AppDoubleProperty("stage.width", 640d, REG_MAP);
     public static final AbstractPersistentProperty<Number> STAGE_HEIGHT = new AppDoubleProperty("stage.height", 480d, REG_MAP);
     public static final AbstractPersistentProperty<Number> STAGE_POSX = new AppDoubleProperty("stage.posX", 0d, REG_MAP);
@@ -54,7 +55,10 @@ public class PersistentPropertiesManager {
 
             for (Object key : properties.keySet()) {
                 String strKey = key.toString();
-                AbstractPersistentProperty<?> pProperty = REG_MAP.get(strKey);
+                AbstractPersistentProperty<?> pProperty;
+                synchronized (REG_MAP) {
+                    pProperty = REG_MAP.get(strKey);
+                }
                 if (pProperty == null) {
                     LOG.warn("Unknown key in the persistent properties list '{}'", strKey);
                     continue;
@@ -79,9 +83,11 @@ public class PersistentPropertiesManager {
 
     public void saveProperties() {
         Properties properties = new Properties();
-        for (Map.Entry<String, AbstractPersistentProperty<?>> me : REG_MAP.entrySet()) {
-            Object value = me.getValue().getValue();
-            if (value != null) properties.setProperty(me.getKey(), value.toString());
+        synchronized (REG_MAP) {
+            for (Map.Entry<String, AbstractPersistentProperty<?>> me : REG_MAP.entrySet()) {
+                Object value = me.getValue().getValue();
+                if (value != null) properties.setProperty(me.getKey(), value.toString());
+            }
         }
         try (OutputStream os = new FileOutputStream(filePath.toFile())) {
             properties.store(os, "");

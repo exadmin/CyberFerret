@@ -12,11 +12,11 @@ import java.util.regex.PatternSyntaxException;
  */
 public class RunnableSigsLoader extends ARunnable {
     private final AtomicBoolean isReady = new AtomicBoolean(false);
-    private Map<String, Pattern> signaturesMap;           // map of signatures
-    private Map<String, String> allowedSignaturesMap; // effectively the list of exact strings which are allowed when capturing
-    private Map<String, List<String>> excludeExtsMap; // signature -> List of file extensions to ignore
-    private String dictionaryVersion = "undefined";
-    private InputStream inputStream;
+    private volatile Map<String, Pattern> signaturesMap = Map.of(); // map of signatures
+    private volatile Map<String, String> allowedSignaturesMap = Map.of(); // effectively the list of exact strings which are allowed when capturing
+    private volatile Map<String, List<String>> excludeExtsMap = Map.of(); // signature -> List of file extensions to ignore
+    private volatile String dictionaryVersion = "undefined";
+    private volatile InputStream inputStream;
 
     public RunnableSigsLoader(boolean isCLIMode) {
         super(isCLIMode);
@@ -54,7 +54,6 @@ public class RunnableSigsLoader extends ARunnable {
 
             Map<String, Pattern> regExpTmpMap = new HashMap<>();
             Map<String, String> allowedSignaturesTmpMap = new HashMap<>();
-            Map<String, List<String>> includeExt = new HashMap<>();
             Map<String, List<String>> excludeExtTmpMap = new HashMap<>();
 
             for (Object key : properties.keySet()) {
