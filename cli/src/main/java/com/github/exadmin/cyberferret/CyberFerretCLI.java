@@ -139,6 +139,7 @@ public class CyberFerretCLI {
         runnableScanner.setSignaturesMap(sigsLoader.getSignaturesMap());
         runnableScanner.setAllowedSignaturesMap(sigsLoader.getAllowedSignaturesMap());
         runnableScanner.setExcludeExtMap(sigsLoader.getExcludeExtsMap());
+        runnableScanner.setBinaryExcludePatterns(sigsLoader.getBinaryExcludePatterns());
         runnableScanner.setDirToScan(repoPathToScan.toString());
         runnableScanner.setStagedFiles(stagedFiles);
         runnableScanner.run();

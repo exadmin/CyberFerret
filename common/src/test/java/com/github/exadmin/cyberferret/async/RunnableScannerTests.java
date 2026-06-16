@@ -21,6 +21,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class RunnableScannerTests {
+    // PNG magic header: a real binary signature used as a stand-in for a committed binary file
+    private static final byte[] PNG_HEADER = {(byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D};
+
     @TempDir
     Path tempDir;
 
@@ -98,6 +101,88 @@ public class RunnableScannerTests {
         runnableScanner.run();
 
         assertTrue(runnableScanner.isAnySignatureFound());
+    }
+
+    @Test
+    public void cliMode_flagsBinaryFileAsArtifact() throws IOException {
+        Path repoRoot = tempDir.resolve("repo");
+        Files.createDirectories(repoRoot.resolve(".git"));
+        Files.writeString(repoRoot.resolve(".git/config"), "[core]", StandardCharsets.UTF_8);
+
+        Path stagedFile = repoRoot.resolve("blob.bin");
+        Files.write(stagedFile, PNG_HEADER);
+
+        FoundItemsContainer foundItemsContainer = new FoundItemsContainer();
+        RunnableScanner runnableScanner = new RunnableScanner(true);
+        runnableScanner.setDirToScan(repoRoot.toString());
+        runnableScanner.setFoundItemsContainer(foundItemsContainer);
+        runnableScanner.setSignaturesMap(Map.of("test", Pattern.compile("secret")));
+        runnableScanner.setAllowedSignaturesMap(Map.of());
+        runnableScanner.setExcludeExtMap(Map.of());
+        runnableScanner.setStagedFiles(List.of(stagedFile));
+
+        runnableScanner.run();
+
+        List<FoundPathItem> artifacts = foundItemsContainer.getFoundItemsCopy().stream()
+                .filter(item -> "BINARY_ARTIFACT".equals(item.getVisualName()))
+                .toList();
+        assertEquals(1, artifacts.size());
+        assertEquals(stagedFile.toAbsolutePath().normalize(), artifacts.getFirst().getFilePath());
+        // a binary artifact must fail the scan so the CLI/pre-commit hook exits non-zero
+        assertTrue(runnableScanner.isAnySignatureFound());
+    }
+
+    @Test
+    public void cliMode_skipsBinaryFileMatchingExcludePattern() throws IOException {
+        Path repoRoot = tempDir.resolve("repo");
+        Files.createDirectories(repoRoot.resolve(".git"));
+        Files.writeString(repoRoot.resolve(".git/config"), "[core]", StandardCharsets.UTF_8);
+
+        Path stagedFile = repoRoot.resolve("archive.dat");
+        Files.write(stagedFile, PNG_HEADER);
+
+        FoundItemsContainer foundItemsContainer = new FoundItemsContainer();
+        RunnableScanner runnableScanner = new RunnableScanner(true);
+        runnableScanner.setDirToScan(repoRoot.toString());
+        runnableScanner.setFoundItemsContainer(foundItemsContainer);
+        runnableScanner.setSignaturesMap(Map.of("test", Pattern.compile("secret")));
+        runnableScanner.setAllowedSignaturesMap(Map.of());
+        runnableScanner.setExcludeExtMap(Map.of());
+        runnableScanner.setBinaryExcludePatterns(List.of(Pattern.compile(".*\\.dat")));
+        runnableScanner.setStagedFiles(List.of(stagedFile));
+
+        runnableScanner.run();
+
+        boolean anyArtifact = foundItemsContainer.getFoundItemsCopy().stream()
+                .anyMatch(item -> "BINARY_ARTIFACT".equals(item.getVisualName()));
+        assertFalse(anyArtifact);
+        assertFalse(runnableScanner.isAnySignatureFound());
+    }
+
+    @Test
+    public void cliMode_doesNotFlagSupportedImageAsBinaryArtifact() throws IOException {
+        Path repoRoot = tempDir.resolve("repo");
+        Files.createDirectories(repoRoot.resolve(".git"));
+        Files.writeString(repoRoot.resolve(".git/config"), "[core]", StandardCharsets.UTF_8);
+
+        // images are binary, but their metadata is scanned for signatures, so they must not be flagged
+        Path stagedFile = repoRoot.resolve("logo.png");
+        Files.write(stagedFile, PNG_HEADER);
+
+        FoundItemsContainer foundItemsContainer = new FoundItemsContainer();
+        RunnableScanner runnableScanner = new RunnableScanner(true);
+        runnableScanner.setDirToScan(repoRoot.toString());
+        runnableScanner.setFoundItemsContainer(foundItemsContainer);
+        runnableScanner.setSignaturesMap(Map.of("test", Pattern.compile("secret")));
+        runnableScanner.setAllowedSignaturesMap(Map.of());
+        runnableScanner.setExcludeExtMap(Map.of());
+        runnableScanner.setStagedFiles(List.of(stagedFile));
+
+        runnableScanner.run();
+
+        boolean anyArtifact = foundItemsContainer.getFoundItemsCopy().stream()
+                .anyMatch(item -> "BINARY_ARTIFACT".equals(item.getVisualName()));
+        assertFalse(anyArtifact);
     }
 
     @Test
