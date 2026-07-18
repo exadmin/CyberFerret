@@ -3,6 +3,14 @@
 
 Scans any files for different pre-defined signatures (supporting RegExp and other rules)
 
+# Git repository scanning
+When you scan a Git repository, Cyber Ferret scans tracked files and untracked files that Git does not ignore. This
+includes newly created source files that have not been added to Git yet.
+
+Cyber Ferret skips files excluded by standard Git rules, including repository `.gitignore` files,
+`.git/info/exclude`, and the user's global Git excludes file. Git must be available on `PATH` to scan a Git
+repository. When you scan a directory that is not a Git repository, Cyber Ferret scans all files under that directory.
+
 # Example
 [<img src="./docs/run-example.gif">]()
 
