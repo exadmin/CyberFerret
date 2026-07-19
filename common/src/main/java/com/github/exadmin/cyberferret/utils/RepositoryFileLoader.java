@@ -8,7 +8,9 @@ import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -39,17 +41,17 @@ public class RepositoryFileLoader {
     }
 
     private List<Path> loadFromGit(Path root) throws IOException {
+        byte[] trackedOutput = executeGitLsFiles(root, "--cached", "--stage", "-z");
+        byte[] untrackedOutput = executeGitLsFiles(root, "--others", "--exclude-standard", "-z");
+        return loadSelectedPaths(root, parseGitSelection(trackedOutput, untrackedOutput));
+    }
+
+    private byte[] executeGitLsFiles(Path root, String... arguments) throws IOException {
         Process process;
         try {
             List<String> command = new ArrayList<>(gitCommand);
-            command.addAll(List.of(
-                    "-C",
-                    root.toString(),
-                    "ls-files",
-                    "--cached",
-                    "--others",
-                    "--exclude-standard",
-                    "-z"));
+            command.addAll(List.of("-C", root.toString(), "ls-files"));
+            command.addAll(List.of(arguments));
             process = new ProcessBuilder(command).start();
         } catch (IOException ex) {
             throw new IOException("Cannot start Git to list repository files", ex);
@@ -77,16 +79,39 @@ public class RepositoryFileLoader {
             throw new IOException("Cannot list Git repository files: " + message);
         }
 
-        List<Path> files = new ArrayList<>();
+        return output;
+    }
+
+    private GitSelection parseGitSelection(byte[] trackedOutput, byte[] untrackedOutput) {
+        Set<GitPathKey> files = new HashSet<>();
+        Set<GitPathKey> directories = new HashSet<>();
+        Set<GitPathKey> submodules = new HashSet<>();
+        addGitEntries(trackedOutput, true, files, directories, submodules);
+        addGitEntries(untrackedOutput, false, files, directories, submodules);
+        return new GitSelection(files, directories, submodules);
+    }
+
+    private void addGitEntries(
+            byte[] output,
+            boolean hasStageMetadata,
+            Set<GitPathKey> files,
+            Set<GitPathKey> directories,
+            Set<GitPathKey> submodules) {
         int entryStart = 0;
         for (int index = 0; index < output.length; index++) {
             if (output[index] != 0) {
                 continue;
             }
-            addGitPath(root, output, entryStart, index, files);
+            addGitEntry(
+                    output,
+                    entryStart,
+                    index,
+                    hasStageMetadata,
+                    files,
+                    directories,
+                    submodules);
             entryStart = index + 1;
         }
-        return files;
     }
 
     private byte[] readProcessOutput(Future<byte[]> outputFuture) throws IOException, InterruptedException {
@@ -97,28 +122,96 @@ public class RepositoryFileLoader {
         }
     }
 
-    private void addGitPath(
-            Path root,
+    private void addGitEntry(
             byte[] output,
             int entryStart,
             int entryEnd,
-            List<Path> files) throws IOException {
+            boolean hasStageMetadata,
+            Set<GitPathKey> files,
+            Set<GitPathKey> directories,
+            Set<GitPathKey> submodules) {
         if (entryStart == entryEnd) {
             return;
         }
-        String relativePath = new String(
-                output,
-                entryStart,
-                entryEnd - entryStart,
-                StandardCharsets.UTF_8);
-        Path file = root.resolve(relativePath).normalize();
-        if (file.startsWith(root) && Files.isRegularFile(file)) {
-            files.add(file);
-        } else if (file.startsWith(root)
-                && Files.isDirectory(file)
-                && isGitRepository(file)) {
-            files.addAll(loadFromGit(file));
+        int pathStart = entryStart;
+        boolean isSubmodule = false;
+        if (hasStageMetadata) {
+            for (int index = entryStart; index < entryEnd; index++) {
+                if (output[index] != '\t') {
+                    continue;
+                }
+                isSubmodule = hasGitMode(output, entryStart, index, "160000");
+                pathStart = index + 1;
+                break;
+            }
         }
+
+        GitPathKey path = GitPathKey.fromGitOutput(output, pathStart, entryEnd);
+        if (isSubmodule) {
+            submodules.add(path);
+        } else {
+            files.add(path);
+        }
+        for (GitPathKey parent = path.parent(); parent != null; parent = parent.parent()) {
+            directories.add(parent);
+        }
+    }
+
+    private boolean hasGitMode(
+            byte[] output,
+            int entryStart,
+            int metadataEnd,
+            String expectedMode) {
+        byte[] mode = expectedMode.getBytes(StandardCharsets.US_ASCII);
+        if (metadataEnd - entryStart < mode.length) {
+            return false;
+        }
+        for (int index = 0; index < mode.length; index++) {
+            if (output[entryStart + index] != mode[index]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private List<Path> loadSelectedPaths(Path root, GitSelection selection) throws IOException {
+        List<Path> files = new ArrayList<>();
+        Files.walkFileTree(root, new SimpleFileVisitor<>() {
+            @Override
+            public FileVisitResult preVisitDirectory(Path directory, BasicFileAttributes attributes)
+                    throws IOException {
+                if (directory.equals(root)) {
+                    return FileVisitResult.CONTINUE;
+                }
+                if (directory.getFileName().toString().equals(".git")) {
+                    return FileVisitResult.SKIP_SUBTREE;
+                }
+
+                GitPathKey path = GitPathKey.fromNativePath(root, directory);
+                if (selection.submodules().contains(path)) {
+                    if (isGitRepository(directory)) {
+                        files.addAll(loadFromGit(directory));
+                    }
+                    return FileVisitResult.SKIP_SUBTREE;
+                }
+                if (!selection.directories().contains(path)) {
+                    return FileVisitResult.SKIP_SUBTREE;
+                }
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attributes) throws IOException {
+                GitPathKey path = GitPathKey.fromNativePath(root, file);
+                boolean isScannableFile = attributes.isRegularFile()
+                        || (attributes.isSymbolicLink() && Files.isRegularFile(file));
+                if (selection.files().contains(path) && isScannableFile) {
+                    files.add(file.toAbsolutePath().normalize());
+                }
+                return FileVisitResult.CONTINUE;
+            }
+        });
+        return files;
     }
 
     private List<Path> loadFromFileSystem(Path root) throws IOException {
@@ -141,5 +234,11 @@ public class RepositoryFileLoader {
             }
         });
         return files;
+    }
+
+    private record GitSelection(
+            Set<GitPathKey> files,
+            Set<GitPathKey> directories,
+            Set<GitPathKey> submodules) {
     }
 }
