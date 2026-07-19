@@ -59,6 +59,24 @@ public class RepositoryFilesTests {
     }
 
     @Test
+    public void load_honorsConfiguredExcludesFile() throws Exception {
+        Path repository = initializeRepository();
+        Path excluded = write(repository, "generated.cache");
+        Path included = write(repository, "Source.java");
+        Path excludesFile = tempDir.resolve("configured-excludes");
+        Files.writeString(excludesFile, "*.cache\n", StandardCharsets.UTF_8);
+        RepositoryFileLoader loader = new RepositoryFileLoader(List.of(
+                "git",
+                "-c",
+                "core.excludesFile=" + excludesFile));
+
+        List<Path> files = loader.load(repository);
+
+        assertFalse(files.contains(excluded));
+        assertTrue(files.contains(included));
+    }
+
+    @Test
     public void load_walksAllFilesOutsideGitRepositories() throws IOException {
         Path directory = tempDir.resolve("directory");
         Files.createDirectories(directory.resolve("nested"));
@@ -114,6 +132,7 @@ public class RepositoryFilesTests {
                 "modules/library");
 
         Path submodule = repository.resolve("modules/library");
+        isolateGlobalExcludes(submodule);
         Path trackedSource = submodule.resolve("Tracked.java").toAbsolutePath().normalize();
         Path untrackedSource = write(submodule, "NewSource.java");
         Path ignoredFile = write(submodule, "ignored.txt");
@@ -134,7 +153,14 @@ public class RepositoryFilesTests {
         Path repository = tempDir.resolve(directoryName);
         Files.createDirectories(repository);
         runGit(repository, "init");
+        isolateGlobalExcludes(repository);
         return repository;
+    }
+
+    private void isolateGlobalExcludes(Path repository) throws Exception {
+        Path emptyExcludesFile = tempDir.resolve("empty-global-excludes");
+        Files.writeString(emptyExcludesFile, "", StandardCharsets.UTF_8);
+        runGit(repository, "config", "core.excludesFile", emptyExcludesFile.toString());
     }
 
     private static Path write(Path root, String relativePath) throws IOException {

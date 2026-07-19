@@ -24,6 +24,7 @@ On Unix systems, the scanner also preserves and scans file names that contain by
 * Install [JDK 21 or newer](https://jdk.java.net/21/)
 * Install [JavaFX 21 or newer](https://gluonhq.com/products/javafx/)
 * Install Apache Maven (ver 3.9.x) from https://maven.apache.org/download.cgi
+* Install [Git](https://git-scm.com/downloads) and ensure `git` is available on `PATH`
 * Setup M2_HOME, JAVA_HOME and PATH (add maven and java) System Variables as recommended for Java and Maven usage
 * Optional = setup JAVAFX_PATH System Variable for handy run of the application using predefined shell-scripts in ./fx/src/shell/*.* 
 

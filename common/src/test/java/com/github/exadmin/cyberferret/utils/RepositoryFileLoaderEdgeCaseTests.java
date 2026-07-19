@@ -151,6 +151,9 @@ public class RepositoryFileLoaderEdgeCaseTests {
         Path repository = tempDir.resolve(directoryName);
         Files.createDirectories(repository);
         runGit(repository, "init");
+        Path emptyExcludesFile = tempDir.resolve("empty-global-excludes");
+        Files.writeString(emptyExcludesFile, "", StandardCharsets.UTF_8);
+        runGit(repository, "config", "core.excludesFile", emptyExcludesFile.toString());
         return repository;
     }
 

@@ -193,9 +193,18 @@ public class RunnableScanner extends ARunnable {
             FoundItemsContainer foundItemsContainer) throws IOException {
         RepositoryFileLoader repositoryFileLoader = new RepositoryFileLoader();
         boolean applyGitExclusions = repositoryFileLoader.isGitRepository(rootDir);
-        Set<Path> includedFiles = applyGitExclusions
-                ? new HashSet<>(repositoryFileLoader.load(rootDir))
-                : Set.of();
+        Set<Path> includedFiles;
+        try {
+            includedFiles = applyGitExclusions
+                    ? new HashSet<>(repositoryFileLoader.load(rootDir))
+                    : Set.of();
+        } catch (IOException ex) {
+            fxCallback.showMessage(
+                    FxCallback.FxCallbackType.ERROR,
+                    "Cannot enumerate Git repository files: " + ex.getMessage()
+                            + ". Verify that Git is installed and the repository is valid.");
+            throw ex;
+        }
         Set<Path> includedDirectories = new HashSet<>();
         for (Path includedFile : includedFiles) {
             Path directory = includedFile.getParent();

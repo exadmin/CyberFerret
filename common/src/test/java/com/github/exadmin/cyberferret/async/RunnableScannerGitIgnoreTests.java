@@ -29,6 +29,9 @@ public class RunnableScannerGitIgnoreTests {
         Path repository = tempDir.resolve("repository");
         Files.createDirectories(repository);
         runGit(repository, "init");
+        Path emptyExcludesFile = tempDir.resolve("empty-global-excludes");
+        Files.writeString(emptyExcludesFile, "", StandardCharsets.UTF_8);
+        runGit(repository, "config", "core.excludesFile", emptyExcludesFile.toString());
 
         Path untrackedSource = repository.resolve("NewSource.java");
         Path gitIgnored = repository.resolve("ignored.txt");
