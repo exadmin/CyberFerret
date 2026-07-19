@@ -9,15 +9,20 @@ includes newly created source files that have not been added to Git yet.
 
 Cyber Ferret skips files excluded by standard Git rules, including repository `.gitignore` files,
 `.git/info/exclude`, and the user's global Git excludes file. Git must be available on `PATH` to scan a Git
-repository. When you scan a directory that is not a Git repository, Cyber Ferret scans all files under that directory.
+repository. When you scan a directory that is not a Git repository, Cyber Ferret scans regular files without following
+symbolic links to directories or entering `.git` directories.
+
+Checked-out Git submodules are scanned recursively. Cyber Ferret does not follow symbolic links to directories, so a
+tracked link cannot make a scan traverse an external repository. Symbolic links to regular files remain scannable.
+On Unix systems, the scanner also preserves and scans file names that contain byte sequences that are not valid UTF-8.
 
 # Example
 [<img src="./docs/run-example.gif">]()
 
 # How to build from sources via command line
 ## Prerequisites
-* Install JDK (24 or newer) from https://jdk.java.net/24/
-* Install JavaFX (24 or newer) from https://gluonhq.com/products/javafx/
+* Install [JDK 21 or newer](https://jdk.java.net/21/)
+* Install [JavaFX 21 or newer](https://gluonhq.com/products/javafx/)
 * Install Apache Maven (ver 3.9.x) from https://maven.apache.org/download.cgi
 * Setup M2_HOME, JAVA_HOME and PATH (add maven and java) System Variables as recommended for Java and Maven usage
 * Optional = setup JAVAFX_PATH System Variable for handy run of the application using predefined shell-scripts in ./fx/src/shell/*.* 
@@ -60,10 +65,14 @@ or use ./fx/src/shell/run-app.sh file
 
 # How to run - in IntelliJ IDEA
 ## prerequisites
-Install JDK from https://jdk.java.net/24/
-Install JavaFX from https://gluonhq.com/products/javafx/
+Install [JDK 21 or newer](https://jdk.java.net/21/)
+Install [JavaFX 21 or newer](https://gluonhq.com/products/javafx/)
 Create Run/Debug Configuration Profile of type "Application"
-Set VM options "--module-path "...\JDKs\javafx-sdk-24.0.1\lib" --add-modules  javafx.controls,javafx.web,javafx.graphics --enable-native-access=javafx.graphics"
+Set VM options:
+
+```shell
+--module-path "...\JDKs\javafx-sdk-21\lib" --add-modules javafx.controls,javafx.web,javafx.graphics --enable-native-access=javafx.graphics
+```
 
 
 # Dictionary format
