@@ -97,6 +97,7 @@ public class RunnableScanner extends ARunnable {
         }
 
         if (currentSigMap.isEmpty()) {
+            operationalFailure.set(true);
             fxCallback.showMessage(FxCallback.FxCallbackType.ERROR, "Load signatures first. Nothing to scan by.");
             return;
         }

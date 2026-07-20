@@ -167,6 +167,22 @@ public class RunnableScannerTests {
         assertTrue(scanner.hasOperationalFailure());
     }
 
+    @Test
+    public void cliMode_marksEmptySignatureMapAsOperationalFailure() throws IOException {
+        Path repoRoot = tempDir.resolve("repo-empty-signatures");
+        Files.createDirectories(repoRoot.resolve(".git"));
+        Files.writeString(repoRoot.resolve(".git/config"), "[core]", StandardCharsets.UTF_8);
+
+        RunnableScanner scanner = new RunnableScanner(true);
+        scanner.setDirToScan(repoRoot.toString());
+        scanner.setFoundItemsContainer(new FoundItemsContainer());
+        scanner.setSignaturesMap(Map.of());
+        scanner.setStagedFiles(List.of());
+        scanner.run();
+
+        assertTrue(scanner.hasOperationalFailure());
+    }
+
     private static RunnableScanner scannerFor(Path repoRoot, Path stagedFile, Pattern pattern) {
         RunnableScanner scanner = new RunnableScanner(true);
         scanner.setDirToScan(repoRoot.toString());

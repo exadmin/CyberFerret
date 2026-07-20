@@ -59,6 +59,7 @@ public class RunnableSigsLoader extends ARunnable {
             Map<String, Pattern> regExpTmpMap = new HashMap<>();
             Map<String, String> allowedSignaturesTmpMap = new HashMap<>();
             Map<String, List<String>> excludeExtTmpMap = new HashMap<>();
+            boolean allSignaturesValid = true;
 
             for (Object key : properties.keySet()) {
                 String sigId = key.toString();
@@ -90,8 +91,13 @@ public class RunnableSigsLoader extends ARunnable {
                     // logInfo("Signature with id '{}' = '{}' is marked as allowed.", sigId, expression);
                     allowedSignaturesTmpMap.put(sigId, expression);
                 } else {
-                    compileAndKeep(sigId, expression, regExpTmpMap);
+                    allSignaturesValid &= compileAndKeep(sigId, expression, regExpTmpMap);
                 }
+            }
+
+            if (!allSignaturesValid || regExpTmpMap.isEmpty()) {
+                logError("Dictionary contains no complete, usable signature set");
+                return;
             }
 
             signaturesMap = Collections.unmodifiableMap(regExpTmpMap);
@@ -111,7 +117,7 @@ public class RunnableSigsLoader extends ARunnable {
     private static final Set<Character> SPECIAL_CHARS =
             Set.of('!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '-', '+', '=', '{', '}', '[', ']', '|', '\\', ':', ';', '"', '\'', '<', '>', ',', '.', '?', '/');
 
-    private void compileAndKeep(String key, String regExpStr, Map<String, Pattern> map) {
+    private boolean compileAndKeep(String key, String regExpStr, Map<String, Pattern> map) {
         final String originalKeyName = key; // for logging aims
 
         if (key.endsWith("(regexp)")) {
@@ -138,8 +144,10 @@ public class RunnableSigsLoader extends ARunnable {
             // logInfo("Compiling key '{}' effective expressions = '{}'", originalKeyName, regExpStr);
             Pattern regExp = Pattern.compile(regExpStr, Pattern.CASE_INSENSITIVE + Pattern.DOTALL);
             map.put(key, regExp);
+            return true;
         } catch (PatternSyntaxException pse) {
             logError("Error while compiling signature with ID = '{}', reg-exp = '{}'", originalKeyName, regExpStr);
+            return false;
         }
     }
 

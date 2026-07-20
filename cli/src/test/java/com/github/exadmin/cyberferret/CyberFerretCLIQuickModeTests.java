@@ -70,6 +70,25 @@ class CyberFerretCLIQuickModeTests {
     }
 
     @Test
+    void quickMode_returnsTwoForIncompleteSignatureSets() throws Exception {
+        Path repository = prepareRepository(SENTINEL);
+        for (String dictionary : new String[]{
+                "VERSION=1.4\n",
+                "VERSION=1.4\nBROKEN(regexp)=[\n",
+                "VERSION=1.4\nSECRET=" + SENTINEL + "\nBROKEN(regexp)=[\n"
+        }) {
+            Path cache = prepareDictionary(dictionary);
+
+            Invocation invocation = invoke("--mode=quick", "--offline", cacheOption(cache), repository.toString());
+
+            assertEquals(2, invocation.exitCode());
+            assertFalse(invocation.stdout().contains(SENTINEL));
+            assertFalse(invocation.stderr().contains(SENTINEL));
+            assertFalse(invocation.stderr().contains(PASSWORD));
+        }
+    }
+
+    @Test
     void dictionaryVersion_printsExactlyOneSafeLine() throws Exception {
         Path cache = prepareDictionary();
 

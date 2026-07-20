@@ -33,8 +33,20 @@ public class CyberFerretCLI {
             return usesAutomationOptions(args) ? 2 : 1;
         }
 
-        String password = environment.get(AppConstants.SYS_ENV_VAR_PASSWORD);
         boolean detailed = arguments.command() == CliArguments.Command.DETAILED_SCAN;
+        List<Path> preloadedFiles = null;
+        if (detailed && arguments.stagedFilesList() != null) {
+            try {
+                preloadedFiles = loadExplicitStagedFiles(arguments, err);
+                if (preloadedFiles == null) return 1;
+                if (preloadedFiles.isEmpty()) return 0;
+            } catch (IOException exception) {
+                err.println("Cannot read the staged-files list.");
+                return 1;
+            }
+        }
+
+        String password = environment.get(AppConstants.SYS_ENV_VAR_PASSWORD);
         if (password == null || password.isBlank()) {
             err.println("Dictionary password is unavailable.");
             return detailed ? 1 : 2;
@@ -49,7 +61,7 @@ public class CyberFerretCLI {
                 out.println(dictionary.dictionaryVersion());
                 return 0;
             }
-            return runScan(arguments, dictionary, out, err);
+            return runScan(arguments, dictionary, preloadedFiles, out, err);
         } catch (DictionarySession.DictionaryException exception) {
             err.println(exception.getMessage());
             return detailed ? 1 : 2;
@@ -62,6 +74,7 @@ public class CyberFerretCLI {
     private static int runScan(
             CliArguments arguments,
             DictionarySession dictionary,
+            List<Path> preloadedFiles,
             PrintStream out,
             PrintStream err) throws IOException {
         Path repository = arguments.repository().toAbsolutePath().normalize();
@@ -72,13 +85,11 @@ public class CyberFerretCLI {
         }
 
         List<Path> files;
-        if (arguments.stagedFilesList() != null) {
-            Path listPath = arguments.stagedFilesList().toAbsolutePath().normalize();
-            if (!Files.isRegularFile(listPath)) {
-                err.println("The staged-files list is unavailable.");
-                return 1;
-            }
-            files = loadStagedFiles(repository, listPath);
+        if (preloadedFiles != null) {
+            files = preloadedFiles;
+        } else if (arguments.stagedFilesList() != null) {
+            files = loadExplicitStagedFiles(arguments, err);
+            if (files == null) return 1;
         } else {
             files = loadFilesFromRepository(repository);
         }
@@ -105,6 +116,20 @@ public class CyberFerretCLI {
             return 1;
         }
         return 0;
+    }
+
+    private static List<Path> loadExplicitStagedFiles(CliArguments arguments, PrintStream err) throws IOException {
+        Path repository = arguments.repository().toAbsolutePath().normalize();
+        if (!FileUtils.isPathToDir(repository)) {
+            err.println("The repository path is not a readable directory.");
+            return null;
+        }
+        Path listPath = arguments.stagedFilesList().toAbsolutePath().normalize();
+        if (!Files.isRegularFile(listPath)) {
+            err.println("The staged-files list is unavailable.");
+            return null;
+        }
+        return loadStagedFiles(repository, listPath);
     }
 
     private static boolean usesAutomationOptions(String[] args) {

@@ -78,6 +78,23 @@ class DictionarySessionTests {
         assertEquals("Cannot parse the dictionary.", exception.getMessage());
     }
 
+    @Test
+    void prepare_rejectsIncompleteSignatureSets() throws Exception {
+        for (String dictionary : new String[]{
+                "VERSION=1.4\n",
+                "VERSION=1.4\nBROKEN(regexp)=[\n",
+                "VERSION=1.4\nSECRET=" + ENTRY + "\nBROKEN(regexp)=[\n"
+        }) {
+            writeEncryptedDictionary(dictionary);
+
+            DictionarySession.DictionaryException exception = assertThrows(
+                    DictionarySession.DictionaryException.class,
+                    () -> DictionarySession.prepare(tempDir, true, PASSWORD));
+
+            assertEquals("Cannot parse the dictionary.", exception.getMessage());
+        }
+    }
+
     private void writeEncryptedDictionary(String dictionary) throws Exception {
         Path encryptedPath = tempDir.resolve(AppConstants.DICTIONARY_FILE_PATH_ENCRYPTED);
         Files.writeString(encryptedPath, encrypt(dictionary, PASSWORD), StandardCharsets.UTF_8);

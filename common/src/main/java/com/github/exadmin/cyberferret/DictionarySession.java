@@ -49,13 +49,30 @@ public final class DictionarySession {
 
         if (!offline) {
             createCacheDirectory(dictionaryPath);
+            downloader.setDownloadedDictionaryValidator(candidatePath -> isValidDictionary(candidatePath, password));
             downloader.run();
+            if (downloader.hasRejectedDownloadedDictionary()) {
+                throw new DictionaryException("Downloaded dictionary is invalid.");
+            }
         }
 
         if (!Files.isRegularFile(dictionaryPath)) {
             throw new DictionaryException("Cached dictionary is unavailable.");
         }
 
+        return loadDictionary(dictionaryPath, password);
+    }
+
+    private static boolean isValidDictionary(Path dictionaryPath, String password) {
+        try {
+            loadDictionary(dictionaryPath, password);
+            return true;
+        } catch (DictionaryException exception) {
+            return false;
+        }
+    }
+
+    private static DictionarySession loadDictionary(Path dictionaryPath, String password) {
         String encryptedBody;
         try {
             encryptedBody = FileUtils.readFile(dictionaryPath);
