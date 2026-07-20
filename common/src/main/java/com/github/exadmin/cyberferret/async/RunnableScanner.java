@@ -30,6 +30,8 @@ public class RunnableScanner extends ARunnable {
     private Map<String, List<String>> excludeExtMap = Map.of();
     private FxCallback fxCallback = (type, message) -> logInfo(message);
     private final AtomicBoolean isAnySignatureFound = new AtomicBoolean(false);
+    private final AtomicBoolean operationalFailure = new AtomicBoolean(false);
+    private boolean revealFindings = true;
     private List<Path> stagedFiles;
 
     public RunnableScanner(boolean isCLIMode) {
@@ -68,9 +70,14 @@ public class RunnableScanner extends ARunnable {
         this.stagedFiles = new ArrayList<>(stagedFiles);
     }
 
+    public void setRevealFindings(boolean revealFindings) {
+        this.revealFindings = revealFindings;
+    }
+
     @Override
     protected void _run() throws IOException {
         isAnySignatureFound.set(false);
+        operationalFailure.set(false);
 
         final String scanDir = dirToScan;
         final FoundItemsContainer itemsContainer = foundItemsContainer;
@@ -131,23 +138,24 @@ public class RunnableScanner extends ARunnable {
             list.forEach(pathItem -> {
                 executor.submit(() -> {
                     numberOfThreadsInProgress.incrementAndGet();
+                    try {
+                        int currentCount = processedItemsCount.incrementAndGet();
+                        int progressRate = currentCount * 100 / totalItemsCount;
+                        int rateToLog = nextRate.updateAndGet(rate -> progressRate > rate ? rate + 10 : rate);
+                        if (progressRate > rateToLog - 10 && isCLIMode()) {
+                            logInfo("Scan rate is {}%", progressRate);
+                        }
 
-                    // update progress rate
-                    int currentCount = processedItemsCount.incrementAndGet();
-                    int progressRate =  currentCount * 100 / totalItemsCount;
-                    int rateToLog = nextRate.updateAndGet(rate -> progressRate > rate ? rate + 10 : rate);
-                    if (progressRate > rateToLog - 10) {
-                        if (isCLIMode()) logInfo("Scan rate is {}%", progressRate);
+                        logDebug("Threads in progress = {}, Scanning for {}",
+                                numberOfThreadsInProgress.get(), pathItem);
+                        scan(pathItem, rootDir, excludeFileModel, itemsContainer,
+                                currentSigMap, currentAllowedSignaturesMap, currentExcludeExtMap);
+                    } catch (RuntimeException exception) {
+                        operationalFailure.set(true);
+                        logError("Error while scanning {}", pathItem, exception);
+                    } finally {
+                        numberOfThreadsInProgress.decrementAndGet();
                     }
-
-
-                    logDebug("Threads in progress = {}, Scanning for {}", numberOfThreadsInProgress.get(), pathItem);
-
-                    // do scan
-                    scan(pathItem, rootDir, excludeFileModel, itemsContainer,
-                            currentSigMap, currentAllowedSignaturesMap, currentExcludeExtMap);
-
-                    numberOfThreadsInProgress.decrementAndGet();
                 });
             });
         }
@@ -173,6 +181,7 @@ public class RunnableScanner extends ARunnable {
                 continue;
             }
             if (!Files.isRegularFile(normalizedFile)) {
+                operationalFailure.set(true);
                 logTrace("Skipping staged path because it is not a regular file {}", normalizedFile);
                 continue;
             }
@@ -199,6 +208,7 @@ public class RunnableScanner extends ARunnable {
                     ? new HashSet<>(repositoryFileLoader.load(rootDir))
                     : Set.of();
         } catch (IOException ex) {
+            operationalFailure.set(true);
             fxCallback.showMessage(
                     FxCallback.FxCallbackType.ERROR,
                     "Cannot enumerate Git repository files: " + ex.getMessage()
@@ -256,6 +266,7 @@ public class RunnableScanner extends ARunnable {
 
             @Override
             public FileVisitResult visitFileFailed(Path file, IOException exc) {
+                operationalFailure.set(true);
                 logError("Error while visiting {}", file);
                 return FileVisitResult.CONTINUE;
             }
@@ -315,6 +326,7 @@ public class RunnableScanner extends ARunnable {
             logTrace("Reading file {}", filePath);
             fileBody = FileUtils.readFile(filePath);
         } catch (IOException ex) {
+            operationalFailure.set(true);
             logError("Error while reading file '{}'. Skipping it.", filePath, ex);
             return;
         }
@@ -342,7 +354,12 @@ public class RunnableScanner extends ARunnable {
 
                 if (!newItem.isAllowedValue() && !newItem.isIgnored()) {
                     isAnySignatureFound.set(true);
-                    logError("Signature '{}' is found in {}:{}", newItem.getFoundString(), filePath, newItem.getLineNumber());
+                    if (revealFindings) {
+                        logError("Signature '{}' is found in {}:{}", newItem.getFoundString(), filePath,
+                                newItem.getLineNumber());
+                    } else {
+                        logError("A signature is found in {}:{}", filePath, newItem.getLineNumber());
+                    }
                 }
 
                 if (!isCLIMode()) foundItemsContainer.addItem(newItem);
@@ -387,5 +404,9 @@ public class RunnableScanner extends ARunnable {
 
     public boolean isAnySignatureFound() {
         return isAnySignatureFound.get();
+    }
+
+    public boolean hasOperationalFailure() {
+        return operationalFailure.get() || !isSuccessful();
     }
 }

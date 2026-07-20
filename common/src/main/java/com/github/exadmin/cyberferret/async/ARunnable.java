@@ -7,6 +7,7 @@ public abstract class ARunnable extends HandyLogging implements Runnable {
     protected volatile Runnable afterFinished;
     // when running Scanner in CLI mode - no specific data-store to be rendered in FxUI is collected (amy be additional light operations are executed)
     private final boolean isCLIMode;
+    private volatile boolean successful = true;
 
     public ARunnable(boolean isCLIMode) {
         this.isCLIMode = isCLIMode;
@@ -23,15 +24,18 @@ public abstract class ARunnable extends HandyLogging implements Runnable {
 
     @Override
     public final void run()  {
+        successful = true;
         try {
             if (beforeStart != null) beforeStart.run();
             _run();
         } catch (Exception ex) {
+            successful = false;
             logError("Error during scan running", ex);
         } finally {
             try {
                 if (afterFinished != null) afterFinished.run();
             } catch (Exception ex) {
+                successful = false;
                 logError("Error during finishing scan running", ex);
             }
         }
@@ -45,5 +49,9 @@ public abstract class ARunnable extends HandyLogging implements Runnable {
 
     public boolean isCLIMode() {
         return isCLIMode;
+    }
+
+    public boolean isSuccessful() {
+        return successful;
     }
 }
