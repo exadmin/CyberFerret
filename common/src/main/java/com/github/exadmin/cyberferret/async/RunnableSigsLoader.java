@@ -42,6 +42,10 @@ public class RunnableSigsLoader extends ARunnable {
         return isReady.get();
     }
 
+    public String getDictionaryVersion() {
+        return dictionaryVersion;
+    }
+
     @Override
     public void _run() {
         isReady.set(false);

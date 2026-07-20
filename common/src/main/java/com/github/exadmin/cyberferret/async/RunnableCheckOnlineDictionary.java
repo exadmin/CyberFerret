@@ -21,19 +21,32 @@ import java.time.Duration;
 
 public class RunnableCheckOnlineDictionary extends ARunnable {
     private static final Duration DICTIONARY_REFRESH_INTERVAL = Duration.ofHours(4);
+    private Path cacheDirectory;
 
     public RunnableCheckOnlineDictionary(boolean isCLIMode) {
         super(isCLIMode);
+    }
+
+    public void setCacheDirectory(Path cacheDirectory) {
+        this.cacheDirectory = cacheDirectory == null ? null : cacheDirectory.toAbsolutePath().normalize();
+    }
+
+    public Path getDictionaryPath() {
+        if (cacheDirectory != null) {
+            return cacheDirectory.resolve(AppConstants.DICTIONARY_FILE_PATH_ENCRYPTED).normalize();
+        }
+
+        String prefix = "";
+        if (isCLIMode()) prefix = GitUtils.getConfigValue("core.hooksPath");
+        if (prefix == null) prefix = "";
+        return Paths.get(prefix, AppConstants.DICTIONARY_FILE_PATH_ENCRYPTED);
     }
 
     @Override
     protected void _run() {
         logInfo("Checking if new online dictionary exists");
 
-        String prefix = "";
-        if (isCLIMode()) prefix = GitUtils.getConfigValue("core.hooksPath");
-        if (prefix == null) prefix = "";
-        Path path = Paths.get(prefix, AppConstants.DICTIONARY_FILE_PATH_ENCRYPTED);
+        Path path = getDictionaryPath();
         File savePath = path.toFile();
 
         if (savePath.exists()) {
