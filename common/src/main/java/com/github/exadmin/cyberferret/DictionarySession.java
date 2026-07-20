@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 public final class DictionarySession {
+    private static final Pattern VALID_VERSION = Pattern.compile("[A-Za-z0-9][A-Za-z0-9._+\\-]{0,63}");
     private final Map<String, Pattern> signaturesMap;
     private final Map<String, String> allowedSignaturesMap;
     private final Map<String, List<String>> excludeExtsMap;
@@ -25,11 +26,15 @@ public final class DictionarySession {
         allowedSignaturesMap = loader.getAllowedSignaturesMap();
         excludeExtsMap = loader.getExcludeExtsMap();
         String loadedVersion = loader.getDictionaryVersion();
-        dictionaryVersion = loadedVersion == null
+        String normalizedVersion = loadedVersion == null
                 || loadedVersion.isBlank()
                 || "undefined".equalsIgnoreCase(loadedVersion)
                 ? "unknown"
                 : loadedVersion.trim();
+        if (!VALID_VERSION.matcher(normalizedVersion).matches()) {
+            throw new DictionaryException("Dictionary version is invalid.");
+        }
+        dictionaryVersion = normalizedVersion;
     }
 
     public static DictionarySession prepare(Path cacheDirectory, boolean offline, String password) {
@@ -38,6 +43,7 @@ public final class DictionarySession {
         }
 
         RunnableCheckOnlineDictionary downloader = new RunnableCheckOnlineDictionary(true);
+        downloader.setSilent(true);
         downloader.setCacheDirectory(cacheDirectory);
         Path dictionaryPath = downloader.getDictionaryPath();
 
@@ -65,6 +71,7 @@ public final class DictionarySession {
         }
 
         RunnableSigsLoader loader = new RunnableSigsLoader(true);
+        loader.setSilent(true);
         loader.setInputStream(new ByteArrayInputStream(decryptedBody.getBytes(StandardCharsets.UTF_8)));
         try {
             loader._run();
