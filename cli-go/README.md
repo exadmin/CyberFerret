@@ -49,8 +49,11 @@ The encrypted cache is `~/.qubership/dictionary-latest-cache.encrypted`. A missi
 is refreshed from the CyberFerretDictionary repository. Refresh has a 15-second timeout. A failed refresh falls back
 to an existing cache.
 
-The decrypted dictionary remains in memory. `VERSION` is reported for diagnostics, `(allowed)` values suppress exact
-case-insensitive matches, and `(exclude-ext)` values skip signatures for the listed file extensions.
+The decrypted dictionary remains in memory. `VERSION` is reported for diagnostics, and `(exclude-ext)` values skip
+signatures for the listed file extensions. An `(allowed)` value without `*` suppresses an exact case-insensitive match.
+In an `(allowed)` value with wildcards, each `*` matches one or more nonwhitespace characters. Other characters are
+literal, and the pattern must match the complete detected value. For example, `*@example.com` allows
+a nonempty, whitespace-free local part at `example.com`. It rejects an empty local part or one containing spaces.
 
 ## Output
 

@@ -99,6 +99,43 @@ func TestScanFilesHonorsExcludedExtensionsCaseInsensitively(t *testing.T) {
 	}
 }
 
+func TestScanFilesHonorsAllowedWildcard(t *testing.T) {
+	root := t.TempDir()
+	allowedEmail := "user+tag@" + "example.com"
+	reportedEmail := "bad@" + "other.com"
+	file := writeTestFile(t, root, "emails.txt", allowedEmail+" "+reportedEmail)
+	allowedPattern, err := compileAllowedPattern("*@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded := dictionary{
+		allowed:         map[string]struct{}{},
+		allowedPatterns: []*regexp.Regexp{allowedPattern},
+		signatures: []signature{{
+			key:        "EMAIL",
+			expression: regexp.MustCompile(`\S+@\S+`),
+		}},
+	}
+	var stdout bytes.Buffer
+
+	result, err := scanFiles(
+		root,
+		[]string{file},
+		loaded,
+		modeJSON,
+		newLineOutput(&stdout),
+		newLineOutput(&bytes.Buffer{}),
+	)
+
+	if err != nil || !result.found || result.scannedCount != 1 {
+		t.Fatalf("scan result = %#v, error = %v; want one finding in one file", result, err)
+	}
+	if strings.Contains(stdout.String(), allowedEmail) ||
+		!strings.Contains(stdout.String(), `"found":"`+reportedEmail+`"`) {
+		t.Fatalf("stdout = %q", stdout.String())
+	}
+}
+
 func TestScanFilesReportsReadErrorAndContinues(t *testing.T) {
 	root := t.TempDir()
 	missing := filepath.Join(root, "missing.txt")

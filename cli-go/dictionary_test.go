@@ -115,6 +115,38 @@ UNICODE=prefix\u0020value
 	}
 }
 
+func TestLoadDictionaryMatchesAllowedWildcard(t *testing.T) {
+	domain := "example" + ".com"
+	loaded, err := loadDictionary(
+		[]byte("EMAIL(allowed)=*@example.com\nEXACT(allowed)=Token123\n"),
+		newLineOutput(&bytes.Buffer{}),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, value := range []string{
+		"john.doe@" + domain,
+		"user-name@" + strings.ToUpper(domain),
+		"user+tag@" + domain,
+		"TOKEN123",
+	} {
+		if !loaded.isAllowed(value) {
+			t.Errorf("isAllowed(%q) = false, want true", value)
+		}
+	}
+	for _, value := range []string{
+		"@" + domain,
+		"first last@" + domain,
+		"user@" + domain + " trailing",
+		"user@example" + "Xcom",
+	} {
+		if loaded.isAllowed(value) {
+			t.Errorf("isAllowed(%q) = true, want false", value)
+		}
+	}
+}
+
 func TestLiteralExpressionEscapesEveryLiteralSpace(t *testing.T) {
 	expression := literalExpression("a  b+c")
 

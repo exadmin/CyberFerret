@@ -17,9 +17,10 @@ type signature struct {
 }
 
 type dictionary struct {
-	version    string
-	signatures []signature
-	allowed    map[string]struct{}
+	version         string
+	signatures      []signature
+	allowed         map[string]struct{}
+	allowedPatterns []*regexp.Regexp
 }
 
 type regexpCompileError struct {
@@ -64,7 +65,15 @@ func loadDictionary(plaintext []byte, output *lineOutput) (dictionary, error) {
 		case strings.EqualFold(entry.key, "VERSION"):
 			result.version = entry.value
 		case strings.HasSuffix(entry.key, "(allowed)"):
-			result.allowed[strings.ToLower(entry.value)] = struct{}{}
+			if strings.Contains(entry.value, "*") {
+				compiled, err := compileAllowedPattern(entry.value)
+				if err != nil {
+					return dictionary{}, fmt.Errorf("compile allowed pattern %q: %w", entry.value, err)
+				}
+				result.allowedPatterns = append(result.allowedPatterns, compiled)
+			} else {
+				result.allowed[strings.ToLower(entry.value)] = struct{}{}
+			}
 		case strings.HasSuffix(entry.key, "(exclude-ext)"):
 			key := strings.TrimSuffix(entry.key, "(exclude-ext)")
 			if key == "" {
@@ -103,6 +112,26 @@ func loadDictionary(plaintext []byte, output *lineOutput) (dictionary, error) {
 		})
 	}
 	return result, nil
+}
+
+func compileAllowedPattern(value string) (*regexp.Regexp, error) {
+	parts := strings.Split(value, "*")
+	for index := range parts {
+		parts[index] = regexp.QuoteMeta(parts[index])
+	}
+	return regexp.Compile(`(?i)^` + strings.Join(parts, `\S+`) + `\z`)
+}
+
+func (d dictionary) isAllowed(exact string) bool {
+	if _, allowed := d.allowed[strings.ToLower(exact)]; allowed {
+		return true
+	}
+	for _, pattern := range d.allowedPatterns {
+		if pattern.MatchString(exact) {
+			return true
+		}
+	}
+	return false
 }
 
 func parseDictionaryEntries(plaintext []byte, output *lineOutput) ([]dictionaryEntry, error) {

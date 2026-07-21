@@ -102,7 +102,7 @@ func scanFilesWithExclusions(
 					}
 					continue
 				}
-				if _, allowed := loaded.allowed[strings.ToLower(exact)]; allowed {
+				if loaded.isAllowed(exact) {
 					continue
 				}
 				foundAny = true
