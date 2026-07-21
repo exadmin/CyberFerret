@@ -8,7 +8,7 @@ import (
 )
 
 type finding struct {
-	Type     string `json:"type,omitempty"`
+	Type     string `json:"type"`
 	Key      string `json:"key"`
 	Found    string `json:"found"`
 	Position int    `json:"position"`
@@ -103,6 +103,17 @@ func scanFilesWithExclusions(
 					continue
 				}
 				if loaded.isAllowed(exact) {
+					if mode == modeJSON {
+						if err := output.json(finding{
+							Type:     "allowed",
+							Key:      currentSignature.key,
+							Found:    exact,
+							Position: match[0],
+							File:     relativePath,
+						}); err != nil {
+							return scanResult{}, fmt.Errorf("write allowed finding: %w", err)
+						}
+					}
 					continue
 				}
 				foundAny = true
@@ -118,6 +129,7 @@ func scanFilesWithExclusions(
 					return scanResult{found: true, scannedCount: scannedCount}, nil
 				}
 				if err := output.json(finding{
+					Type:     "found",
 					Key:      currentSignature.key,
 					Found:    exact,
 					Position: match[0],

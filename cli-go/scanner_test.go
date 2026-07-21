@@ -64,11 +64,11 @@ func TestScanFilesJSONEmitsCompleteFindingsAndTotal(t *testing.T) {
 	if len(lines) != 2 {
 		t.Fatalf("output lines = %#v, want two findings", lines)
 	}
-	wantFirst := `JSON: {"key":"LETTERS","found":"ABCDEFGHIJKLMNOPQ","position":4,"file":"nested/result.txt"}`
+	wantFirst := `JSON: {"type":"found","key":"LETTERS","found":"ABCDEFGHIJKLMNOPQ","position":4,"file":"nested/result.txt"}`
 	if lines[0] != wantFirst {
 		t.Fatalf("first finding = %q, want %q", lines[0], wantFirst)
 	}
-	if lines[1] != `JSON: {"key":"LETTERS","found":"XYZ","position":0,"file":"other.txt"}` {
+	if lines[1] != `JSON: {"type":"found","key":"LETTERS","found":"XYZ","position":0,"file":"other.txt"}` {
 		t.Fatalf("second finding = %q", lines[1])
 	}
 	if stderr.Len() != 0 {
@@ -130,9 +130,36 @@ func TestScanFilesHonorsAllowedWildcard(t *testing.T) {
 	if err != nil || !result.found || result.scannedCount != 1 {
 		t.Fatalf("scan result = %#v, error = %v; want one finding in one file", result, err)
 	}
-	if strings.Contains(stdout.String(), allowedEmail) ||
-		!strings.Contains(stdout.String(), `"found":"`+reportedEmail+`"`) {
+	if !strings.Contains(stdout.String(), `"type":"allowed","key":"EMAIL","found":"`+allowedEmail+`"`) ||
+		!strings.Contains(stdout.String(), `"type":"found","key":"EMAIL","found":"`+reportedEmail+`"`) {
 		t.Fatalf("stdout = %q", stdout.String())
+	}
+}
+
+func TestScanFilesJSONReportsExactAllowedWithoutFinding(t *testing.T) {
+	root := t.TempDir()
+	file := writeTestFile(t, root, "allowed.txt", "Token123")
+	loaded := dictionary{
+		allowed:    map[string]struct{}{"token123": {}},
+		signatures: []signature{{key: "TOKEN", expression: regexp.MustCompile(`Token\d+`)}},
+	}
+	var stdout bytes.Buffer
+
+	result, err := scanFiles(
+		root,
+		[]string{file},
+		loaded,
+		modeJSON,
+		newLineOutput(&stdout),
+		newLineOutput(&bytes.Buffer{}),
+	)
+
+	if err != nil || result.found || result.scannedCount != 1 {
+		t.Fatalf("scan result = %#v, error = %v; want allowed event without finding", result, err)
+	}
+	want := `JSON: {"type":"allowed","key":"TOKEN","found":"Token123","position":0,"file":"allowed.txt"}` + "\n"
+	if stdout.String() != want {
+		t.Fatalf("stdout = %q, want %q", stdout.String(), want)
 	}
 }
 

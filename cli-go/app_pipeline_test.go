@@ -72,7 +72,7 @@ func TestRunWithDependenciesJSONCompletesAndReturnsTwo(t *testing.T) {
 
 	exitCode := runWithDependencies(context.Background(), []string{root}, &stdout, &stderr, dependencies)
 
-	if exitCode != 2 || !strings.Contains(stdout.String(), `JSON: {"key":"SECRET"`) ||
+	if exitCode != 2 || !strings.Contains(stdout.String(), `JSON: {"type":"found","key":"SECRET"`) ||
 		!strings.HasSuffix(
 			stdout.String(),
 			"TEXT: Total files scanned 1\nTEXT: Scanning is finished in 1.234 seconds.\n",
