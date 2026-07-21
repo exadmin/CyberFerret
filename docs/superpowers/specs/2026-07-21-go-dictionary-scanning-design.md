@@ -116,12 +116,12 @@ TEXT: Signature "KEY" found in relative/path.txt at position 123
 JSON mode prints every non-allowed match as compact one-line JSON:
 
 ```text
-JSON: {"key":"KEY","found":"first 16 chars","position":123,"file":"relative/path.txt"}
+JSON: {"key":"KEY","found":"complete exact match","position":123,"file":"relative/path.txt"}
 ```
 
-`found` contains at most the first 16 Unicode code points of the exact match. `position` is the zero-based byte offset
-of the match head. `file` is relative to `FOLDER_PATH` and always uses `/` separators. JSON mode finishes the complete
-file list and returns code `2` when it emitted at least one finding; otherwise it returns code `0`.
+`found` contains the complete exact match without truncation. `position` is the zero-based byte offset of the match
+head. `file` is relative to `FOLDER_PATH` and always uses `/` separators. JSON mode finishes the complete file list and
+returns code `2` when it emitted at least one finding; otherwise it returns code `0`.
 
 ## Components
 
@@ -150,7 +150,7 @@ Development follows test-driven development. Tests cover:
 - Plain-string escaping, flexible whitespace, case-insensitive matching, invalid RE2, and extension exclusions.
 - Global case-insensitive allowed values.
 - Quick-mode early termination and JSON-mode complete scanning.
-- JSON escaping, 16-code-point truncation, byte offsets, relative paths, deterministic ordering, and file read errors.
+- Complete JSON match values, JSON escaping, byte offsets, relative paths, deterministic ordering, and file read errors.
 - Preservation of existing Git selection behavior and `TEXT:` file-list output.
 
 Verification runs `go test ./...`, `go vet ./...`, and `go build ./...`. Race tests run when a CGO toolchain is

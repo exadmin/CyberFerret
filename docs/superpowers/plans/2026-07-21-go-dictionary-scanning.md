@@ -290,7 +290,6 @@ git commit -m "feat(cli-go): load signature dictionary"
 
 - Produces: `type finding struct { Key string; Found string; Position int; File string }` with JSON tags
 - Produces: `func scanFiles(root string, files []string, dictionary dictionary, mode scanMode, output, errors *lineOutput) (bool, error)`
-- Produces: `func truncateRunes(value string, maximum int) string`
 
 - [ ] **Step 1: Write failing quick-mode tests**
 
@@ -300,8 +299,8 @@ list output.
 
 - [ ] **Step 2: Write failing JSON-mode tests**
 
-Assert all findings are emitted as compact JSON and the function returns `found=true`. Cover JSON escaping, a match
-longer than 16 Unicode code points, a multibyte prefix proving `position` is a byte offset, `/` relative path
+Assert all findings are emitted as compact JSON and the function returns `found=true`. Cover JSON escaping, a complete
+match longer than 16 Unicode code points, a multibyte prefix proving `position` is a byte offset, `/` relative path
 separators, and `TEXT: <absolute-path>` lines after the scan.
 
 - [ ] **Step 3: Write failing file-error test**
@@ -311,7 +310,7 @@ stream and continued scanning of the next file.
 
 - [ ] **Step 4: Run scanner tests and confirm RED**
 
-Run: `cd cli-go && go test -run 'TestScanFiles|TestTruncateRunes' ./...`
+Run: `cd cli-go && go test -run TestScanFiles ./...`
 
 Expected: compilation fails because `scanFiles` is undefined.
 
@@ -320,11 +319,12 @@ Expected: compilation fails because `scanFiles` is undefined.
 Iterate the already sorted `files` slice. Read each file with `os.ReadFile`. For each ordered signature not excluded by
 extension, call `FindAllIndex(content, -1)`. Compare the full match against lowercased allowed values. Quick mode emits
 the exact text message and returns immediately. JSON mode marshals a `finding` and continues. After JSON scanning,
-emit every selected absolute path through `output.text("%s", path)`.
+emit the complete exact match without truncation and then emit every selected absolute path through
+`output.text("%s", path)`.
 
 - [ ] **Step 6: Run scanner tests and commit**
 
-Run: `cd cli-go && go test -run 'TestScanFiles|TestTruncateRunes' ./...`
+Run: `cd cli-go && go test -run TestScanFiles ./...`
 
 Expected: PASS.
 
