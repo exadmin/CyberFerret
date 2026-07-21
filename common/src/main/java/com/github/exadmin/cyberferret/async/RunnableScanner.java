@@ -7,6 +7,7 @@ import com.github.exadmin.cyberferret.model.FoundPathItem;
 import com.github.exadmin.cyberferret.model.ItemType;
 import com.github.exadmin.cyberferret.utils.FileUtils;
 import com.github.exadmin.cyberferret.utils.MiscUtils;
+import com.github.exadmin.cyberferret.utils.RepositoryFileLoader;
 
 import java.io.File;
 import java.io.IOException;
@@ -190,6 +191,29 @@ public class RunnableScanner extends ARunnable {
             Path rootDir,
             ExcludeFileModel excludeFileModel,
             FoundItemsContainer foundItemsContainer) throws IOException {
+        RepositoryFileLoader repositoryFileLoader = new RepositoryFileLoader();
+        boolean applyGitExclusions = repositoryFileLoader.isGitRepository(rootDir);
+        Set<Path> includedFiles;
+        try {
+            includedFiles = applyGitExclusions
+                    ? new HashSet<>(repositoryFileLoader.load(rootDir))
+                    : Set.of();
+        } catch (IOException ex) {
+            fxCallback.showMessage(
+                    FxCallback.FxCallbackType.ERROR,
+                    "Cannot enumerate Git repository files: " + ex.getMessage()
+                            + ". Verify that Git is installed and the repository is valid.");
+            throw ex;
+        }
+        Set<Path> includedDirectories = new HashSet<>();
+        for (Path includedFile : includedFiles) {
+            Path directory = includedFile.getParent();
+            while (directory != null && directory.startsWith(rootDir)) {
+                includedDirectories.add(directory);
+                directory = directory.getParent();
+            }
+        }
+
         Deque<FoundPathItem> parentsDeque = new ArrayDeque<>();
         Files.walkFileTree(rootDir, new FileVisitor<>() {
             @Override
@@ -198,6 +222,10 @@ public class RunnableScanner extends ARunnable {
 
                 // todo: move this hard code to some configurable place, priority = normal
                 if (dir.getFileName().toString().equals(".git")) return FileVisitResult.SKIP_SUBTREE;
+                if (applyGitExclusions
+                        && !includedDirectories.contains(dir.toAbsolutePath().normalize())) {
+                    return FileVisitResult.SKIP_SUBTREE;
+                }
 
                 FoundPathItem parent = parentsDeque.peekLast();
                 FoundPathItem foundPathItem = new FoundPathItem(dir, ItemType.DIRECTORY, parent);
@@ -212,6 +240,10 @@ public class RunnableScanner extends ARunnable {
             @Override
             public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
                 logTrace("Visiting file {}", file);
+                if (applyGitExclusions
+                        && !includedFiles.contains(file.toAbsolutePath().normalize())) {
+                    return FileVisitResult.CONTINUE;
+                }
 
                 FoundPathItem parent = parentsDeque.peekLast();
                 FoundPathItem foundPathItem = new FoundPathItem(file, ItemType.FILE, parent);

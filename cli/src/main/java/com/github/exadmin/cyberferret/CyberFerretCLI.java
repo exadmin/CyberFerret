@@ -11,12 +11,9 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -180,26 +177,6 @@ public class CyberFerretCLI {
     }
 
     static List<Path> loadFilesFromRepository(Path rootPathToScan) throws IOException {
-        List<Path> files = new ArrayList<>();
-        Files.walkFileTree(rootPathToScan, new SimpleFileVisitor<>() {
-            @Override
-            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
-                if (dir.getFileName().toString().equals(".git")) {
-                    return FileVisitResult.SKIP_SUBTREE;
-                }
-                return FileVisitResult.CONTINUE;
-            }
-
-            @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
-                if (attrs.isRegularFile()) {
-                    Path path = file.normalize();
-                    files.add(path);
-                    ConsoleUtils.trace("Repository file = " + path);
-                }
-                return FileVisitResult.CONTINUE;
-            }
-        });
-        return files;
+        return new RepositoryFileLoader().load(rootPathToScan);
     }
 }
