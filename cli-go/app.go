@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -67,7 +68,11 @@ func runWithDependencies(
 	if err != nil {
 		var compileError *regexpCompileError
 		if errors.As(err, &compileError) {
-			writeFatal(errorOutput, "Cannot compile dictionary regexp: %v", compileError)
+			dictionaryPath := cachePath
+			if absolutePath, pathErr := filepath.Abs(cachePath); pathErr == nil {
+				dictionaryPath = absolutePath
+			}
+			writeFatal(errorOutput, "Cannot compile dictionary regexp from \"%s\": %v", dictionaryPath, compileError)
 			return 3
 		}
 		writeFatal(errorOutput, "Cannot load dictionary: %v", err)
