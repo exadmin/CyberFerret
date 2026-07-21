@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -71,5 +72,36 @@ public class FoundItemsContainerTests {
 
         assertEquals(1, snapshot.size());
         assertTrue(container.getFoundItemsCopy().isEmpty());
+    }
+
+    @Test
+    public void notifyItemUpdatedUsesCurrentGeneration() {
+        FoundItemsContainer container = new FoundItemsContainer();
+        container.clearAll();
+        FoundPathItem item = new FoundPathItem(Path.of("file.txt"), ItemType.FILE, null);
+        container.addItem(item);
+        AtomicReference<FoundPathItem> notifiedItem = new AtomicReference<>();
+        AtomicLong notifiedGeneration = new AtomicLong(-1);
+        container.setOnAddNewItemListener(new FoundFileItemListener() {
+            @Override
+            public void newItemAdded(FoundPathItem newItem) {
+            }
+
+            @Override
+            public void itemUpdated(FoundPathItem updatedItem, long generation) {
+                notifiedItem.set(updatedItem);
+                notifiedGeneration.set(generation);
+            }
+
+            @Override
+            public void onClearAll() {
+            }
+        });
+
+        item.setIgnored(true);
+        container.notifyItemUpdated(item);
+
+        assertEquals(item, notifiedItem.get());
+        assertEquals(1, notifiedGeneration.get());
     }
 }

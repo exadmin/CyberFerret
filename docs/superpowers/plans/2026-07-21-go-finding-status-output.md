@@ -1,4 +1,4 @@
-# Go CLI finding status output implementation plan
+# CF CLI finding status output implementation plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or
 > superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
@@ -24,9 +24,9 @@ continuing, while retaining grand-report priority and setting `scanResult.found`
 
 **Files:**
 
-- Modify: `cli-go/scanner_test.go`
-- Modify: `cli-go/app_pipeline_test.go`
-- Modify: `cli-go/scanner.go`
+- Modify: `cfcli/scanner_test.go`
+- Modify: `cfcli/app_pipeline_test.go`
+- Modify: `cfcli/scanner.go`
 
 **Interfaces:**
 
@@ -55,7 +55,7 @@ Run the command from Step 2. Expected: PASS.
 
 **Files:**
 
-- Modify: `cli-go/README.md`
+- Modify: `cfcli/README.md`
 
 **Interfaces:** None.
 

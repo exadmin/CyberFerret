@@ -42,6 +42,17 @@ public class FoundItemsContainer {
         this.onAddNewItemListener = onAddNewItemListener;
     }
 
+    public void notifyItemUpdated(FoundPathItem item) {
+        long itemGeneration;
+        synchronized (foundPathItems) {
+            if (!foundPathItems.contains(item)) return;
+            itemGeneration = generation;
+        }
+
+        FoundFileItemListener listener = onAddNewItemListener;
+        if (listener != null) listener.itemUpdated(item, itemGeneration);
+    }
+
     public void clearAll() {
         long clearGeneration;
         synchronized (foundPathItems) {

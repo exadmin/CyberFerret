@@ -7,6 +7,13 @@ public interface FoundFileItemListener {
         newItemAdded(newItem);
     }
 
+    default void itemUpdated(FoundPathItem item) {
+    }
+
+    default void itemUpdated(FoundPathItem item, long generation) {
+        itemUpdated(item);
+    }
+
     void onClearAll();
 
     default void onClearAll(long generation) {

@@ -11,38 +11,38 @@ files and untracked files that standard Git ignore rules do not exclude.
 
 ## Build
 
-Run this command from `cli-go`:
+Run this command from `cfcli`:
 
 ```shell
-go build -o cli-go .
+go build -o cfcli .
 ```
 
-On Windows, the output file is `cli-go.exe`.
+On Windows, the output file is `cfcli.exe`.
 
 ## Usage
 
 Scan every selected file in the default JSON mode:
 
 ```shell
-./cli-go /path/to/repository
+./cfcli /path/to/repository
 ```
 
 Stop after the first non-allowed finding:
 
 ```shell
-./cli-go --mode=quick /path/to/repository
+./cfcli --mode=quick /path/to/repository
 ```
 
 Restrict either mode to a staged-file list:
 
 ```shell
-./cli-go --mode=json /path/to/repository /path/to/staged-files.txt
+./cfcli --mode=json /path/to/repository /path/to/staged-files.txt
 ```
 
 Report each folder and file immediately before the scanner processes it:
 
 ```shell
-./cli-go --verbose=true --mode=json /path/to/repository
+./cfcli --verbose=true --mode=json /path/to/repository
 ```
 
 `--mode` and `--verbose` are optional, may appear in either order, and must precede `FOLDER_PATH`. Verbose defaults to

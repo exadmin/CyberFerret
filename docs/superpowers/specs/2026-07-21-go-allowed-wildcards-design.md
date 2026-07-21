@@ -1,4 +1,4 @@
-# Go CLI allowed-value wildcards design
+# CF CLI allowed-value wildcards design
 
 ## Goal
 

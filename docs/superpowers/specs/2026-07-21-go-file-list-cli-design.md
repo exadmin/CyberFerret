@@ -2,7 +2,7 @@
 
 ## Goal
 
-Add a standalone Go command under `cli-go` that prints the absolute paths of files selected from a Git repository.
+Add a standalone Go command under `cfcli` that prints the absolute paths of files selected from a Git repository.
 The command accepts a repository directory and an optional newline-delimited list of staged paths.
 
 ## Command-line interface
@@ -10,7 +10,7 @@ The command accepts a repository directory and an optional newline-delimited lis
 The command has this form:
 
 ```text
-cli-go FOLDER_PATH [PATH_TO_LIST_OF_FILES]
+cfcli FOLDER_PATH [PATH_TO_LIST_OF_FILES]
 ```
 
 `FOLDER_PATH` is required. It must identify an existing directory inside a valid Git work tree. The command resolves

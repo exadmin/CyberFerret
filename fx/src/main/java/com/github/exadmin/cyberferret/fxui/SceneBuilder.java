@@ -5,6 +5,9 @@ import com.github.exadmin.cyberferret.async.*;
 import com.github.exadmin.cyberferret.exclude.Excluder;
 import com.github.exadmin.cyberferret.fxui.helpers.AlertBuilder;
 import com.github.exadmin.cyberferret.fxui.helpers.ChooserBuilder;
+import com.github.exadmin.cyberferret.cfcli.CfCliScanner;
+import com.github.exadmin.cyberferret.cfcli.CfCliExecutable;
+import com.github.exadmin.cyberferret.cfcli.CfCliTreeAssembler;
 import com.github.exadmin.cyberferret.model.FoundFileItemListener;
 import com.github.exadmin.cyberferret.model.FoundItemsContainer;
 import com.github.exadmin.cyberferret.model.FoundPathItem;
@@ -40,6 +43,7 @@ import org.slf4j.LoggerFactory;
 
 import java.awt.*;
 import java.io.File;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
@@ -97,7 +101,6 @@ public class SceneBuilder {
         tab.setClosable(false);
 
         TitledPane tpOnlineDictionary = createOnlineDictionaryPane();
-        TitledPane tpOfflineDictionary = createOfflineDictionaryPane();
         TitledPane tpRepository = createRepositoryGroup();
         TitledPane tpExplorer = createExplorerGroup(tabPane);
         TitledPane tpConsole = createLogsPane();
@@ -105,18 +108,11 @@ public class SceneBuilder {
         VBox vBox = new VBox();
         tab.setContent(vBox);
 
-        Accordion accordion = new Accordion();
-        {
-            accordion.getPanes().add(tpOnlineDictionary);
-            accordion.getPanes().add(tpOfflineDictionary);
-            accordion.setExpandedPane(tpOnlineDictionary);
-        }
-
         SplitPane splitPane = new SplitPane();
         splitPane.setOrientation(Orientation.VERTICAL);
         splitPane.getItems().addAll(new VBox(tpExplorer), new VBox(tpConsole));
 
-        vBox.getChildren().add(accordion);
+        vBox.getChildren().add(tpOnlineDictionary);
         vBox.getChildren().add(tpRepository);
         vBox.getChildren().add(splitPane);
         vBox.setSpacing(2);
@@ -138,18 +134,31 @@ public class SceneBuilder {
 
     protected TitledPane createOnlineDictionaryPane() {
         TitledPane tpOnlineDictionary = new TitledPane();
-        tpOnlineDictionary.setCollapsible(true);
-        tpOnlineDictionary.setText("Online Dictionary (recommended)");
+        tpOnlineDictionary.setCollapsible(false);
+        tpOnlineDictionary.setExpanded(true);
+        tpOnlineDictionary.setText("Online Dictionary");
 
         VBox vBoxRoot = new VBox();
         tpOnlineDictionary.setContent(vBoxRoot);
         vBoxRoot.setSpacing(8);
 
-        // Online signature loader
-        {
-            HBox hBox = buildOnlineSignatureLoader(primaryStage);
-            vBoxRoot.getChildren().add(hBox);
-        }
+        Label passwordLabel = new Label("Password");
+        passwordLabel.setMinWidth(DEFAULT_LABEL_WIDTH);
+        passwordLabel.setAlignment(Pos.CENTER_LEFT);
+        PasswordField passwordField = new PasswordField();
+        passwordField.setEditable(false);
+        String environmentPassword = System.getenv(AppConstants.SYS_ENV_VAR_PASSWORD);
+        passwordField.setText(environmentPassword == null ? "" : environmentPassword);
+        HBox passwordRow = new HBox(8, passwordLabel, passwordField);
+        HBox.setHgrow(passwordField, Priority.ALWAYS);
+        vBoxRoot.getChildren().add(passwordRow);
+
+        ChooserBuilder chooserBuilder = new ChooserBuilder(primaryStage);
+        vBoxRoot.getChildren().add(chooserBuilder.buildChooserBox(
+                "CF CLI executable",
+                CF_CLI_PATH.getFxProperty(),
+                "Select ...",
+                ChooserBuilder.CHOOSER_TYPE.EXECUTABLE));
 
         return tpOnlineDictionary;
     }
@@ -191,6 +200,7 @@ public class SceneBuilder {
     protected TitledPane createRepositoryGroup() {
         TitledPane tpSettings = new TitledPane();
         tpSettings.setCollapsible(false);
+        tpSettings.setExpanded(true);
         tpSettings.setText("Repository");
 
         VBox vBoxRoot = new VBox();
@@ -217,6 +227,30 @@ public class SceneBuilder {
             btnRun.setOnAction(actionEvent -> {
                 log.debug("Start button is pressed using dictionary {}, dir-to-scan = {}", DICTIONARY.getValue(), DIR_TO_SCAN.getValue());
 
+                String selectedDirectory = DIR_TO_SCAN.getValue();
+                if (selectedDirectory == null || selectedDirectory.isBlank()) {
+                    AlertBuilder.showError("Select a repository directory before scanning.");
+                    return;
+                }
+                Path scanRoot;
+                try {
+                    scanRoot = Paths.get(selectedDirectory).toAbsolutePath().normalize();
+                } catch (RuntimeException ex) {
+                    AlertBuilder.showError("Invalid repository directory: " + selectedDirectory);
+                    return;
+                }
+                if (!Files.isDirectory(scanRoot)) {
+                    AlertBuilder.showError("Repository directory does not exist: " + scanRoot);
+                    return;
+                }
+
+                CfCliExecutable cliExecutable = new CfCliExecutable(CF_CLI_PATH.getValue());
+                var executableError = cliExecutable.validationError();
+                if (executableError.isPresent()) {
+                    AlertBuilder.showError(executableError.get());
+                    return;
+                }
+
                 if (!scannerRunning.compareAndSet(false, true)) {
                     log.warn("Scanning is already in progress");
                     return;
@@ -225,19 +259,27 @@ public class SceneBuilder {
                 // drop previous scan result
                 foundItemsContainer.clearAll();
 
-                RunnableScanner scanner = new RunnableScanner(false);
-                scanner.setFxCallback(this::showScannerMessage);
-                scanner.setSignaturesMap(signaturesMap);
-                scanner.setAllowedSignaturesMap(allowedSignaturesMap);
-                scanner.setExcludeExtMap(excludeExtMap);
-                scanner.setDirToScan(DIR_TO_SCAN.getValue());
-                scanner.setFoundItemsContainer(foundItemsContainer);
-                scanner.setBeforeStart(() -> runOnFxThread(() -> btnRun.setDisable(true)));
-                scanner.setAfterFinished(() -> {
-                    scannerRunning.set(false);
-                    runOnFxThread(() -> btnRun.setDisable(false));
-                });
-                scanner.startNowInNewThread();
+                btnRun.setDisable(true);
+                CfCliTreeAssembler assembler = new CfCliTreeAssembler(
+                        scanRoot,
+                        foundItemsContainer,
+                        message -> log.warn("{}", message));
+                CfCliScanner scanner = new CfCliScanner(
+                        cliExecutable.command(),
+                        scanRoot,
+                        assembler::accept,
+                        message -> log.info("{}", message),
+                        message -> {
+                            log.error("{}", message);
+                            runOnFxThread(() -> showScannerMessage(FxCallback.FxCallbackType.ERROR, message));
+                        },
+                        () -> {
+                            scannerRunning.set(false);
+                            runOnFxThread(() -> btnRun.setDisable(false));
+                        });
+                Thread scannerThread = new Thread(scanner, "cyberferret-go-cli-scanner");
+                scannerThread.setDaemon(true);
+                scannerThread.start();
             });
 
 
@@ -469,6 +511,14 @@ public class SceneBuilder {
 
                     rootTreeItem.getChildren().clear();
                     map.clear();
+                });
+            }
+
+            @Override
+            public void itemUpdated(FoundPathItem item, long generation) {
+                runOnFxThread(() -> {
+                    if (generation != foundItemsContainer.getGeneration()) return;
+                    ttView.refresh();
                 });
             }
         });

@@ -3,7 +3,7 @@
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or
 > superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Extend `cli-go` to refresh, decrypt, load, and apply the CyberFerret dictionary with quick and JSON output
+**Goal:** Extend `cfcli` to refresh, decrypt, load, and apply the CyberFerret dictionary with quick and JSON output
 modes.
 
 **Architecture:** Preserve the existing Git selection code and add a sequential application pipeline. Keep output,
@@ -13,7 +13,7 @@ cache refresh, cryptography, dictionary parsing, and scanning in focused standar
 
 ## Global constraints
 
-- Modify only `cli-go` and `docs/superpowers`.
+- Modify only `cfcli` and `docs/superpowers`.
 - Do not modify Java modules or run Maven.
 - Add no third-party dependencies.
 - Prefix every complete output line with `TEXT: ` or `JSON: ` and flush it immediately.
@@ -25,26 +25,26 @@ cache refresh, cryptography, dictionary parsing, and scanning in focused standar
 
 ## File structure
 
-- `cli-go/output.go`: synchronized, prefixing, per-line-flushing output.
-- `cli-go/options.go`: mode and positional argument parsing.
-- `cli-go/dictionary_cache.go`: freshness checks, bounded download, and atomic cache replacement.
-- `cli-go/decrypt.go`: Java-compatible PBKDF2 and AES-CBC decryption.
-- `cli-go/dictionary.go`: Properties-subset parsing and compiled dictionary model.
-- `cli-go/scanner.go`: deterministic file scanning and finding serialization.
-- `cli-go/app.go`: sequential orchestration and exit-code mapping.
+- `cfcli/output.go`: synchronized, prefixing, per-line-flushing output.
+- `cfcli/options.go`: mode and positional argument parsing.
+- `cfcli/dictionary_cache.go`: freshness checks, bounded download, and atomic cache replacement.
+- `cfcli/decrypt.go`: Java-compatible PBKDF2 and AES-CBC decryption.
+- `cfcli/dictionary.go`: Properties-subset parsing and compiled dictionary model.
+- `cfcli/scanner.go`: deterministic file scanning and finding serialization.
+- `cfcli/app.go`: sequential orchestration and exit-code mapping.
 - Matching `*_test.go` files: focused unit and integration coverage for each component.
-- `cli-go/README.md`: updated CLI, dictionary, output, and exit-code documentation.
+- `cfcli/README.md`: updated CLI, dictionary, output, and exit-code documentation.
 
 ### Task 1: Flush-safe output and option parsing
 
 **Files:**
 
-- Create: `cli-go/output.go`
-- Create: `cli-go/output_test.go`
-- Create: `cli-go/options.go`
-- Create: `cli-go/options_test.go`
-- Modify: `cli-go/app.go`
-- Modify: `cli-go/app_test.go`
+- Create: `cfcli/output.go`
+- Create: `cfcli/output_test.go`
+- Create: `cfcli/options.go`
+- Create: `cfcli/options_test.go`
+- Modify: `cfcli/app.go`
+- Modify: `cfcli/app_test.go`
 
 **Interfaces:**
 
@@ -72,7 +72,7 @@ Assert that `json(finding{...})` emits compact valid JSON prefixed by `JSON: ` a
 
 - [ ] **Step 2: Run output tests and confirm RED**
 
-Run: `cd cli-go && go test -run TestLineOutput ./...`
+Run: `cd cfcli && go test -run TestLineOutput ./...`
 
 Expected: compilation fails because `newLineOutput` is undefined.
 
@@ -102,23 +102,23 @@ root --mode=quick            -> error because mode must be first
 Strip only a leading `--mode=` argument. Accept `quick` and `json`, default to `json`, then require one or two
 positional arguments. Return errors that include the usage string.
 
-Run: `cd cli-go && go test -run 'TestLineOutput|TestParseOptions' ./...`
+Run: `cd cfcli && go test -run 'TestLineOutput|TestParseOptions' ./...`
 
 Expected: PASS.
 
 - [ ] **Step 6: Commit output and options**
 
 ```text
-git add cli-go/output.go cli-go/output_test.go cli-go/options.go cli-go/options_test.go cli-go/app.go cli-go/app_test.go
-git commit -m "feat(cli-go): add scan modes and prefixed output"
+git add cfcli/output.go cfcli/output_test.go cfcli/options.go cfcli/options_test.go cfcli/app.go cfcli/app_test.go
+git commit -m "feat(cfcli): add scan modes and prefixed output"
 ```
 
 ### Task 2: Bounded dictionary cache refresh
 
 **Files:**
 
-- Create: `cli-go/dictionary_cache.go`
-- Create: `cli-go/dictionary_cache_test.go`
+- Create: `cfcli/dictionary_cache.go`
+- Create: `cfcli/dictionary_cache_test.go`
 
 **Interfaces:**
 
@@ -142,7 +142,7 @@ Inject a fixed clock, temporary home, and `httptest.Server`. Assert that:
 
 - [ ] **Step 2: Run cache tests and confirm RED**
 
-Run: `cd cli-go && go test -run TestCacheRefresher ./...`
+Run: `cd cfcli && go test -run TestCacheRefresher ./...`
 
 Expected: compilation fails because `cacheRefresher` is undefined.
 
@@ -161,23 +161,23 @@ removal of the temporary path. Limit the response to 16 MiB with `io.LimitReader
 
 - [ ] **Step 5: Run cache tests**
 
-Run: `cd cli-go && go test -run TestCacheRefresher ./...`
+Run: `cd cfcli && go test -run TestCacheRefresher ./...`
 
 Expected: PASS, including timeout and no-late-replacement assertions.
 
 - [ ] **Step 6: Commit cache refresh**
 
 ```text
-git add cli-go/dictionary_cache.go cli-go/dictionary_cache_test.go
-git commit -m "feat(cli-go): refresh encrypted dictionary cache"
+git add cfcli/dictionary_cache.go cfcli/dictionary_cache_test.go
+git commit -m "feat(cfcli): refresh encrypted dictionary cache"
 ```
 
 ### Task 3: Java-compatible in-memory decryption
 
 **Files:**
 
-- Create: `cli-go/decrypt.go`
-- Create: `cli-go/decrypt_test.go`
+- Create: `cfcli/decrypt.go`
+- Create: `cfcli/decrypt_test.go`
 
 **Interfaces:**
 
@@ -198,7 +198,7 @@ decrypted bytes that are not valid UTF-8.
 
 - [ ] **Step 3: Run decrypt tests and confirm RED**
 
-Run: `cd cli-go && go test -run 'TestDecryptDictionary|TestRemovePKCS7Padding' ./...`
+Run: `cd cfcli && go test -run 'TestDecryptDictionary|TestRemovePKCS7Padding' ./...`
 
 Expected: compilation fails because `decryptDictionary` is undefined.
 
@@ -212,23 +212,23 @@ alignment, decrypt with `cipher.NewCBCDecrypter` and the specified 16-byte IV, a
 
 Reject invalid UTF-8 with `utf8.Valid`. Return a copy of unpadded plaintext. Run:
 
-`cd cli-go && go test -run 'TestDecryptDictionary|TestRemovePKCS7Padding|TestDeriveKey' ./...`
+`cd cfcli && go test -run 'TestDecryptDictionary|TestRemovePKCS7Padding|TestDeriveKey' ./...`
 
 Expected: PASS and exact agreement with the Java-generated vector.
 
 - [ ] **Step 6: Commit decryption**
 
 ```text
-git add cli-go/decrypt.go cli-go/decrypt_test.go
-git commit -m "feat(cli-go): decrypt Java-compatible dictionary"
+git add cfcli/decrypt.go cfcli/decrypt_test.go
+git commit -m "feat(cfcli): decrypt Java-compatible dictionary"
 ```
 
 ### Task 4: Dictionary parsing and compilation
 
 **Files:**
 
-- Create: `cli-go/dictionary.go`
-- Create: `cli-go/dictionary_test.go`
+- Create: `cfcli/dictionary.go`
+- Create: `cfcli/dictionary_test.go`
 
 **Interfaces:**
 
@@ -252,7 +252,7 @@ that invalid RE2 returns `*regexpCompileError` containing the key and expression
 
 - [ ] **Step 3: Run dictionary tests and confirm RED**
 
-Run: `cd cli-go && go test -run 'TestLoadDictionary|TestLiteralExpression' ./...`
+Run: `cd cfcli && go test -run 'TestLoadDictionary|TestLiteralExpression' ./...`
 
 Expected: compilation fails because `loadDictionary` is undefined.
 
@@ -270,21 +270,21 @@ leading-dot removal, and lowercase. Associate exclusions by base signature key a
 
 - [ ] **Step 6: Run dictionary tests and commit**
 
-Run: `cd cli-go && go test -run 'TestLoadDictionary|TestLiteralExpression' ./...`
+Run: `cd cfcli && go test -run 'TestLoadDictionary|TestLiteralExpression' ./...`
 
 Expected: PASS.
 
 ```text
-git add cli-go/dictionary.go cli-go/dictionary_test.go
-git commit -m "feat(cli-go): load signature dictionary"
+git add cfcli/dictionary.go cfcli/dictionary_test.go
+git commit -m "feat(cfcli): load signature dictionary"
 ```
 
 ### Task 5: Deterministic quick and JSON scanning
 
 **Files:**
 
-- Create: `cli-go/scanner.go`
-- Create: `cli-go/scanner_test.go`
+- Create: `cfcli/scanner.go`
+- Create: `cfcli/scanner_test.go`
 
 **Interfaces:**
 
@@ -311,7 +311,7 @@ stream, continued scanning of the next file, and a returned count that excludes 
 
 - [ ] **Step 4: Run scanner tests and confirm RED**
 
-Run: `cd cli-go && go test -run TestScanFiles ./...`
+Run: `cd cfcli && go test -run TestScanFiles ./...`
 
 Expected: compilation fails because `scanFiles` is undefined.
 
@@ -325,22 +325,22 @@ not emit selected paths or summary messages from the scanner.
 
 - [ ] **Step 6: Run scanner tests and commit**
 
-Run: `cd cli-go && go test -run TestScanFiles ./...`
+Run: `cd cfcli && go test -run TestScanFiles ./...`
 
 Expected: PASS.
 
 ```text
-git add cli-go/scanner.go cli-go/scanner_test.go
-git commit -m "feat(cli-go): scan files for dictionary signatures"
+git add cfcli/scanner.go cfcli/scanner_test.go
+git commit -m "feat(cfcli): scan files for dictionary signatures"
 ```
 
 ### Task 6: Sequential application pipeline and exit codes
 
 **Files:**
 
-- Modify: `cli-go/app.go`
-- Modify: `cli-go/app_test.go`
-- Modify: `cli-go/main.go`
+- Modify: `cfcli/app.go`
+- Modify: `cfcli/app_test.go`
+- Modify: `cfcli/main.go`
 
 **Interfaces:**
 
@@ -367,7 +367,7 @@ Assert that every emitted line has a valid prefix.
 
 - [ ] **Step 2: Run pipeline tests and confirm RED**
 
-Run: `cd cli-go && go test -run TestRunWithDependencies ./...`
+Run: `cd cfcli && go test -run TestRunWithDependencies ./...`
 
 Expected: compilation fails because `runWithDependencies` is undefined.
 
@@ -386,22 +386,22 @@ timeout.
 
 - [ ] **Step 5: Run all tests**
 
-Run: `cd cli-go && go test -count=1 ./...`
+Run: `cd cfcli && go test -count=1 ./...`
 
 Expected: PASS with existing Git selection tests unchanged.
 
 - [ ] **Step 6: Commit pipeline**
 
 ```text
-git add cli-go/app.go cli-go/app_test.go cli-go/main.go
-git commit -m "feat(cli-go): orchestrate dictionary scanning"
+git add cfcli/app.go cfcli/app_test.go cfcli/main.go
+git commit -m "feat(cfcli): orchestrate dictionary scanning"
 ```
 
 ### Task 7: Documentation and Go-only verification
 
 **Files:**
 
-- Modify: `cli-go/README.md`
+- Modify: `cfcli/README.md`
 
 **Interfaces:**
 
@@ -414,13 +414,13 @@ JSON fields, progress output, final scanned-file count, elapsed seconds, absence
 values, extension exclusions, and exit codes `0` through `3`. Include:
 
 ```text
-cli-go --mode=quick FOLDER_PATH [PATH_TO_LIST_OF_FILES]
-cli-go --mode=json FOLDER_PATH [PATH_TO_LIST_OF_FILES]
+cfcli --mode=quick FOLDER_PATH [PATH_TO_LIST_OF_FILES]
+cfcli --mode=json FOLDER_PATH [PATH_TO_LIST_OF_FILES]
 ```
 
 - [ ] **Step 2: Format and inspect**
 
-Run: `cd cli-go && go fmt ./... && go vet ./...`
+Run: `cd cfcli && go fmt ./... && go vet ./...`
 
 Expected: both commands exit with code `0`.
 
@@ -429,7 +429,7 @@ Expected: both commands exit with code `0`.
 Run:
 
 ```text
-cd cli-go
+cd cfcli
 go test -count=1 ./...
 go build ./...
 ```
@@ -441,11 +441,11 @@ compiler is available; otherwise record the environment limitation.
 
 Run: `git status --short && git diff --check && git diff --stat HEAD`
 
-Expected: only intended `cli-go` and `docs/superpowers` files appear, with no whitespace errors.
+Expected: only intended `cfcli` and `docs/superpowers` files appear, with no whitespace errors.
 
 - [ ] **Step 5: Commit documentation**
 
 ```text
-git add cli-go/README.md
-git commit -m "docs(cli-go): document dictionary scanning"
+git add cfcli/README.md
+git commit -m "docs(cfcli): document dictionary scanning"
 ```

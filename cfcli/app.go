@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-const usage = "usage: cli-go [--mode=quick|--mode=json] [--verbose=true|--verbose=false] FOLDER_PATH [PATH_TO_LIST_OF_FILES]"
+const usage = "usage: cfcli [--mode=quick|--mode=json] [--verbose=true|--verbose=false] FOLDER_PATH [PATH_TO_LIST_OF_FILES]"
 
 type appDependencies struct {
 	refresher cacheRefresher

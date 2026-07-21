@@ -1,4 +1,4 @@
-# Go CLI verbose list output implementation plan
+# CF CLI verbose list output implementation plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or
 > superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
@@ -25,9 +25,9 @@ wrappers and add a configured scanner that emits deduplicated folder events and 
 
 **Files:**
 
-- Modify: `cli-go/options.go`
-- Modify: `cli-go/options_test.go`
-- Modify: `cli-go/app.go`
+- Modify: `cfcli/options.go`
+- Modify: `cfcli/options_test.go`
+- Modify: `cfcli/app.go`
 
 **Interfaces:**
 
@@ -54,8 +54,8 @@ Run the command from Step 2. Expected: PASS.
 
 **Files:**
 
-- Modify: `cli-go/scanner.go`
-- Modify: `cli-go/scanner_test.go`
+- Modify: `cfcli/scanner.go`
+- Modify: `cfcli/scanner_test.go`
 
 **Interfaces:**
 
@@ -91,7 +91,7 @@ Run the command from Step 3. Expected: PASS.
 
 **Files:**
 
-- Modify: `cli-go/README.md`
+- Modify: `cfcli/README.md`
 
 **Interfaces:** None.
 

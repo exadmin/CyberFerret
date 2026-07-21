@@ -1,9 +1,9 @@
-# Go CLI grand-report exclusions implementation plan
+# CF CLI grand-report exclusions implementation plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or
 > superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Apply `.qubership/grand-report.json` exclusions to Go CLI file and signature scanning.
+**Goal:** Apply `.qubership/grand-report.json` exclusions to CF CLI file and signature scanning.
 
 **Architecture:** Add a focused exclusion loader and immutable hash index in `exclusions.go`. Load it in the application
 pipeline before file selection, then pass it to `scanFiles` for ancestor-path and exact-match checks.
@@ -24,8 +24,8 @@ pipeline before file selection, then pass it to `scanFiles` for ancestor-path an
 
 **Files:**
 
-- Create: `cli-go/exclusions.go`
-- Create: `cli-go/exclusions_test.go`
+- Create: `cfcli/exclusions.go`
+- Create: `cfcli/exclusions_test.go`
 
 **Interfaces:**
 
@@ -53,7 +53,7 @@ Also verify that a missing file is silent and malformed JSON prints a `TEXT:` wa
 Run:
 
 ```powershell
-$env:GOCACHE = 'C:\Development\GitHub\CyberFerret\cli-go\.gocache'
+$env:GOCACHE = 'C:\Development\GitHub\CyberFerret\cfcli\.gocache'
 & 'C:\Program Files\Go\bin\go.exe' test -run 'TestLoadExclusions|TestExclusionSet' ./...
 ```
 
@@ -75,18 +75,18 @@ Run the command from Step 2. Expected: PASS.
 - [ ] **Step 5: Commit the exclusion component**
 
 ```powershell
-git add -- cli-go/exclusions.go cli-go/exclusions_test.go
-git commit -m "feat(cli-go): load grand-report exclusions"
+git add -- cfcli/exclusions.go cfcli/exclusions_test.go
+git commit -m "feat(cfcli): load grand-report exclusions"
 ```
 
 ### Task 2: Scanner and application integration
 
 **Files:**
 
-- Modify: `cli-go/scanner.go`
-- Modify: `cli-go/scanner_test.go`
-- Modify: `cli-go/app.go`
-- Modify: `cli-go/app_pipeline_test.go`
+- Modify: `cfcli/scanner.go`
+- Modify: `cfcli/scanner_test.go`
+- Modify: `cfcli/app.go`
+- Modify: `cfcli/app_pipeline_test.go`
 
 **Interfaces:**
 
@@ -104,7 +104,7 @@ loaded before scanning and an invalid report prints a warning while scanning con
 Run:
 
 ```powershell
-$env:GOCACHE = 'C:\Development\GitHub\CyberFerret\cli-go\.gocache'
+$env:GOCACHE = 'C:\Development\GitHub\CyberFerret\cfcli\.gocache'
 & 'C:\Program Files\Go\bin\go.exe' test -run 'TestScanFiles.*Exclusion|TestRunWithDependencies.*Exclusion' ./...
 ```
 
@@ -123,15 +123,15 @@ Run the command from Step 2. Expected: PASS.
 - [ ] **Step 5: Commit integration**
 
 ```powershell
-git add -- cli-go/app.go cli-go/app_pipeline_test.go cli-go/scanner.go cli-go/scanner_test.go
-git commit -m "feat(cli-go): apply grand-report exclusions"
+git add -- cfcli/app.go cfcli/app_pipeline_test.go cfcli/scanner.go cfcli/scanner_test.go
+git commit -m "feat(cfcli): apply grand-report exclusions"
 ```
 
 ### Task 3: Documentation and verification
 
 **Files:**
 
-- Modify: `cli-go/README.md`
+- Modify: `cfcli/README.md`
 - Modify: `docs/superpowers/specs/2026-07-21-go-grand-report-exclusions-design.md`
 - Modify: `docs/superpowers/plans/2026-07-21-go-grand-report-exclusions.md`
 
@@ -148,7 +148,7 @@ Run:
 
 ```powershell
 & 'C:\Program Files\Go\bin\gofmt.exe' -w exclusions.go exclusions_test.go scanner.go scanner_test.go app.go app_pipeline_test.go
-$env:GOCACHE = 'C:\Development\GitHub\CyberFerret\cli-go\.gocache'
+$env:GOCACHE = 'C:\Development\GitHub\CyberFerret\cfcli\.gocache'
 & 'C:\Program Files\Go\bin\go.exe' test -count=1 ./...
 & 'C:\Program Files\Go\bin\go.exe' vet ./...
 & 'C:\Program Files\Go\bin\go.exe' build ./...
@@ -164,7 +164,7 @@ files changed.
 - [ ] **Step 4: Commit documentation**
 
 ```powershell
-git add -- cli-go/README.md docs/superpowers/specs/2026-07-21-go-grand-report-exclusions-design.md \
+git add -- cfcli/README.md docs/superpowers/specs/2026-07-21-go-grand-report-exclusions-design.md \
     docs/superpowers/plans/2026-07-21-go-grand-report-exclusions.md
-git commit -m "docs(cli-go): describe grand-report exclusions"
+git commit -m "docs(cfcli): describe grand-report exclusions"
 ```

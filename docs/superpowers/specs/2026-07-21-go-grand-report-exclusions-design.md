@@ -1,4 +1,4 @@
-# Go CLI grand-report exclusions design
+# CF CLI grand-report exclusions design
 
 ## Goal
 

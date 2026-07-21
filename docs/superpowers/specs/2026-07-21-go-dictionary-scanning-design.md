@@ -2,7 +2,7 @@
 
 ## Goal
 
-Extend `cli-go` into a Git-aware signature scanner. The command refreshes and decrypts an encrypted dictionary, loads
+Extend `cfcli` into a Git-aware signature scanner. The command refreshes and decrypts an encrypted dictionary, loads
 its signatures, scans selected files, and emits flush-safe machine-readable output.
 
 ## Command-line interface
@@ -10,7 +10,7 @@ its signatures, scans selected files, and emits flush-safe machine-readable outp
 The command accepts these forms:
 
 ```text
-cli-go [--mode=quick|--mode=json] FOLDER_PATH [PATH_TO_LIST_OF_FILES]
+cfcli [--mode=quick|--mode=json] FOLDER_PATH [PATH_TO_LIST_OF_FILES]
 ```
 
 `--mode` must precede positional arguments when present. Its default is `json`. `FOLDER_PATH` and the optional staged
@@ -131,7 +131,7 @@ finding. Otherwise, it returns code `0`.
 
 ## Components
 
-The implementation adds focused units under `cli-go`:
+The implementation adds focused units under `cfcli`:
 
 - Output writer: prefixes and flushes text and JSON lines.
 - Argument parser: validates mode and positional arguments.

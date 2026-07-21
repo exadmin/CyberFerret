@@ -22,7 +22,7 @@ import java.nio.file.Paths;
 public class ChooserBuilder {
 
     public enum CHOOSER_TYPE {
-        FILE, DIRECTORY
+        FILE, DIRECTORY, EXECUTABLE
     }
 
     private final Stage primaryStage;
@@ -54,14 +54,13 @@ public class ChooserBuilder {
             // process init-directory for file-chooser
             bindProperty.addListener((bean, oldValue, newValue) -> {
                 try {
-                    Path newPath = Paths.get(newValue);
+                    Path newPath = Paths.get(newValue == null ? "" : newValue);
                     File newFile = newPath.toFile();
 
-                    File initDir = newFile.isFile() ? newFile.getParentFile() : newFile;
-                    if (initDir.isFile()) initDir = initDir.getParentFile();
+                    File initDir = initialDirectory(newValue);
 
                     // check init directory for the file/folder-chooser
-                    if (initDir.exists() && initDir.isDirectory()) {
+                    if (initDir != null) {
                         verifiedInitDirectory.setValue(initDir);
                     }
 
@@ -78,9 +77,13 @@ public class ChooserBuilder {
 
             btnOpen.setOnAction(e -> {
                 File file = null;
-                if (type == CHOOSER_TYPE.FILE) {
+                if (type == CHOOSER_TYPE.FILE || type == CHOOSER_TYPE.EXECUTABLE) {
                     FileChooser fileChooser = new FileChooser();
                     fileChooser.setInitialDirectory(verifiedInitDirectory.getValue());
+                    if (type == CHOOSER_TYPE.EXECUTABLE) {
+                        fileChooser.getExtensionFilters().add(
+                                new FileChooser.ExtensionFilter("Executable files (*.exe)", "*.exe"));
+                    }
                     file = fileChooser.showOpenDialog(primaryStage);
                 }
 
@@ -97,5 +100,21 @@ public class ChooserBuilder {
         }
 
         return hBox;
+    }
+
+    static File initialDirectory(String configuredPath) {
+        if (configuredPath == null || configuredPath.isBlank()) {
+            return null;
+        }
+        try {
+            File configuredFile = Paths.get(configuredPath).toFile();
+            if (!configuredFile.exists()) {
+                return null;
+            }
+            File directory = configuredFile.isFile() ? configuredFile.getParentFile() : configuredFile;
+            return directory != null && directory.isDirectory() ? directory : null;
+        } catch (InvalidPathException ex) {
+            return null;
+        }
     }
 }

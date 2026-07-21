@@ -1,4 +1,4 @@
-# Go CLI exclusion output implementation plan
+# CF CLI exclusion output implementation plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or
 > superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
@@ -24,8 +24,8 @@ JSON events, deduplicates full-path events by relative path, and continues to sk
 
 **Files:**
 
-- Modify: `cli-go/exclusions.go`
-- Modify: `cli-go/exclusions_test.go`
+- Modify: `cfcli/exclusions.go`
+- Modify: `cfcli/exclusions_test.go`
 
 **Interfaces:**
 
@@ -55,8 +55,8 @@ Run the command from Step 2. Expected: PASS.
 
 **Files:**
 
-- Modify: `cli-go/scanner.go`
-- Modify: `cli-go/scanner_test.go`
+- Modify: `cfcli/scanner.go`
+- Modify: `cfcli/scanner_test.go`
 
 **Interfaces:**
 
@@ -91,7 +91,7 @@ Run the command from Step 3. Expected: PASS.
 
 **Files:**
 
-- Modify: `cli-go/README.md`
+- Modify: `cfcli/README.md`
 
 **Interfaces:** None.
 

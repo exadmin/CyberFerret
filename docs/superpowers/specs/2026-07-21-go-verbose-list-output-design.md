@@ -1,4 +1,4 @@
-# Go CLI verbose list output design
+# CF CLI verbose list output design
 
 ## Goal
 

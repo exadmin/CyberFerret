@@ -1,4 +1,4 @@
-# Go CLI finding status output design
+# CF CLI finding status output design
 
 ## Goal
 

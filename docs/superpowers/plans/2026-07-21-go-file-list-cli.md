@@ -13,7 +13,7 @@ Git-backed enumeration, and path filtering. Execute Git directly without a shell
 
 ## Global constraints
 
-- Create and modify files only under `cli-go` and `docs/superpowers`.
+- Create and modify files only under `cfcli` and `docs/superpowers`.
 - Do not modify Java modules or run Maven verification.
 - Add no third-party dependencies.
 - Preserve Git ignore semantics by using `git ls-files`.
@@ -26,23 +26,23 @@ Git-backed enumeration, and path filtering. Execute Git directly without a shell
 
 ## File structure
 
-- `cli-go/go.mod`: declares the standalone Go module and minimum Go version.
-- `cli-go/main.go`: adapts `os.Args`, standard streams, and process exit to the testable runner.
-- `cli-go/app.go`: validates arguments, coordinates selection, prints output, and maps failures to exit codes.
-- `cli-go/git_files.go`: runs Git commands and parses NUL-delimited file names.
-- `cli-go/paths.go`: parses the optional list, validates relative paths, filters file types, deduplicates, and sorts.
-- `cli-go/app_test.go`: covers CLI behavior and diagnostics with temporary repositories.
-- `cli-go/git_files_test.go`: covers Git selection and standard exclusion sources.
-- `cli-go/paths_test.go`: covers list parsing, path safety, filtering, and ordering.
+- `cfcli/go.mod`: declares the standalone Go module and minimum Go version.
+- `cfcli/main.go`: adapts `os.Args`, standard streams, and process exit to the testable runner.
+- `cfcli/app.go`: validates arguments, coordinates selection, prints output, and maps failures to exit codes.
+- `cfcli/git_files.go`: runs Git commands and parses NUL-delimited file names.
+- `cfcli/paths.go`: parses the optional list, validates relative paths, filters file types, deduplicates, and sorts.
+- `cfcli/app_test.go`: covers CLI behavior and diagnostics with temporary repositories.
+- `cfcli/git_files_test.go`: covers Git selection and standard exclusion sources.
+- `cfcli/paths_test.go`: covers list parsing, path safety, filtering, and ordering.
 
 ### Task 1: Module scaffold and CLI contract
 
 **Files:**
 
-- Create: `cli-go/go.mod`
-- Create: `cli-go/main.go`
-- Create: `cli-go/app.go`
-- Create: `cli-go/app_test.go`
+- Create: `cfcli/go.mod`
+- Create: `cfcli/main.go`
+- Create: `cfcli/app.go`
+- Create: `cfcli/app_test.go`
 
 **Interfaces:**
 
@@ -68,7 +68,7 @@ func TestRunRejectsInvalidArgumentCounts(t *testing.T) {
         if stdout.Len() != 0 {
             t.Fatalf("run(%q) stdout = %q, want empty", args, stdout.String())
         }
-        if !strings.Contains(stderr.String(), "usage: cli-go FOLDER_PATH [PATH_TO_LIST_OF_FILES]") {
+        if !strings.Contains(stderr.String(), "usage: cfcli FOLDER_PATH [PATH_TO_LIST_OF_FILES]") {
             t.Fatalf("run(%q) stderr = %q, want usage", args, stderr.String())
         }
     }
@@ -77,13 +77,13 @@ func TestRunRejectsInvalidArgumentCounts(t *testing.T) {
 
 - [ ] **Step 2: Run the tests and confirm the RED state**
 
-Run: `cd cli-go && go test ./...`
+Run: `cd cfcli && go test ./...`
 
 Expected: compilation fails because `run` is undefined.
 
 - [ ] **Step 3: Add the module and minimal runner**
 
-Declare module `github.com/exadmin/cyberferret/cli-go` with Go 1.21. Implement `run` so invalid argument counts print
+Declare module `github.com/exadmin/cyberferret/cfcli` with Go 1.21. Implement `run` so invalid argument counts print
 the exact usage line and return `2`. For one or two arguments, call `selectFiles`; print `error: <cause>` and return `1`
 on failure, otherwise print each path and return `0`. Implement `main` as:
 
@@ -98,23 +98,23 @@ can accidentally ship.
 
 - [ ] **Step 4: Run the focused test**
 
-Run: `cd cli-go && go test -run TestRunRejectsInvalidArgumentCounts ./...`
+Run: `cd cfcli && go test -run TestRunRejectsInvalidArgumentCounts ./...`
 
 Expected: PASS.
 
 - [ ] **Step 5: Commit the CLI contract**
 
 ```text
-git add cli-go/go.mod cli-go/main.go cli-go/app.go cli-go/app_test.go
-git commit -m "feat(cli-go): add command-line contract"
+git add cfcli/go.mod cfcli/main.go cfcli/app.go cfcli/app_test.go
+git commit -m "feat(cfcli): add command-line contract"
 ```
 
 ### Task 2: Git-backed file enumeration
 
 **Files:**
 
-- Create: `cli-go/git_files.go`
-- Create: `cli-go/git_files_test.go`
+- Create: `cfcli/git_files.go`
+- Create: `cfcli/git_files_test.go`
 
 **Interfaces:**
 
@@ -140,7 +140,7 @@ if !reflect.DeepEqual(got, want) {
 
 - [ ] **Step 2: Run the test and confirm the RED state**
 
-Run: `cd cli-go && go test -run TestEnumerateGitFilesIncludesTrackedAndNonIgnoredUntracked ./...`
+Run: `cd cfcli && go test -run TestEnumerateGitFilesIncludesTrackedAndNonIgnoredUntracked ./...`
 
 Expected: compilation fails because `enumerateGitFiles` is undefined.
 
@@ -159,22 +159,22 @@ Git diagnostics. Split standard output on NUL bytes, ignore the final empty fiel
 
 - [ ] **Step 4: Run the focused test**
 
-Run: `cd cli-go && go test -run TestEnumerateGitFilesIncludesTrackedAndNonIgnoredUntracked ./...`
+Run: `cd cfcli && go test -run TestEnumerateGitFilesIncludesTrackedAndNonIgnoredUntracked ./...`
 
 Expected: PASS.
 
 - [ ] **Step 5: Commit Git enumeration**
 
 ```text
-git add cli-go/git_files.go cli-go/git_files_test.go
-git commit -m "feat(cli-go): enumerate files with Git"
+git add cfcli/git_files.go cfcli/git_files_test.go
+git commit -m "feat(cfcli): enumerate files with Git"
 ```
 
 ### Task 3: Standard Git exclusion sources
 
 **Files:**
 
-- Modify: `cli-go/git_files_test.go`
+- Modify: `cfcli/git_files_test.go`
 
 **Interfaces:**
 
@@ -197,7 +197,7 @@ stage `tracked-then-ignored.txt` before adding its ignore rule and assert that i
 
 - [ ] **Step 2: Run the exclusion tests and inspect the RED state**
 
-Run: `cd cli-go && go test -run 'TestEnumerateGitFiles(Honors|Keeps)' ./...`
+Run: `cd cfcli && go test -run 'TestEnumerateGitFiles(Honors|Keeps)' ./...`
 
 Expected: any mismatch fails with the missing or unexpected relative path. If all tests pass immediately, retain them
 as evidence that delegating ignore semantics to Git already implements this requirement.
@@ -209,24 +209,24 @@ argument construction or NUL parsing only if a test exposed a defect.
 
 - [ ] **Step 4: Run all Git enumeration tests**
 
-Run: `cd cli-go && go test -run TestEnumerateGitFiles ./...`
+Run: `cd cfcli && go test -run TestEnumerateGitFiles ./...`
 
 Expected: PASS.
 
 - [ ] **Step 5: Commit exclusion coverage**
 
 ```text
-git add cli-go/git_files.go cli-go/git_files_test.go
-git commit -m "test(cli-go): cover standard Git exclusions"
+git add cfcli/git_files.go cfcli/git_files_test.go
+git commit -m "test(cfcli): cover standard Git exclusions"
 ```
 
 ### Task 4: Safe optional-list filtering and absolute output
 
 **Files:**
 
-- Create: `cli-go/paths.go`
-- Create: `cli-go/paths_test.go`
-- Modify: `cli-go/app.go`
+- Create: `cfcli/paths.go`
+- Create: `cfcli/paths_test.go`
+- Modify: `cfcli/app.go`
 
 **Interfaces:**
 
@@ -253,7 +253,7 @@ Use `t.Skip` only when `os.Symlink` itself returns a platform permission error.
 
 - [ ] **Step 2: Run the path tests and confirm the RED state**
 
-Run: `cd cli-go && go test -run 'TestSelectFiles|TestValidateRelativeGitPath' ./...`
+Run: `cd cfcli && go test -run 'TestSelectFiles|TestValidateRelativeGitPath' ./...`
 
 Expected: compilation fails because the selection functions are undefined.
 
@@ -276,27 +276,27 @@ include only `Mode().IsRegular()`. Deduplicate absolute paths in a map, convert 
 
 - [ ] **Step 5: Run all path and CLI tests**
 
-Run: `cd cli-go && go test -run 'TestSelectFiles|TestValidateRelativeGitPath|TestRun' ./...`
+Run: `cd cfcli && go test -run 'TestSelectFiles|TestValidateRelativeGitPath|TestRun' ./...`
 
 Expected: PASS.
 
 - [ ] **Step 6: Commit safe selection**
 
 ```text
-git add cli-go/paths.go cli-go/paths_test.go cli-go/app.go cli-go/app_test.go
-git commit -m "feat(cli-go): filter listed repository files"
+git add cfcli/paths.go cfcli/paths_test.go cfcli/app.go cfcli/app_test.go
+git commit -m "feat(cfcli): filter listed repository files"
 ```
 
 ### Task 5: Error handling and end-to-end behavior
 
 **Files:**
 
-- Modify: `cli-go/app_test.go`
-- Modify: `cli-go/git_files_test.go`
-- Modify: `cli-go/paths_test.go`
-- Modify: `cli-go/app.go`
-- Modify: `cli-go/git_files.go`
-- Modify: `cli-go/paths.go`
+- Modify: `cfcli/app_test.go`
+- Modify: `cfcli/git_files_test.go`
+- Modify: `cfcli/paths_test.go`
+- Modify: `cfcli/app.go`
+- Modify: `cfcli/git_files.go`
+- Modify: `cfcli/paths.go`
 
 **Interfaces:**
 
@@ -311,7 +311,7 @@ stdout, and a diagnostic that contains the failing resource or Git operation.
 
 - [ ] **Step 2: Run the new tests and confirm the RED state**
 
-Run: `cd cli-go && go test -run 'TestRun(Prints|Reports)' ./...`
+Run: `cd cfcli && go test -run 'TestRun(Prints|Reports)' ./...`
 
 Expected: one or more assertions fail with incomplete diagnostics or incorrect exit behavior.
 
@@ -329,22 +329,22 @@ Keep the user-facing prefix in `run` as `error: `. Do not print usage for runtim
 
 - [ ] **Step 4: Run the full test suite with race detection**
 
-Run: `cd cli-go && go test -race ./...`
+Run: `cd cfcli && go test -race ./...`
 
 Expected: PASS with zero test failures and no race reports.
 
 - [ ] **Step 5: Commit end-to-end behavior**
 
 ```text
-git add cli-go
-git commit -m "test(cli-go): cover command failures"
+git add cfcli
+git commit -m "test(cfcli): cover command failures"
 ```
 
 ### Task 6: Usage documentation and final verification
 
 **Files:**
 
-- Create: `cli-go/README.md`
+- Create: `cfcli/README.md`
 
 **Interfaces:**
 
@@ -356,14 +356,14 @@ Document the Git and Go prerequisites, build command, both invocation forms, new
 stderr contracts, ignore behavior, and tracked-file exception. Include these runnable examples:
 
 ```text
-go build -o cli-go .
-./cli-go /path/to/repository
-./cli-go /path/to/repository /path/to/staged-files.txt
+go build -o cfcli .
+./cfcli /path/to/repository
+./cfcli /path/to/repository /path/to/staged-files.txt
 ```
 
 - [ ] **Step 2: Format and statically inspect the module**
 
-Run: `cd cli-go && gofmt -w *.go && go vet ./...`
+Run: `cd cfcli && gofmt -w *.go && go vet ./...`
 
 Expected: `gofmt` makes no subsequent changes and `go vet` exits with code `0`.
 
@@ -372,7 +372,7 @@ Expected: `gofmt` makes no subsequent changes and `go vet` exits with code `0`.
 Run:
 
 ```text
-cd cli-go
+cd cfcli
 go test -race ./...
 go build ./...
 ```
@@ -383,12 +383,12 @@ Expected: both commands exit with code `0`; tests report PASS and the build repo
 
 Run: `git status --short && git diff --check && git diff --stat HEAD`
 
-Expected: only intended `cli-go` and `docs/superpowers` changes appear, with no whitespace errors.
+Expected: only intended `cfcli` and `docs/superpowers` changes appear, with no whitespace errors.
 
 - [ ] **Step 5: Commit documentation**
 
 ```text
-git add cli-go/README.md cli-go
-git commit -m "docs(cli-go): document file-list command"
+git add cfcli/README.md cfcli
+git commit -m "docs(cfcli): document file-list command"
 ```
 
