@@ -95,12 +95,21 @@ func runWithDependencies(
 		return 1
 	}
 
+	exclusions := loadExclusions(parsed.root, errorOutput)
 	files, err := selectFiles(ctx, parsed.root, parsed.listPath)
 	if err != nil {
 		writeFatal(errorOutput, "%v", err)
 		return 1
 	}
-	result, err := scanFiles(parsed.root, files, loaded, parsed.mode, output, errorOutput)
+	result, err := scanFilesWithExclusions(
+		parsed.root,
+		files,
+		loaded,
+		parsed.mode,
+		exclusions,
+		output,
+		errorOutput,
+	)
 	if err != nil {
 		writeFatal(errorOutput, "Cannot scan files: %v", err)
 		return 1

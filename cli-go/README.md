@@ -63,8 +63,8 @@ JSON: {"key":"SIGNATURE","found":"matched value","position":42,"file":"relative/
 `found` contains the complete exact match, and `position` is the zero-based byte offset. JSON mode does not print the
 selected paths. After the dictionary version, both modes print `TEXT: Scanning is in progress. Please wait.`. After
 scanning, both modes print `TEXT: Total files scanned N` and `TEXT: Scanning is finished in S.SSS seconds.`. `N`
-excludes files skipped after read errors. In quick mode, it includes the file with the first finding and excludes files
-that were not visited after the stop.
+excludes files skipped after read errors or full grand-report exclusions. In quick mode, it includes the file with the
+first finding and excludes files that were not visited after the stop.
 
 Exit codes are:
 
@@ -78,3 +78,11 @@ Exit codes are:
 Git determines which files are eligible. The command honors repository `.gitignore` files, `.git/info/exclude`, Git's
 configured global excludes file, and `~/.gitignore_global` when that file exists. A tracked file remains eligible even
 if a later ignore rule matches it, which is standard Git behavior.
+
+Before scanning, the command also loads `<FOLDER_PATH>/.qubership/grand-report.json` when it exists. Each exclusion
+contains a SHA-256 hash of a relative file path in `f-hash` and either a SHA-256 hash of an exact match in `t-hash` or
+the special value `00000000`. Relative paths use `/` separators. Exact-match exclusions suppress only that text in that
+file. The special value excludes the named file or an entire directory subtree.
+
+Files skipped by a full file or directory exclusion are not included in `Total files scanned`. If the report cannot be
+read or parsed, the command prints a `TEXT:` warning with the absolute report path and continues without exclusions.

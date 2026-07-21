@@ -26,6 +26,17 @@ func scanFiles(
 	mode scanMode,
 	output, errors *lineOutput,
 ) (scanResult, error) {
+	return scanFilesWithExclusions(root, files, loaded, mode, exclusionSet{}, output, errors)
+}
+
+func scanFilesWithExclusions(
+	root string,
+	files []string,
+	loaded dictionary,
+	mode scanMode,
+	exclusions exclusionSet,
+	output, errors *lineOutput,
+) (scanResult, error) {
 	absoluteRoot, err := filepath.Abs(root)
 	if err != nil {
 		return scanResult{}, fmt.Errorf("resolve scan root %q: %w", root, err)
@@ -34,6 +45,14 @@ func scanFiles(
 	foundAny := false
 	scannedCount := 0
 	for _, path := range files {
+		relativePath, err := filepath.Rel(absoluteRoot, path)
+		if err != nil {
+			return scanResult{}, fmt.Errorf("make path %q relative to %q: %w", path, root, err)
+		}
+		relativePath = filepath.ToSlash(relativePath)
+		if exclusions.excludesPath(relativePath) {
+			continue
+		}
 		content, err := os.ReadFile(path)
 		if err != nil {
 			if writeErr := errors.text("Cannot read file %q: %v", path, err); writeErr != nil {
@@ -42,11 +61,6 @@ func scanFiles(
 			continue
 		}
 		scannedCount++
-		relativePath, err := filepath.Rel(absoluteRoot, path)
-		if err != nil {
-			return scanResult{}, fmt.Errorf("make path %q relative to %q: %w", path, root, err)
-		}
-		relativePath = filepath.ToSlash(relativePath)
 		extension := strings.ToLower(strings.TrimPrefix(filepath.Ext(path), "."))
 
 		for _, currentSignature := range loaded.signatures {
@@ -56,6 +70,9 @@ func scanFiles(
 			for _, match := range currentSignature.expression.FindAllIndex(content, -1) {
 				exact := string(content[match[0]:match[1]])
 				if _, allowed := loaded.allowed[strings.ToLower(exact)]; allowed {
+					continue
+				}
+				if exclusions.excludesMatch(relativePath, exact) {
 					continue
 				}
 				foundAny = true

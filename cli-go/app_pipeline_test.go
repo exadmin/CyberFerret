@@ -116,6 +116,25 @@ func TestRunWithDependenciesAcceptsRelativeFolderPath(t *testing.T) {
 	}
 }
 
+func TestRunWithDependenciesAppliesGrandReportExclusions(t *testing.T) {
+	root := initRepository(t)
+	writeTestFile(t, root, "secret.txt", "SECRET")
+	writeGrandReport(t, root, `{"exclusions":[{"t-hash":"`+testSHA256("SECRET")+
+		`","f-hash":"`+testSHA256("secret.txt")+`"}]}`)
+	dependencies := testAppDependencies(t, "VERSION=1.0\nSECRET=SECRET\n", "test-password")
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	exitCode := runWithDependencies(context.Background(), []string{root}, &stdout, &stderr, dependencies)
+
+	if exitCode != 0 || strings.Contains(stdout.String(), "JSON:") {
+		t.Fatalf("exit code = %d, stdout = %q, stderr = %q", exitCode, stdout.String(), stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "TEXT: Total files scanned 2\n") {
+		t.Fatalf("stdout = %q, want two scanned files including grand-report.json", stdout.String())
+	}
+}
+
 func testAppDependencies(t *testing.T, plaintext, password string) appDependencies {
 	t.Helper()
 	home := t.TempDir()
