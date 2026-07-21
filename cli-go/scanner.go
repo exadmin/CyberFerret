@@ -20,6 +20,12 @@ type excludedPathEvent struct {
 	File string `json:"file"`
 }
 
+type listPathEvent struct {
+	Type   string `json:"type"`
+	File   string `json:"file,omitempty"`
+	Folder string `json:"folder,omitempty"`
+}
+
 type scanResult struct {
 	found        bool
 	scannedCount int
@@ -32,7 +38,7 @@ func scanFiles(
 	mode scanMode,
 	output, errors *lineOutput,
 ) (scanResult, error) {
-	return scanFilesWithExclusions(root, files, loaded, mode, exclusionSet{}, output, errors)
+	return scanFilesConfigured(root, files, loaded, mode, exclusionSet{}, false, output, errors)
 }
 
 func scanFilesWithExclusions(
@@ -43,6 +49,18 @@ func scanFilesWithExclusions(
 	exclusions exclusionSet,
 	output, errors *lineOutput,
 ) (scanResult, error) {
+	return scanFilesConfigured(root, files, loaded, mode, exclusions, false, output, errors)
+}
+
+func scanFilesConfigured(
+	root string,
+	files []string,
+	loaded dictionary,
+	mode scanMode,
+	exclusions exclusionSet,
+	verbose bool,
+	output, errors *lineOutput,
+) (scanResult, error) {
 	absoluteRoot, err := filepath.Abs(root)
 	if err != nil {
 		return scanResult{}, fmt.Errorf("resolve scan root %q: %w", root, err)
@@ -51,6 +69,7 @@ func scanFilesWithExclusions(
 	foundAny := false
 	scannedCount := 0
 	emittedPathExclusions := make(map[string]struct{})
+	emittedFolders := make(map[string]struct{})
 	for _, path := range files {
 		relativePath, err := filepath.Rel(absoluteRoot, path)
 		if err != nil {
@@ -58,6 +77,51 @@ func scanFilesWithExclusions(
 		}
 		relativePath = filepath.ToSlash(relativePath)
 		excludedPaths := exclusions.excludedPaths(relativePath)
+		if verbose {
+			excludedPathSet := make(map[string]struct{}, len(excludedPaths))
+			for _, excludedPath := range excludedPaths {
+				excludedPathSet[excludedPath] = struct{}{}
+			}
+			insideExcludedFolder := false
+			for _, folder := range relativeParentPaths(relativePath) {
+				_, folderExcluded := excludedPathSet[folder]
+				if insideExcludedFolder && !folderExcluded {
+					continue
+				}
+				if _, emitted := emittedFolders[folder]; !emitted {
+					if err := output.json(listPathEvent{Type: "list", Folder: folder}); err != nil {
+						return scanResult{}, fmt.Errorf("write listed folder: %w", err)
+					}
+					emittedFolders[folder] = struct{}{}
+				}
+				if folderExcluded {
+					if _, emitted := emittedPathExclusions[folder]; !emitted {
+						if err := output.json(excludedPathEvent{Type: "excluded", File: folder}); err != nil {
+							return scanResult{}, fmt.Errorf("write excluded folder: %w", err)
+						}
+						emittedPathExclusions[folder] = struct{}{}
+					}
+					insideExcludedFolder = true
+				}
+			}
+			if _, fileExcluded := excludedPathSet[relativePath]; fileExcluded {
+				if err := output.json(listPathEvent{Type: "list", File: relativePath}); err != nil {
+					return scanResult{}, fmt.Errorf("write listed file: %w", err)
+				}
+				if _, emitted := emittedPathExclusions[relativePath]; !emitted {
+					if err := output.json(excludedPathEvent{Type: "excluded", File: relativePath}); err != nil {
+						return scanResult{}, fmt.Errorf("write excluded file: %w", err)
+					}
+					emittedPathExclusions[relativePath] = struct{}{}
+				}
+			}
+			if len(excludedPaths) > 0 {
+				continue
+			}
+			if err := output.json(listPathEvent{Type: "list", File: relativePath}); err != nil {
+				return scanResult{}, fmt.Errorf("write listed file: %w", err)
+			}
+		}
 		if len(excludedPaths) > 0 {
 			if mode == modeJSON {
 				for _, excludedPath := range excludedPaths {
@@ -142,4 +206,15 @@ func scanFilesWithExclusions(
 	}
 
 	return scanResult{found: foundAny, scannedCount: scannedCount}, nil
+}
+
+func relativeParentPaths(relativePath string) []string {
+	parents := make([]string, 0)
+	for parent := filepath.ToSlash(filepath.Dir(filepath.FromSlash(relativePath))); parent != "." && parent != ""; parent = filepath.ToSlash(filepath.Dir(filepath.FromSlash(parent))) {
+		parents = append(parents, parent)
+	}
+	for left, right := 0, len(parents)-1; left < right; left, right = left+1, right-1 {
+		parents[left], parents[right] = parents[right], parents[left]
+	}
+	return parents
 }

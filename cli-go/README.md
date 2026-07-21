@@ -39,9 +39,16 @@ Restrict either mode to a staged-file list:
 ./cli-go --mode=json /path/to/repository /path/to/staged-files.txt
 ```
 
-`--mode` is optional and must precede `FOLDER_PATH`. The optional list contains one Git path per line. Each path is
-relative to `FOLDER_PATH`. Empty lines and duplicate paths are ignored. Absolute paths and paths that escape
-`FOLDER_PATH` are rejected.
+Report each folder and file immediately before the scanner processes it:
+
+```shell
+./cli-go --verbose=true --mode=json /path/to/repository
+```
+
+`--mode` and `--verbose` are optional, may appear in either order, and must precede `FOLDER_PATH`. Verbose defaults to
+`false` and accepts only `true` or `false`. The optional list contains one Git path per line. Each path is relative to
+`FOLDER_PATH`. Empty lines and duplicate paths are ignored. Absolute paths and paths that escape `FOLDER_PATH` are
+rejected.
 
 ## Dictionary cache
 
@@ -71,9 +78,20 @@ JSON: {"type":"excluded","file":"relative/directory"}
 JSON: {"type":"excluded","key":"SIGNATURE","found":"matched value","position":42,"file":"relative/path.txt"}
 ```
 
-Each fully excluded file or directory is reported once. Quick mode applies allowed values and exclusions without
-reporting them. Only `found` events count as findings and cause exit code `2`. If a match is both allowed and excluded,
-only the `excluded` event is emitted.
+With `--verbose=true`, the command emits parent folders once and each file before processing it:
+
+```text
+JSON: {"type":"list","folder":"relative/directory"}
+JSON: {"type":"list","file":"relative/directory/file.txt"}
+```
+
+The root folder is not emitted. A fully excluded path produces its `list` event followed by its `excluded` event. Files
+below a fully excluded directory are not listed, read, scanned, or counted. Verbose list events do not affect the exit
+code or scanned-file count.
+
+Each fully excluded file or directory is reported once. Quick mode does not report allowed or excluded signature
+matches. With verbose enabled, it does report full path exclusions after their `list` events. Only `found` events count
+as findings and cause exit code `2`. If a match is both allowed and excluded, only the `excluded` event is emitted.
 
 `found` contains the complete exact match, and `position` is the zero-based byte offset. JSON mode does not print the
 selected paths. After the dictionary version, both modes print `TEXT: Scanning is in progress. Please wait.`. After

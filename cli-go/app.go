@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-const usage = "usage: cli-go [--mode=quick|--mode=json] FOLDER_PATH [PATH_TO_LIST_OF_FILES]"
+const usage = "usage: cli-go [--mode=quick|--mode=json] [--verbose=true|--verbose=false] FOLDER_PATH [PATH_TO_LIST_OF_FILES]"
 
 type appDependencies struct {
 	refresher cacheRefresher
@@ -101,12 +101,13 @@ func runWithDependencies(
 		writeFatal(errorOutput, "%v", err)
 		return 1
 	}
-	result, err := scanFilesWithExclusions(
+	result, err := scanFilesConfigured(
 		parsed.root,
 		files,
 		loaded,
 		parsed.mode,
 		exclusions,
+		parsed.verbose,
 		output,
 		errorOutput,
 	)

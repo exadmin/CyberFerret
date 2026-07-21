@@ -138,6 +138,26 @@ func TestRunWithDependenciesAppliesGrandReportExclusions(t *testing.T) {
 	}
 }
 
+func TestRunWithDependenciesEnablesVerboseListOutput(t *testing.T) {
+	root := initRepository(t)
+	writeTestFile(t, root, "safe.txt", "safe")
+	dependencies := testAppDependencies(t, "VERSION=1.0\n", "test-password")
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	exitCode := runWithDependencies(
+		context.Background(),
+		[]string{"--verbose=true", root},
+		&stdout,
+		&stderr,
+		dependencies,
+	)
+
+	if exitCode != 0 || !strings.Contains(stdout.String(), `JSON: {"type":"list","file":"safe.txt"}`) {
+		t.Fatalf("exit code = %d, stdout = %q, stderr = %q", exitCode, stdout.String(), stderr.String())
+	}
+}
+
 func testAppDependencies(t *testing.T, plaintext, password string) appDependencies {
 	t.Helper()
 	home := t.TempDir()

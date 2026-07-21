@@ -23,7 +23,10 @@ func TestRunRejectsInvalidArgumentCounts(t *testing.T) {
 		if stdout.Len() != 0 {
 			t.Fatalf("run(%q) stdout = %q, want empty", args, stdout.String())
 		}
-		if !strings.Contains(stderr.String(), "TEXT: usage: cli-go [--mode=quick|--mode=json] FOLDER_PATH [PATH_TO_LIST_OF_FILES]") {
+		if !strings.Contains(
+			stderr.String(),
+			"TEXT: usage: cli-go [--mode=quick|--mode=json] [--verbose=true|--verbose=false] FOLDER_PATH [PATH_TO_LIST_OF_FILES]",
+		) {
 			t.Fatalf("run(%q) stderr = %q, want usage", args, stderr.String())
 		}
 	}

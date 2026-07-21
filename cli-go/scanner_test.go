@@ -163,6 +163,69 @@ func TestScanFilesJSONReportsExactAllowedWithoutFinding(t *testing.T) {
 	}
 }
 
+func TestScanFilesVerboseListsFoldersAndFilesBeforeScanning(t *testing.T) {
+	root := t.TempDir()
+	first := writeTestFile(t, root, "src/first.txt", "safe")
+	second := writeTestFile(t, root, "src/nested/second.txt", "safe")
+	var stdout bytes.Buffer
+
+	result, err := scanFilesConfigured(
+		root,
+		[]string{first, second},
+		dictionary{allowed: map[string]struct{}{}},
+		modeJSON,
+		exclusionSet{},
+		true,
+		newLineOutput(&stdout),
+		newLineOutput(&bytes.Buffer{}),
+	)
+
+	if err != nil || result.found || result.scannedCount != 2 {
+		t.Fatalf("scan result = %#v, error = %v; want two scanned files", result, err)
+	}
+	want := "JSON: {\"type\":\"list\",\"folder\":\"src\"}\n" +
+		"JSON: {\"type\":\"list\",\"file\":\"src/first.txt\"}\n" +
+		"JSON: {\"type\":\"list\",\"folder\":\"src/nested\"}\n" +
+		"JSON: {\"type\":\"list\",\"file\":\"src/nested/second.txt\"}\n"
+	if stdout.String() != want {
+		t.Fatalf("stdout = %q, want %q", stdout.String(), want)
+	}
+}
+
+func TestScanFilesVerboseListsExcludedPathsWithoutDescendantFiles(t *testing.T) {
+	root := t.TempDir()
+	excludedFile := filepath.Join(root, "excluded.txt")
+	excludedChild := filepath.Join(root, "ignored", "nested", "child.txt")
+	exclusions := exclusionSet{textHashesByFileHash: map[string]map[string]struct{}{
+		testSHA256("excluded.txt"): {fullPathExclusionHash: {}},
+		testSHA256("ignored"):      {fullPathExclusionHash: {}},
+	}}
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	result, err := scanFilesConfigured(
+		root,
+		[]string{excludedFile, excludedChild},
+		dictionary{allowed: map[string]struct{}{}},
+		modeQuick,
+		exclusions,
+		true,
+		newLineOutput(&stdout),
+		newLineOutput(&stderr),
+	)
+
+	if err != nil || result.found || result.scannedCount != 0 {
+		t.Fatalf("scan result = %#v, error = %v; want no scanned files", result, err)
+	}
+	want := "JSON: {\"type\":\"list\",\"file\":\"excluded.txt\"}\n" +
+		"JSON: {\"type\":\"excluded\",\"file\":\"excluded.txt\"}\n" +
+		"JSON: {\"type\":\"list\",\"folder\":\"ignored\"}\n" +
+		"JSON: {\"type\":\"excluded\",\"file\":\"ignored\"}\n"
+	if stdout.String() != want || stderr.Len() != 0 {
+		t.Fatalf("stdout = %q, stderr = %q, want stdout %q", stdout.String(), stderr.String(), want)
+	}
+}
+
 func TestScanFilesReportsReadErrorAndContinues(t *testing.T) {
 	root := t.TempDir()
 	missing := filepath.Join(root, "missing.txt")
