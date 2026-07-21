@@ -70,9 +70,4 @@ Development follows test-driven development. Unit and integration tests use temp
 - Git execution and input-file errors.
 - Symbolic links where the operating system permits creating them.
 
-Verification runs `go test ./...`, a Go build, and the repository's required Maven build:
-
-```text
-mvn clean package assembly:single
-```
-
+Verification runs `go test ./...` and a Go build.
