@@ -127,7 +127,10 @@ func TestRunWithDependenciesAppliesGrandReportExclusions(t *testing.T) {
 
 	exitCode := runWithDependencies(context.Background(), []string{root}, &stdout, &stderr, dependencies)
 
-	if exitCode != 0 || strings.Contains(stdout.String(), "JSON:") {
+	if exitCode != 0 || !strings.Contains(
+		stdout.String(),
+		`JSON: {"type":"excluded","key":"SECRET","found":"SECRET","position":0,"file":"secret.txt"}`,
+	) {
 		t.Fatalf("exit code = %d, stdout = %q, stderr = %q", exitCode, stdout.String(), stderr.String())
 	}
 	if !strings.Contains(stdout.String(), "TEXT: Total files scanned 2\n") {

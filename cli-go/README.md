@@ -60,6 +60,16 @@ Every flushed output line starts with `TEXT: ` or `JSON: `. JSON findings have t
 JSON: {"key":"SIGNATURE","found":"matched value","position":42,"file":"relative/path.txt"}
 ```
 
+JSON mode also reports applied grand-report exclusions:
+
+```text
+JSON: {"type":"excluded","file":"relative/directory"}
+JSON: {"type":"excluded","key":"SIGNATURE","found":"matched value","position":42,"file":"relative/path.txt"}
+```
+
+Each fully excluded file or directory is reported once. Quick mode applies exclusions without reporting them. Exclusion
+events do not count as findings and do not cause exit code `2`.
+
 `found` contains the complete exact match, and `position` is the zero-based byte offset. JSON mode does not print the
 selected paths. After the dictionary version, both modes print `TEXT: Scanning is in progress. Please wait.`. After
 scanning, both modes print `TEXT: Total files scanned N` and `TEXT: Scanning is finished in S.SSS seconds.`. `N`

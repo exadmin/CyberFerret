@@ -55,16 +55,27 @@ func loadExclusions(root string, warnings *lineOutput) exclusionSet {
 }
 
 func (e exclusionSet) excludesPath(relativePath string) bool {
-	normalized := normalizeRelativePath(relativePath)
-	for candidate := normalized; ; candidate = filepath.ToSlash(filepath.Dir(filepath.FromSlash(candidate))) {
-		if e.contains(fullPathExclusionHash, sha256Hex(candidate)) {
-			return true
+	return len(e.excludedPaths(relativePath)) > 0
+}
+
+func (e exclusionSet) excludedPaths(relativePath string) []string {
+	candidates := []string{normalizeRelativePath(relativePath)}
+	for candidates[len(candidates)-1] != "" {
+		parent := filepath.ToSlash(filepath.Dir(filepath.FromSlash(candidates[len(candidates)-1])))
+		if parent == "." {
+			parent = ""
 		}
-		if candidate == "" || candidate == "." {
-			break
+		candidates = append(candidates, parent)
+	}
+
+	matched := make([]string, 0, len(candidates))
+	for index := len(candidates) - 1; index >= 0; index-- {
+		candidate := candidates[index]
+		if e.contains(fullPathExclusionHash, sha256Hex(candidate)) {
+			matched = append(matched, candidate)
 		}
 	}
-	return e.contains(fullPathExclusionHash, sha256Hex(""))
+	return matched
 }
 
 func (e exclusionSet) excludesMatch(relativePath, exact string) bool {

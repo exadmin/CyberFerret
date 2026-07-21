@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -50,6 +51,20 @@ func TestExclusionSetExcludesDirectoryDescendants(t *testing.T) {
 	}
 	if loaded.excludesPath("included/secret.txt") {
 		t.Fatal("unrelated file was excluded")
+	}
+}
+
+func TestExclusionSetReturnsExcludedPaths(t *testing.T) {
+	loaded := exclusionSet{textHashesByFileHash: map[string]map[string]struct{}{
+		testSHA256("outer"):       {fullPathExclusionHash: {}},
+		testSHA256("outer/inner"): {fullPathExclusionHash: {}},
+	}}
+
+	got := loaded.excludedPaths("outer/inner/secret.txt")
+	want := []string{"outer", "outer/inner"}
+
+	if !slices.Equal(got, want) {
+		t.Fatalf("excludedPaths() = %#v, want %#v", got, want)
 	}
 }
 

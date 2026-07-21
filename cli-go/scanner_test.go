@@ -142,6 +142,7 @@ func TestScanFilesWithExclusionsSkipsFileAndDirectoryWithoutCounting(t *testing.
 	root := t.TempDir()
 	excludedFile := writeTestFile(t, root, "excluded.txt", "SECRET")
 	excludedChild := writeTestFile(t, root, "ignored/child.txt", "SECRET")
+	secondExcludedChild := writeTestFile(t, root, "ignored/second.txt", "SECRET")
 	includedFile := writeTestFile(t, root, "included.txt", "safe")
 	exclusions := exclusionSet{textHashesByFileHash: map[string]map[string]struct{}{
 		testSHA256("excluded.txt"): {fullPathExclusionHash: {}},
@@ -155,7 +156,7 @@ func TestScanFilesWithExclusionsSkipsFileAndDirectoryWithoutCounting(t *testing.
 
 	result, err := scanFilesWithExclusions(
 		root,
-		[]string{excludedFile, excludedChild, includedFile},
+		[]string{excludedFile, excludedChild, secondExcludedChild, includedFile},
 		loaded,
 		modeJSON,
 		exclusions,
@@ -166,8 +167,10 @@ func TestScanFilesWithExclusionsSkipsFileAndDirectoryWithoutCounting(t *testing.
 	if err != nil || result.found || result.scannedCount != 1 {
 		t.Fatalf("scan result = %#v, error = %v; want no finding and one scanned file", result, err)
 	}
-	if stdout.Len() != 0 {
-		t.Fatalf("stdout = %q", stdout.String())
+	want := "JSON: {\"type\":\"excluded\",\"file\":\"excluded.txt\"}\n" +
+		"JSON: {\"type\":\"excluded\",\"file\":\"ignored\"}\n"
+	if stdout.String() != want {
+		t.Fatalf("stdout = %q, want %q", stdout.String(), want)
 	}
 }
 
@@ -197,8 +200,74 @@ func TestScanFilesWithExclusionsSuppressesOnlyExactFileMatch(t *testing.T) {
 	if err != nil || !result.found || result.scannedCount != 2 {
 		t.Fatalf("scan result = %#v, error = %v; want one finding and two scanned files", result, err)
 	}
-	if strings.Contains(stdout.String(), `"file":"excluded.txt"`) ||
-		!strings.Contains(stdout.String(), `"file":"reported.txt"`) {
+	if !strings.Contains(
+		stdout.String(),
+		`JSON: {"type":"excluded","key":"SECRET","found":"SECRET","position":0,"file":"excluded.txt"}`,
+	) || !strings.Contains(stdout.String(), `"file":"reported.txt"`) {
 		t.Fatalf("stdout = %q", stdout.String())
+	}
+}
+
+func TestScanFilesWithExclusionsQuickOutputIsSilent(t *testing.T) {
+	root := t.TempDir()
+	excludedFile := writeTestFile(t, root, "excluded.txt", "SECRET")
+	excludedMatch := writeTestFile(t, root, "match.txt", "SECRET")
+	reported := writeTestFile(t, root, "reported.txt", "SECRET")
+	exclusions := exclusionSet{textHashesByFileHash: map[string]map[string]struct{}{
+		testSHA256("excluded.txt"): {fullPathExclusionHash: {}},
+		testSHA256("match.txt"):    {testSHA256("SECRET"): {}},
+	}}
+	loaded := dictionary{
+		allowed:    map[string]struct{}{},
+		signatures: []signature{{key: "SECRET", expression: regexp.MustCompile(`SECRET`)}},
+	}
+	var stdout bytes.Buffer
+
+	result, err := scanFilesWithExclusions(
+		root,
+		[]string{excludedFile, excludedMatch, reported},
+		loaded,
+		modeQuick,
+		exclusions,
+		newLineOutput(&stdout),
+		newLineOutput(&bytes.Buffer{}),
+	)
+
+	if err != nil || !result.found || result.scannedCount != 2 {
+		t.Fatalf("scan result = %#v, error = %v; want finding and two scanned files", result, err)
+	}
+	if strings.Contains(stdout.String(), "JSON:") ||
+		stdout.String() != "TEXT: Signature \"SECRET\" found in reported.txt at position 0\n" {
+		t.Fatalf("stdout = %q", stdout.String())
+	}
+}
+
+func TestScanFilesWithExclusionsReportsAllowedExcludedMatch(t *testing.T) {
+	root := t.TempDir()
+	file := writeTestFile(t, root, "allowed.txt", "SECRET")
+	exclusions := exclusionSet{textHashesByFileHash: map[string]map[string]struct{}{
+		testSHA256("allowed.txt"): {testSHA256("SECRET"): {}},
+	}}
+	loaded := dictionary{
+		allowed:    map[string]struct{}{"secret": {}},
+		signatures: []signature{{key: "SECRET", expression: regexp.MustCompile(`SECRET`)}},
+	}
+	var stdout bytes.Buffer
+
+	result, err := scanFilesWithExclusions(
+		root,
+		[]string{file},
+		loaded,
+		modeJSON,
+		exclusions,
+		newLineOutput(&stdout),
+		newLineOutput(&bytes.Buffer{}),
+	)
+
+	if err != nil || result.found || result.scannedCount != 1 {
+		t.Fatalf("scan result = %#v, error = %v; want excluded finding and one scanned file", result, err)
+	}
+	if !strings.Contains(stdout.String(), `"type":"excluded"`) {
+		t.Fatalf("stdout = %q, want excluded event", stdout.String())
 	}
 }
