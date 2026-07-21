@@ -301,12 +301,12 @@ list output.
 
 Assert all findings are emitted as compact JSON and the function returns `found=true`. Cover JSON escaping, a complete
 match longer than 16 Unicode code points, a multibyte prefix proving `position` is a byte offset, `/` relative path
-separators, and `TEXT: <absolute-path>` lines after the scan.
+separators, no selected-path output, and the final `TEXT: Total files scanned N` line.
 
 - [ ] **Step 3: Write failing file-error test**
 
 Supply a selected path that becomes unreadable or disappears before scanning. Assert one `TEXT:` warning on the error
-stream and continued scanning of the next file.
+stream, continued scanning of the next file, and a final count that excludes the unreadable file.
 
 - [ ] **Step 4: Run scanner tests and confirm RED**
 
@@ -318,9 +318,9 @@ Expected: compilation fails because `scanFiles` is undefined.
 
 Iterate the already sorted `files` slice. Read each file with `os.ReadFile`. For each ordered signature not excluded by
 extension, call `FindAllIndex(content, -1)`. Compare the full match against lowercased allowed values. Quick mode emits
-the exact text message and returns immediately. JSON mode marshals a `finding` and continues. After JSON scanning,
-emit the complete exact match without truncation and then emit every selected absolute path through
-`output.text("%s", path)`.
+the exact text message and returns immediately. JSON mode marshals a `finding` with the complete exact match and
+continues. Increment the scanned count after each successful file read. After JSON scanning, emit
+`output.text("Total files scanned %d", scannedCount)` and do not emit selected paths.
 
 - [ ] **Step 6: Run scanner tests and commit**
 
@@ -407,7 +407,8 @@ git commit -m "feat(cli-go): orchestrate dictionary scanning"
 - [ ] **Step 1: Update README**
 
 Document `CYBER_FERRET_PASSWORD`, cache path, refresh age and timeout, default JSON mode, quick mode, prefixed output,
-JSON fields, selected-path output, allowed values, extension exclusions, and exit codes `0` through `3`. Include:
+JSON fields, final scanned-file count, absence of selected-path output, allowed values, extension exclusions, and exit
+codes `0` through `3`. Include:
 
 ```text
 cli-go --mode=quick FOLDER_PATH [PATH_TO_LIST_OF_FILES]

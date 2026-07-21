@@ -27,15 +27,16 @@ The command uses these exit codes:
 
 Every output line starts with one of these prefixes:
 
-- `TEXT: ` for status messages, errors, quick-mode findings, and selected file paths.
+- `TEXT: ` for status messages, errors, quick-mode findings, and the final scan count.
 - `JSON: ` for JSON-mode findings.
 
 The application uses an output abstraction that flushes after every complete line. Normal output goes to standard
 output. Fatal errors and recoverable warnings go to standard error. Both streams follow the same prefix and flush
 rules.
 
-After a complete JSON-mode scan, the command prints every selected absolute file path as `TEXT: <path>`. Quick mode
-does not print the remaining path list after it stops at the first finding.
+After a complete JSON-mode scan, the command prints `TEXT: Total files scanned N`. `N` counts files that were read and
+processed successfully. Files skipped after a read error are not counted. The command does not print the selected file
+list. Quick mode stops at the first finding without printing a final count.
 
 ## Dictionary refresh
 
@@ -120,8 +121,9 @@ JSON: {"key":"KEY","found":"complete exact match","position":123,"file":"relativ
 ```
 
 `found` contains the complete exact match without truncation. `position` is the zero-based byte offset of the match
-head. `file` is relative to `FOLDER_PATH` and always uses `/` separators. JSON mode finishes the complete file list and
-returns code `2` when it emitted at least one finding; otherwise it returns code `0`.
+head. `file` is relative to `FOLDER_PATH` and always uses `/` separators. JSON mode finishes the complete file list,
+prints the total successfully scanned file count, and returns code `2` when it emitted at least one finding. Otherwise,
+it returns code `0`.
 
 ## Components
 
@@ -151,7 +153,8 @@ Development follows test-driven development. Tests cover:
 - Global case-insensitive allowed values.
 - Quick-mode early termination and JSON-mode complete scanning.
 - Complete JSON match values, JSON escaping, byte offsets, relative paths, deterministic ordering, and file read errors.
-- Preservation of existing Git selection behavior and `TEXT:` file-list output.
+- Preservation of existing Git selection behavior without file-list output.
+- A final JSON-mode count that excludes files skipped after read errors.
 
 Verification runs `go test ./...`, `go vet ./...`, and `go build ./...`. Race tests run when a CGO toolchain is
 available. Maven is outside this change's scope.
