@@ -15,15 +15,15 @@ func TestRunRejectsInvalidArgumentCounts(t *testing.T) {
 		var stdout bytes.Buffer
 		var stderr bytes.Buffer
 
-		exitCode := run(context.Background(), args, &stdout, &stderr)
+		exitCode := runWithDependencies(context.Background(), args, &stdout, &stderr, appDependencies{})
 
-		if exitCode != 2 {
-			t.Fatalf("run(%q) exit code = %d, want 2", args, exitCode)
+		if exitCode != 1 {
+			t.Fatalf("run(%q) exit code = %d, want 1", args, exitCode)
 		}
 		if stdout.Len() != 0 {
 			t.Fatalf("run(%q) stdout = %q, want empty", args, stdout.String())
 		}
-		if !strings.Contains(stderr.String(), "usage: cli-go FOLDER_PATH [PATH_TO_LIST_OF_FILES]") {
+		if !strings.Contains(stderr.String(), "TEXT: usage: cli-go [--mode=quick|--mode=json] FOLDER_PATH [PATH_TO_LIST_OF_FILES]") {
 			t.Fatalf("run(%q) stderr = %q, want usage", args, stderr.String())
 		}
 	}
@@ -36,12 +36,18 @@ func TestRunPrintsSortedAbsolutePaths(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
-	exitCode := run(context.Background(), []string{root}, &stdout, &stderr)
+	exitCode := runWithDependencies(
+		context.Background(),
+		[]string{root},
+		&stdout,
+		&stderr,
+		testAppDependencies(t, "VERSION=1.0\n", "test-password"),
+	)
 
 	if exitCode != 0 {
 		t.Fatalf("run() exit code = %d, want 0; stderr = %q", exitCode, stderr.String())
 	}
-	want := first + "\n" + second + "\n"
+	want := "TEXT: Dictionary version: 1.0\nTEXT: " + first + "\nTEXT: " + second + "\n"
 	if stdout.String() != want {
 		t.Fatalf("run() stdout = %q, want %q", stdout.String(), want)
 	}
@@ -74,13 +80,19 @@ func TestRunReportsRuntimeErrors(t *testing.T) {
 			var stdout bytes.Buffer
 			var stderr bytes.Buffer
 
-			exitCode := run(context.Background(), test.args, &stdout, &stderr)
+			exitCode := runWithDependencies(
+				context.Background(),
+				test.args,
+				&stdout,
+				&stderr,
+				testAppDependencies(t, "VERSION=1.0\n", "test-password"),
+			)
 
 			if exitCode != 1 {
 				t.Fatalf("run() exit code = %d, want 1", exitCode)
 			}
-			if stdout.Len() != 0 {
-				t.Fatalf("run() stdout = %q, want empty", stdout.String())
+			if stdout.String() != "TEXT: Dictionary version: 1.0\n" {
+				t.Fatalf("run() stdout = %q, want version only", stdout.String())
 			}
 			if !strings.Contains(stderr.String(), test.wantMessage) {
 				t.Fatalf("run() stderr = %q, want message %q", stderr.String(), test.wantMessage)
@@ -95,13 +107,19 @@ func TestRunReportsUnavailableGit(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
-	exitCode := run(context.Background(), []string{root}, &stdout, &stderr)
+	exitCode := runWithDependencies(
+		context.Background(),
+		[]string{root},
+		&stdout,
+		&stderr,
+		testAppDependencies(t, "VERSION=1.0\n", "test-password"),
+	)
 
 	if exitCode != 1 {
 		t.Fatalf("run() exit code = %d, want 1", exitCode)
 	}
-	if stdout.Len() != 0 {
-		t.Fatalf("run() stdout = %q, want empty", stdout.String())
+	if stdout.String() != "TEXT: Dictionary version: 1.0\n" {
+		t.Fatalf("run() stdout = %q, want version only", stdout.String())
 	}
 	if !strings.Contains(stderr.String(), "git ls-files") {
 		t.Fatalf("run() stderr = %q, want Git operation", stderr.String())

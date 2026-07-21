@@ -75,7 +75,8 @@ ciphertext, invalid padding, or unreadable cache prints a `TEXT:` error and exit
 
 The plaintext uses the requested Java Properties subset. The parser ignores blank lines and lines whose first
 non-whitespace character is `#`. Every other nonblank line must contain `key=value`. It preserves value whitespace
-except for the line ending.
+except for the line ending and decodes Java property backslash escapes, including `\\`, control escapes, and
+`\uXXXX`.
 
 Duplicate keys print a `TEXT:` error naming the key. Parsing continues, and the last value replaces earlier values.
 Malformed entries are fatal and exit with code `1`.

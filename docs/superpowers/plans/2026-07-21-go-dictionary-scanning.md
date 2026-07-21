@@ -259,8 +259,8 @@ Expected: compilation fails because `loadDictionary` is undefined.
 - [ ] **Step 4: Implement ordered Properties-subset parsing**
 
 Scan lines with a 1 MiB buffer. Remove a trailing carriage return. Ignore blank and left-trimmed `#` lines. Split on
-the first `=`. Track key indices in a map; on duplicate, emit the error and remove the earlier effective entry before
-appending the final entry.
+the first `=`. Decode Java property escapes (`\\`, `\t`, `\n`, `\r`, `\f`, and `\uXXXX`) in keys and values. Track key
+indices in a map; on duplicate, emit the error and remove the earlier effective entry before appending the final entry.
 
 - [ ] **Step 5: Compile the model**
 

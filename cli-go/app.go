@@ -2,29 +2,98 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"io"
+	"net/http"
+	"os"
+	"time"
 )
 
-const usage = "usage: cli-go FOLDER_PATH [PATH_TO_LIST_OF_FILES]"
+const usage = "usage: cli-go [--mode=quick|--mode=json] FOLDER_PATH [PATH_TO_LIST_OF_FILES]"
+
+type appDependencies struct {
+	refresher cacheRefresher
+	getenv    func(string) string
+}
 
 func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
-	if len(args) < 1 || len(args) > 2 {
-		fmt.Fprintln(stderr, usage)
-		return 2
-	}
+	return runWithDependencies(ctx, args, stdout, stderr, appDependencies{
+		refresher: cacheRefresher{
+			client:  &http.Client{},
+			now:     time.Now,
+			homeDir: os.UserHomeDir,
+			url:     dictionaryURL,
+			timeout: refreshTimeout,
+		},
+		getenv: os.Getenv,
+	})
+}
 
-	var listArg *string
-	if len(args) == 2 {
-		listArg = &args[1]
-	}
-	files, err := selectFiles(ctx, args[0], listArg)
+func runWithDependencies(
+	ctx context.Context,
+	args []string,
+	stdout, stderr io.Writer,
+	dependencies appDependencies,
+) int {
+	output := newLineOutput(stdout)
+	errorOutput := newLineOutput(stderr)
+	parsed, err := parseOptions(args)
 	if err != nil {
-		fmt.Fprintf(stderr, "error: %v\n", err)
+		writeFatal(errorOutput, "%v", err)
 		return 1
 	}
-	for _, path := range files {
-		fmt.Fprintln(stdout, path)
+
+	cachePath, err := dependencies.refresher.refresh(ctx, errorOutput)
+	if err != nil {
+		writeFatal(errorOutput, "Cannot prepare dictionary cache: %v", err)
+		return 1
+	}
+	encrypted, err := os.ReadFile(cachePath)
+	if err != nil {
+		writeFatal(errorOutput, "Cannot read dictionary cache %q: %v", cachePath, err)
+		return 1
+	}
+	password := ""
+	if dependencies.getenv != nil {
+		password = dependencies.getenv("CYBER_FERRET_PASSWORD")
+	}
+	plaintext, err := decryptDictionary(encrypted, password)
+	if err != nil {
+		writeFatal(errorOutput, "%v", err)
+		return 1
+	}
+
+	loaded, err := loadDictionary(plaintext, errorOutput)
+	if err != nil {
+		var compileError *regexpCompileError
+		if errors.As(err, &compileError) {
+			writeFatal(errorOutput, "Cannot compile dictionary regexp: %v", compileError)
+			return 3
+		}
+		writeFatal(errorOutput, "Cannot load dictionary: %v", err)
+		return 1
+	}
+	if err := output.text("Dictionary version: %s", loaded.version); err != nil {
+		writeFatal(errorOutput, "Cannot write dictionary version: %v", err)
+		return 1
+	}
+
+	files, err := selectFiles(ctx, parsed.root, parsed.listPath)
+	if err != nil {
+		writeFatal(errorOutput, "%v", err)
+		return 1
+	}
+	found, err := scanFiles(parsed.root, files, loaded, parsed.mode, output, errorOutput)
+	if err != nil {
+		writeFatal(errorOutput, "Cannot scan files: %v", err)
+		return 1
+	}
+	if found {
+		return 2
 	}
 	return 0
+}
+
+func writeFatal(output *lineOutput, format string, args ...any) {
+	_ = output.text(format, args...)
 }

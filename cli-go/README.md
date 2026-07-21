@@ -1,12 +1,13 @@
-# CyberFerret Go file-list CLI
+# CyberFerret Go scanner
 
-The Go file-list CLI prints absolute paths for files selected by Git. It includes tracked files and untracked files
-that standard Git ignore rules do not exclude.
+The Go CLI refreshes and decrypts the CyberFerret dictionary, then scans files selected by Git. It includes tracked
+files and untracked files that standard Git ignore rules do not exclude.
 
 ## Prerequisites
 
 - Go 1.21 or newer to build the command.
 - Git available on `PATH` at runtime.
+- `CYBER_FERRET_PASSWORD` set to the dictionary decryption password.
 
 ## Build
 
@@ -20,23 +21,55 @@ On Windows, the output file is `cli-go.exe`.
 
 ## Usage
 
-Scan every selected file below a repository directory:
+Scan every selected file in the default JSON mode:
 
 ```shell
 ./cli-go /path/to/repository
 ```
 
-Restrict the result to a staged-file list:
+Stop after the first non-allowed finding:
 
 ```shell
-./cli-go /path/to/repository /path/to/staged-files.txt
+./cli-go --mode=quick /path/to/repository
 ```
 
-The optional list contains one Git path per line. Each path is relative to `FOLDER_PATH`. Empty lines and duplicate
-paths are ignored. Absolute paths and paths that escape `FOLDER_PATH` are rejected.
+Restrict either mode to a staged-file list:
 
-The command writes one normalized absolute file path per line to standard output. It deduplicates and sorts the output
-lexicographically. Errors go to standard error and produce a nonzero exit code.
+```shell
+./cli-go --mode=json /path/to/repository /path/to/staged-files.txt
+```
+
+`--mode` is optional and must precede `FOLDER_PATH`. The optional list contains one Git path per line. Each path is
+relative to `FOLDER_PATH`. Empty lines and duplicate paths are ignored. Absolute paths and paths that escape
+`FOLDER_PATH` are rejected.
+
+## Dictionary cache
+
+The encrypted cache is `~/.qubership/dictionary-latest-cache.encrypted`. A missing cache or one older than eight hours
+is refreshed from the CyberFerretDictionary repository. Refresh has a 15-second timeout. A failed refresh falls back
+to an existing cache.
+
+The decrypted dictionary remains in memory. `VERSION` is reported for diagnostics, `(allowed)` values suppress exact
+case-insensitive matches, and `(exclude-ext)` values skip signatures for the listed file extensions.
+
+## Output
+
+Every flushed output line starts with `TEXT: ` or `JSON: `. JSON findings have this shape:
+
+```text
+JSON: {"key":"SIGNATURE","found":"matched value","position":42,"file":"relative/path.txt"}
+```
+
+`found` is limited to 16 Unicode characters, and `position` is the zero-based byte offset. JSON mode scans every
+selected file and then prints the selected absolute paths as `TEXT:` lines. Quick mode prints its first finding as a
+`TEXT:` line and stops without printing the path list.
+
+Exit codes are:
+
+- `0`: The scan completes without findings.
+- `1`: Arguments, cache access, password lookup, decryption, or another runtime operation fails.
+- `2`: At least one non-allowed match is found.
+- `3`: A dictionary expression is incompatible with Go RE2.
 
 ## Ignore behavior
 
