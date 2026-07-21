@@ -39,7 +39,7 @@ func TestScanFilesQuickStopsAtFirstNonAllowedFinding(t *testing.T) {
 	}
 }
 
-func TestScanFilesJSONEmitsAllFindingsAndSelectedPaths(t *testing.T) {
+func TestScanFilesJSONEmitsCompleteFindingsAndTotal(t *testing.T) {
 	root := t.TempDir()
 	first := writeTestFile(t, root, "nested/result.txt", "ééABCDEFGHIJKLMNOPQ")
 	second := writeTestFile(t, root, "other.txt", "XYZ")
@@ -61,18 +61,18 @@ func TestScanFilesJSONEmitsAllFindingsAndSelectedPaths(t *testing.T) {
 		t.Fatal("scanFiles() found = false, want true")
 	}
 	lines := strings.Split(strings.TrimSpace(stdout.String()), "\n")
-	if len(lines) != 4 {
-		t.Fatalf("output lines = %#v, want two findings and two paths", lines)
+	if len(lines) != 3 {
+		t.Fatalf("output lines = %#v, want two findings and total", lines)
 	}
-	wantFirst := `JSON: {"key":"LETTERS","found":"ABCDEFGHIJKLMNOP","position":4,"file":"nested/result.txt"}`
+	wantFirst := `JSON: {"key":"LETTERS","found":"ABCDEFGHIJKLMNOPQ","position":4,"file":"nested/result.txt"}`
 	if lines[0] != wantFirst {
 		t.Fatalf("first finding = %q, want %q", lines[0], wantFirst)
 	}
 	if lines[1] != `JSON: {"key":"LETTERS","found":"XYZ","position":0,"file":"other.txt"}` {
 		t.Fatalf("second finding = %q", lines[1])
 	}
-	if lines[2] != "TEXT: "+first || lines[3] != "TEXT: "+second {
-		t.Fatalf("path lines = %#v", lines[2:])
+	if lines[2] != "TEXT: Total files scanned 2" {
+		t.Fatalf("total line = %q", lines[2])
 	}
 	if stderr.Len() != 0 {
 		t.Fatalf("stderr = %q, want empty", stderr.String())
@@ -97,7 +97,7 @@ func TestScanFilesHonorsExcludedExtensionsCaseInsensitively(t *testing.T) {
 	if err != nil || found {
 		t.Fatalf("scanFiles() found = %v, error = %v; want false, nil", found, err)
 	}
-	if stdout.String() != "TEXT: "+file+"\n" {
+	if stdout.String() != "TEXT: Total files scanned 1\n" {
 		t.Fatalf("stdout = %q", stdout.String())
 	}
 }
@@ -118,13 +118,26 @@ func TestScanFilesReportsReadErrorAndContinues(t *testing.T) {
 	if err != nil || !found {
 		t.Fatalf("scanFiles() found = %v, error = %v; want true, nil", found, err)
 	}
-	if !strings.Contains(stderr.String(), "TEXT: Cannot read file") || !strings.Contains(stdout.String(), `"file":"readable.txt"`) {
+	if !strings.Contains(stderr.String(), "TEXT: Cannot read file") ||
+		!strings.Contains(stdout.String(), `"file":"readable.txt"`) ||
+		!strings.HasSuffix(stdout.String(), "TEXT: Total files scanned 1\n") {
 		t.Fatalf("stdout = %q, stderr = %q", stdout.String(), stderr.String())
 	}
 }
 
-func TestTruncateRunes(t *testing.T) {
-	if got, want := truncateRunes("😀😁😂😃😄😅😆😉😊😋😎😍😘🥰😗😙😚", 16), "😀😁😂😃😄😅😆😉😊😋😎😍😘🥰😗😙"; got != want {
-		t.Fatalf("truncateRunes() = %q, want %q", got, want)
+func TestScanFilesJSONKeepsCompleteUnicodeMatch(t *testing.T) {
+	root := t.TempDir()
+	exact := "😀😁😂😃😄😅😆😉😊😋😎😍😘🥰😗😙😚"
+	file := writeTestFile(t, root, "unicode.txt", exact)
+	loaded := dictionary{
+		allowed:    map[string]struct{}{},
+		signatures: []signature{{key: "UNICODE", expression: regexp.MustCompile(`.+`)}},
+	}
+	var stdout bytes.Buffer
+
+	_, err := scanFiles(root, []string{file}, loaded, modeJSON, newLineOutput(&stdout), newLineOutput(&bytes.Buffer{}))
+
+	if err != nil || !strings.Contains(stdout.String(), `"found":"`+exact+`"`) {
+		t.Fatalf("scanFiles() error = %v, stdout = %q", err, stdout.String())
 	}
 }

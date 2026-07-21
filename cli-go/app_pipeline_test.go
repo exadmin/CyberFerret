@@ -59,21 +59,22 @@ func TestRunWithDependenciesQuickReturnsTwoOnFirstFinding(t *testing.T) {
 
 func TestRunWithDependenciesJSONCompletesAndReturnsTwo(t *testing.T) {
 	root := initRepository(t)
-	file := writeTestFile(t, root, "secret.txt", "SECRET")
+	writeTestFile(t, root, "secret.txt", "SECRET")
 	dependencies := testAppDependencies(t, "VERSION=1.0\nSECRET=SECRET\n", "test-password")
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
 	exitCode := runWithDependencies(context.Background(), []string{root}, &stdout, &stderr, dependencies)
 
-	if exitCode != 2 || !strings.Contains(stdout.String(), `JSON: {"key":"SECRET"`) || !strings.Contains(stdout.String(), "TEXT: "+file) {
+	if exitCode != 2 || !strings.Contains(stdout.String(), `JSON: {"key":"SECRET"`) ||
+		!strings.HasSuffix(stdout.String(), "TEXT: Total files scanned 1\n") {
 		t.Fatalf("exit code = %d, stdout = %q, stderr = %q", exitCode, stdout.String(), stderr.String())
 	}
 }
 
 func TestRunWithDependenciesAcceptsRelativeFolderPath(t *testing.T) {
 	root := initRepository(t)
-	file := writeTestFile(t, root, "safe.txt", "safe")
+	writeTestFile(t, root, "safe.txt", "safe")
 	previousDirectory, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
@@ -98,7 +99,7 @@ func TestRunWithDependenciesAcceptsRelativeFolderPath(t *testing.T) {
 		dependencies,
 	)
 
-	if exitCode != 0 || !strings.Contains(stdout.String(), "TEXT: "+file) {
+	if exitCode != 0 || !strings.HasSuffix(stdout.String(), "TEXT: Total files scanned 1\n") {
 		t.Fatalf("exit code = %d, stdout = %q, stderr = %q", exitCode, stdout.String(), stderr.String())
 	}
 }

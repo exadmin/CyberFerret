@@ -27,6 +27,7 @@ func scanFiles(
 	}
 	absoluteRoot = filepath.Clean(absoluteRoot)
 	foundAny := false
+	scannedCount := 0
 	for _, path := range files {
 		content, err := os.ReadFile(path)
 		if err != nil {
@@ -35,6 +36,7 @@ func scanFiles(
 			}
 			continue
 		}
+		scannedCount++
 		relativePath, err := filepath.Rel(absoluteRoot, path)
 		if err != nil {
 			return false, fmt.Errorf("make path %q relative to %q: %w", path, root, err)
@@ -65,7 +67,7 @@ func scanFiles(
 				}
 				if err := output.json(finding{
 					Key:      currentSignature.key,
-					Found:    truncateRunes(exact, 16),
+					Found:    exact,
 					Position: match[0],
 					File:     relativePath,
 				}); err != nil {
@@ -76,19 +78,9 @@ func scanFiles(
 	}
 
 	if mode == modeJSON {
-		for _, path := range files {
-			if err := output.text("%s", path); err != nil {
-				return false, fmt.Errorf("write selected file path: %w", err)
-			}
+		if err := output.text("Total files scanned %d", scannedCount); err != nil {
+			return false, fmt.Errorf("write scanned file count: %w", err)
 		}
 	}
 	return foundAny, nil
-}
-
-func truncateRunes(value string, maximum int) string {
-	runes := []rune(value)
-	if len(runes) <= maximum {
-		return value
-	}
-	return string(runes[:maximum])
 }

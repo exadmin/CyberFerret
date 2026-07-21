@@ -29,10 +29,10 @@ func TestRunRejectsInvalidArgumentCounts(t *testing.T) {
 	}
 }
 
-func TestRunPrintsSortedAbsolutePaths(t *testing.T) {
+func TestRunReportsTotalFilesScanned(t *testing.T) {
 	root := initRepository(t)
-	first := writeTestFile(t, root, "a.txt", "a")
-	second := writeTestFile(t, root, "b.txt", "b")
+	writeTestFile(t, root, "a.txt", "a")
+	writeTestFile(t, root, "b.txt", "b")
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
@@ -47,7 +47,7 @@ func TestRunPrintsSortedAbsolutePaths(t *testing.T) {
 	if exitCode != 0 {
 		t.Fatalf("run() exit code = %d, want 0; stderr = %q", exitCode, stderr.String())
 	}
-	want := "TEXT: Dictionary version: 1.0\nTEXT: " + first + "\nTEXT: " + second + "\n"
+	want := "TEXT: Dictionary version: 1.0\nTEXT: Total files scanned 2\n"
 	if stdout.String() != want {
 		t.Fatalf("run() stdout = %q, want %q", stdout.String(), want)
 	}

@@ -60,9 +60,9 @@ Every flushed output line starts with `TEXT: ` or `JSON: `. JSON findings have t
 JSON: {"key":"SIGNATURE","found":"matched value","position":42,"file":"relative/path.txt"}
 ```
 
-`found` is limited to 16 Unicode characters, and `position` is the zero-based byte offset. JSON mode scans every
-selected file and then prints the selected absolute paths as `TEXT:` lines. Quick mode prints its first finding as a
-`TEXT:` line and stops without printing the path list.
+`found` contains the complete exact match, and `position` is the zero-based byte offset. JSON mode does not print the
+selected paths. After scanning, it prints `TEXT: Total files scanned N`, where `N` excludes files skipped after read
+errors. Quick mode prints its first finding as a `TEXT:` line and stops without printing a final count.
 
 Exit codes are:
 
