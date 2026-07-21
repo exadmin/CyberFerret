@@ -14,16 +14,21 @@ type finding struct {
 	File     string `json:"file"`
 }
 
+type scanResult struct {
+	found        bool
+	scannedCount int
+}
+
 func scanFiles(
 	root string,
 	files []string,
 	loaded dictionary,
 	mode scanMode,
 	output, errors *lineOutput,
-) (bool, error) {
+) (scanResult, error) {
 	absoluteRoot, err := filepath.Abs(root)
 	if err != nil {
-		return false, fmt.Errorf("resolve scan root %q: %w", root, err)
+		return scanResult{}, fmt.Errorf("resolve scan root %q: %w", root, err)
 	}
 	absoluteRoot = filepath.Clean(absoluteRoot)
 	foundAny := false
@@ -32,14 +37,14 @@ func scanFiles(
 		content, err := os.ReadFile(path)
 		if err != nil {
 			if writeErr := errors.text("Cannot read file %q: %v", path, err); writeErr != nil {
-				return false, fmt.Errorf("write file-read warning: %w", writeErr)
+				return scanResult{}, fmt.Errorf("write file-read warning: %w", writeErr)
 			}
 			continue
 		}
 		scannedCount++
 		relativePath, err := filepath.Rel(absoluteRoot, path)
 		if err != nil {
-			return false, fmt.Errorf("make path %q relative to %q: %w", path, root, err)
+			return scanResult{}, fmt.Errorf("make path %q relative to %q: %w", path, root, err)
 		}
 		relativePath = filepath.ToSlash(relativePath)
 		extension := strings.ToLower(strings.TrimPrefix(filepath.Ext(path), "."))
@@ -61,9 +66,9 @@ func scanFiles(
 						relativePath,
 						match[0],
 					); err != nil {
-						return false, fmt.Errorf("write quick finding: %w", err)
+						return scanResult{}, fmt.Errorf("write quick finding: %w", err)
 					}
-					return true, nil
+					return scanResult{found: true, scannedCount: scannedCount}, nil
 				}
 				if err := output.json(finding{
 					Key:      currentSignature.key,
@@ -71,16 +76,11 @@ func scanFiles(
 					Position: match[0],
 					File:     relativePath,
 				}); err != nil {
-					return false, fmt.Errorf("write JSON finding: %w", err)
+					return scanResult{}, fmt.Errorf("write JSON finding: %w", err)
 				}
 			}
 		}
 	}
 
-	if mode == modeJSON {
-		if err := output.text("Total files scanned %d", scannedCount); err != nil {
-			return false, fmt.Errorf("write scanned file count: %w", err)
-		}
-	}
-	return foundAny, nil
+	return scanResult{found: foundAny, scannedCount: scannedCount}, nil
 }

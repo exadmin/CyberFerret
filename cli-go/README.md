@@ -61,8 +61,10 @@ JSON: {"key":"SIGNATURE","found":"matched value","position":42,"file":"relative/
 ```
 
 `found` contains the complete exact match, and `position` is the zero-based byte offset. JSON mode does not print the
-selected paths. After scanning, it prints `TEXT: Total files scanned N`, where `N` excludes files skipped after read
-errors. Quick mode prints its first finding as a `TEXT:` line and stops without printing a final count.
+selected paths. After the dictionary version, both modes print `TEXT: Scanning is in progress. Please wait.`. After
+scanning, both modes print `TEXT: Total files scanned N` and `TEXT: Scanning is finished in S.SSS seconds.`. `N`
+excludes files skipped after read errors. In quick mode, it includes the file with the first finding and excludes files
+that were not visited after the stop.
 
 Exit codes are:
 

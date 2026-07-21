@@ -47,7 +47,10 @@ func TestRunReportsTotalFilesScanned(t *testing.T) {
 	if exitCode != 0 {
 		t.Fatalf("run() exit code = %d, want 0; stderr = %q", exitCode, stderr.String())
 	}
-	want := "TEXT: Dictionary version: 1.0\nTEXT: Total files scanned 2\n"
+	want := "TEXT: Dictionary version: 1.0\n" +
+		"TEXT: Scanning is in progress. Please wait.\n" +
+		"TEXT: Total files scanned 2\n" +
+		"TEXT: Scanning is finished in 1.234 seconds.\n"
 	if stdout.String() != want {
 		t.Fatalf("run() stdout = %q, want %q", stdout.String(), want)
 	}
@@ -91,8 +94,9 @@ func TestRunReportsRuntimeErrors(t *testing.T) {
 			if exitCode != 1 {
 				t.Fatalf("run() exit code = %d, want 1", exitCode)
 			}
-			if stdout.String() != "TEXT: Dictionary version: 1.0\n" {
-				t.Fatalf("run() stdout = %q, want version only", stdout.String())
+			wantOutput := "TEXT: Dictionary version: 1.0\nTEXT: Scanning is in progress. Please wait.\n"
+			if stdout.String() != wantOutput {
+				t.Fatalf("run() stdout = %q, want version and progress", stdout.String())
 			}
 			if !strings.Contains(stderr.String(), test.wantMessage) {
 				t.Fatalf("run() stderr = %q, want message %q", stderr.String(), test.wantMessage)
@@ -118,8 +122,9 @@ func TestRunReportsUnavailableGit(t *testing.T) {
 	if exitCode != 1 {
 		t.Fatalf("run() exit code = %d, want 1", exitCode)
 	}
-	if stdout.String() != "TEXT: Dictionary version: 1.0\n" {
-		t.Fatalf("run() stdout = %q, want version only", stdout.String())
+	wantOutput := "TEXT: Dictionary version: 1.0\nTEXT: Scanning is in progress. Please wait.\n"
+	if stdout.String() != wantOutput {
+		t.Fatalf("run() stdout = %q, want version and progress", stdout.String())
 	}
 	if !strings.Contains(stderr.String(), "git ls-files") {
 		t.Fatalf("run() stderr = %q, want Git operation", stderr.String())

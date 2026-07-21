@@ -55,6 +55,12 @@ func TestRunWithDependenciesQuickReturnsTwoOnFirstFinding(t *testing.T) {
 	if strings.Contains(stdout.String(), "TEXT: "+root) {
 		t.Fatalf("quick output contains file list: %q", stdout.String())
 	}
+	if !strings.HasSuffix(
+		stdout.String(),
+		"TEXT: Total files scanned 1\nTEXT: Scanning is finished in 1.234 seconds.\n",
+	) {
+		t.Fatalf("quick output lacks scan summary: %q", stdout.String())
+	}
 }
 
 func TestRunWithDependenciesJSONCompletesAndReturnsTwo(t *testing.T) {
@@ -67,7 +73,10 @@ func TestRunWithDependenciesJSONCompletesAndReturnsTwo(t *testing.T) {
 	exitCode := runWithDependencies(context.Background(), []string{root}, &stdout, &stderr, dependencies)
 
 	if exitCode != 2 || !strings.Contains(stdout.String(), `JSON: {"key":"SECRET"`) ||
-		!strings.HasSuffix(stdout.String(), "TEXT: Total files scanned 1\n") {
+		!strings.HasSuffix(
+			stdout.String(),
+			"TEXT: Total files scanned 1\nTEXT: Scanning is finished in 1.234 seconds.\n",
+		) {
 		t.Fatalf("exit code = %d, stdout = %q, stderr = %q", exitCode, stdout.String(), stderr.String())
 	}
 }
@@ -99,7 +108,10 @@ func TestRunWithDependenciesAcceptsRelativeFolderPath(t *testing.T) {
 		dependencies,
 	)
 
-	if exitCode != 0 || !strings.HasSuffix(stdout.String(), "TEXT: Total files scanned 1\n") {
+	if exitCode != 0 || !strings.HasSuffix(
+		stdout.String(),
+		"TEXT: Total files scanned 1\nTEXT: Scanning is finished in 1.234 seconds.\n",
+	) {
 		t.Fatalf("exit code = %d, stdout = %q, stderr = %q", exitCode, stdout.String(), stderr.String())
 	}
 }
@@ -108,6 +120,8 @@ func testAppDependencies(t *testing.T, plaintext, password string) appDependenci
 	t.Helper()
 	home := t.TempDir()
 	writeCacheFile(t, home, encryptDictionaryForTest(t, []byte(plaintext), password))
+	start := time.Date(2026, 7, 21, 12, 0, 0, 0, time.UTC)
+	times := []time.Time{start, start.Add(1234 * time.Millisecond)}
 	return appDependencies{
 		refresher: cacheRefresher{
 			client:  nil,
@@ -120,6 +134,13 @@ func testAppDependencies(t *testing.T, plaintext, password string) appDependenci
 				return password
 			}
 			return ""
+		},
+		now: func() time.Time {
+			current := times[0]
+			if len(times) > 1 {
+				times = times[1:]
+			}
+			return current
 		},
 	}
 }

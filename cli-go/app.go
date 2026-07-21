@@ -15,6 +15,7 @@ const usage = "usage: cli-go [--mode=quick|--mode=json] FOLDER_PATH [PATH_TO_LIS
 type appDependencies struct {
 	refresher cacheRefresher
 	getenv    func(string) string
+	now       func() time.Time
 }
 
 func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
@@ -27,6 +28,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 			timeout: refreshTimeout,
 		},
 		getenv: os.Getenv,
+		now:    time.Now,
 	})
 }
 
@@ -83,17 +85,36 @@ func runWithDependencies(
 		return 1
 	}
 
+	now := dependencies.now
+	if now == nil {
+		now = time.Now
+	}
+	startedAt := now()
+	if err := output.text("Scanning is in progress. Please wait."); err != nil {
+		writeFatal(errorOutput, "Cannot write scanning progress: %v", err)
+		return 1
+	}
+
 	files, err := selectFiles(ctx, parsed.root, parsed.listPath)
 	if err != nil {
 		writeFatal(errorOutput, "%v", err)
 		return 1
 	}
-	found, err := scanFiles(parsed.root, files, loaded, parsed.mode, output, errorOutput)
+	result, err := scanFiles(parsed.root, files, loaded, parsed.mode, output, errorOutput)
 	if err != nil {
 		writeFatal(errorOutput, "Cannot scan files: %v", err)
 		return 1
 	}
-	if found {
+	if err := output.text("Total files scanned %d", result.scannedCount); err != nil {
+		writeFatal(errorOutput, "Cannot write scanned file count: %v", err)
+		return 1
+	}
+	elapsed := now().Sub(startedAt).Seconds()
+	if err := output.text("Scanning is finished in %.3f seconds.", elapsed); err != nil {
+		writeFatal(errorOutput, "Cannot write scanning duration: %v", err)
+		return 1
+	}
+	if result.found {
 		return 2
 	}
 	return 0

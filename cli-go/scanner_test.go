@@ -23,13 +23,13 @@ func TestScanFilesQuickStopsAtFirstNonAllowedFinding(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
-	found, err := scanFiles(root, []string{first, second}, loaded, modeQuick, newLineOutput(&stdout), newLineOutput(&stderr))
+	result, err := scanFiles(root, []string{first, second}, loaded, modeQuick, newLineOutput(&stdout), newLineOutput(&stderr))
 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !found {
-		t.Fatal("scanFiles() found = false, want true")
+	if !result.found || result.scannedCount != 1 {
+		t.Fatalf("scanFiles() result = %#v, want found with one scanned file", result)
 	}
 	if want := "TEXT: Signature \"SECRET\" found in a.txt at position 9\n"; stdout.String() != want {
 		t.Fatalf("stdout = %q, want %q", stdout.String(), want)
@@ -52,17 +52,17 @@ func TestScanFilesJSONEmitsCompleteFindingsAndTotal(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
-	found, err := scanFiles(root, []string{first, second}, loaded, modeJSON, newLineOutput(&stdout), newLineOutput(&stderr))
+	result, err := scanFiles(root, []string{first, second}, loaded, modeJSON, newLineOutput(&stdout), newLineOutput(&stderr))
 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !found {
-		t.Fatal("scanFiles() found = false, want true")
+	if !result.found || result.scannedCount != 2 {
+		t.Fatalf("scanFiles() result = %#v, want found with two scanned files", result)
 	}
 	lines := strings.Split(strings.TrimSpace(stdout.String()), "\n")
-	if len(lines) != 3 {
-		t.Fatalf("output lines = %#v, want two findings and total", lines)
+	if len(lines) != 2 {
+		t.Fatalf("output lines = %#v, want two findings", lines)
 	}
 	wantFirst := `JSON: {"key":"LETTERS","found":"ABCDEFGHIJKLMNOPQ","position":4,"file":"nested/result.txt"}`
 	if lines[0] != wantFirst {
@@ -70,9 +70,6 @@ func TestScanFilesJSONEmitsCompleteFindingsAndTotal(t *testing.T) {
 	}
 	if lines[1] != `JSON: {"key":"LETTERS","found":"XYZ","position":0,"file":"other.txt"}` {
 		t.Fatalf("second finding = %q", lines[1])
-	}
-	if lines[2] != "TEXT: Total files scanned 2" {
-		t.Fatalf("total line = %q", lines[2])
 	}
 	if stderr.Len() != 0 {
 		t.Fatalf("stderr = %q, want empty", stderr.String())
@@ -92,12 +89,12 @@ func TestScanFilesHonorsExcludedExtensionsCaseInsensitively(t *testing.T) {
 	}
 	var stdout bytes.Buffer
 
-	found, err := scanFiles(root, []string{file}, loaded, modeJSON, newLineOutput(&stdout), newLineOutput(&bytes.Buffer{}))
+	result, err := scanFiles(root, []string{file}, loaded, modeJSON, newLineOutput(&stdout), newLineOutput(&bytes.Buffer{}))
 
-	if err != nil || found {
-		t.Fatalf("scanFiles() found = %v, error = %v; want false, nil", found, err)
+	if err != nil || result.found || result.scannedCount != 1 {
+		t.Fatalf("scanFiles() result = %#v, error = %v; want no finding and one scanned file", result, err)
 	}
-	if stdout.String() != "TEXT: Total files scanned 1\n" {
+	if stdout.Len() != 0 {
 		t.Fatalf("stdout = %q", stdout.String())
 	}
 }
@@ -113,14 +110,13 @@ func TestScanFilesReportsReadErrorAndContinues(t *testing.T) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
-	found, err := scanFiles(root, []string{missing, readable}, loaded, modeJSON, newLineOutput(&stdout), newLineOutput(&stderr))
+	result, err := scanFiles(root, []string{missing, readable}, loaded, modeJSON, newLineOutput(&stdout), newLineOutput(&stderr))
 
-	if err != nil || !found {
-		t.Fatalf("scanFiles() found = %v, error = %v; want true, nil", found, err)
+	if err != nil || !result.found || result.scannedCount != 1 {
+		t.Fatalf("scanFiles() result = %#v, error = %v; want finding and one scanned file", result, err)
 	}
 	if !strings.Contains(stderr.String(), "TEXT: Cannot read file") ||
-		!strings.Contains(stdout.String(), `"file":"readable.txt"`) ||
-		!strings.HasSuffix(stdout.String(), "TEXT: Total files scanned 1\n") {
+		!strings.Contains(stdout.String(), `"file":"readable.txt"`) {
 		t.Fatalf("stdout = %q, stderr = %q", stdout.String(), stderr.String())
 	}
 }
