@@ -289,24 +289,25 @@ git commit -m "feat(cli-go): load signature dictionary"
 **Interfaces:**
 
 - Produces: `type finding struct { Key string; Found string; Position int; File string }` with JSON tags
-- Produces: `func scanFiles(root string, files []string, dictionary dictionary, mode scanMode, output, errors *lineOutput) (bool, error)`
+- Produces: `type scanResult struct { found bool; scannedCount int }`
+- Produces: `func scanFiles(root string, files []string, dictionary dictionary, mode scanMode, output, errors *lineOutput) (scanResult, error)`
 
 - [ ] **Step 1: Write failing quick-mode tests**
 
 Create two files and two signatures. Assert deterministic file/signature/match order, exclusion by extension, global
 case-insensitive allowed values, exact quick message, immediate stop after the first non-allowed match, and no path
-list output.
+list output. Assert that the returned count includes the successfully read finding file and excludes unvisited files.
 
 - [ ] **Step 2: Write failing JSON-mode tests**
 
-Assert all findings are emitted as compact JSON and the function returns `found=true`. Cover JSON escaping, a complete
+Assert all findings are emitted as compact JSON and the result has `found=true`. Cover JSON escaping, a complete
 match longer than 16 Unicode code points, a multibyte prefix proving `position` is a byte offset, `/` relative path
-separators, no selected-path output, and the final `TEXT: Total files scanned N` line.
+separators, no selected-path output, and a count of all successfully read files.
 
 - [ ] **Step 3: Write failing file-error test**
 
 Supply a selected path that becomes unreadable or disappears before scanning. Assert one `TEXT:` warning on the error
-stream, continued scanning of the next file, and a final count that excludes the unreadable file.
+stream, continued scanning of the next file, and a returned count that excludes the unreadable file.
 
 - [ ] **Step 4: Run scanner tests and confirm RED**
 
@@ -319,8 +320,8 @@ Expected: compilation fails because `scanFiles` is undefined.
 Iterate the already sorted `files` slice. Read each file with `os.ReadFile`. For each ordered signature not excluded by
 extension, call `FindAllIndex(content, -1)`. Compare the full match against lowercased allowed values. Quick mode emits
 the exact text message and returns immediately. JSON mode marshals a `finding` with the complete exact match and
-continues. Increment the scanned count after each successful file read. After JSON scanning, emit
-`output.text("Total files scanned %d", scannedCount)` and do not emit selected paths.
+continues. Increment the scanned count after each successful file read. Return `scanResult{found, scannedCount}` and do
+not emit selected paths or summary messages from the scanner.
 
 - [ ] **Step 6: Run scanner tests and commit**
 
@@ -343,7 +344,7 @@ git commit -m "feat(cli-go): scan files for dictionary signatures"
 
 **Interfaces:**
 
-- Produces: `type appDependencies struct { refresher cacheRefresher; getenv func(string) string }`
+- Produces: `type appDependencies struct { refresher cacheRefresher; getenv func(string) string; now func() time.Time }`
 - Produces: `func runWithDependencies(ctx context.Context, args []string, stdout, stderr io.Writer, deps appDependencies) int`
 - Preserves: `func run(ctx context.Context, args []string, stdout, stderr io.Writer) int`
 
@@ -357,9 +358,9 @@ missing password                     -> TEXT error, exit 1
 no cache plus failed refresh         -> TEXT error, exit 1
 decryption failure                   -> TEXT error, exit 1
 invalid RE2                          -> TEXT error, exit 3
-quick finding                        -> TEXT finding, exit 2
-JSON findings after complete scan    -> JSON lines + TEXT paths, exit 2
-JSON scan without findings           -> TEXT paths, exit 0
+quick finding                        -> TEXT finding + count + elapsed time, exit 2
+JSON findings after complete scan    -> JSON lines + count + elapsed time, exit 2
+JSON scan without findings           -> count + elapsed time, exit 0
 ```
 
 Assert that every emitted line has a valid prefix.
@@ -372,14 +373,16 @@ Expected: compilation fails because `runWithDependencies` is undefined.
 
 - [ ] **Step 3: Implement the sequential pipeline**
 
-Create line outputs, parse options, refresh cache, read encrypted bytes, require `CYBER_FERRET_PASSWORD`, decrypt,
-load the dictionary, print its version, select Git files, and scan. Use `errors.As` for `regexpCompileError` and map it
-to `3`; map every other fatal error to `1`; map `found` to `2`.
+Create line outputs, parse options, refresh cache, read encrypted bytes, require `CYBER_FERRET_PASSWORD`, decrypt, and
+load the dictionary. Print its version, capture `start := now()`, print the progress message, select Git files, and scan.
+For both modes, print `Total files scanned N` and `Scanning is finished in %.3f seconds.` in that order. Use
+`errors.As` for `regexpCompileError` and map it to `3`; map every other fatal error to `1`; map `result.found` to `2`.
 
 - [ ] **Step 4: Configure production dependencies**
 
 `run` creates an `http.Client`, `cacheRefresher{client: client, now: time.Now, homeDir: os.UserHomeDir}`, and uses
-`os.Getenv`. Keep `main` calling `run` with standard streams. The refresher owns the 15-second child timeout.
+`os.Getenv` plus `time.Now`. Keep `main` calling `run` with standard streams. The refresher owns the 15-second child
+timeout.
 
 - [ ] **Step 5: Run all tests**
 
@@ -407,8 +410,8 @@ git commit -m "feat(cli-go): orchestrate dictionary scanning"
 - [ ] **Step 1: Update README**
 
 Document `CYBER_FERRET_PASSWORD`, cache path, refresh age and timeout, default JSON mode, quick mode, prefixed output,
-JSON fields, final scanned-file count, absence of selected-path output, allowed values, extension exclusions, and exit
-codes `0` through `3`. Include:
+JSON fields, progress output, final scanned-file count, elapsed seconds, absence of selected-path output, allowed
+values, extension exclusions, and exit codes `0` through `3`. Include:
 
 ```text
 cli-go --mode=quick FOLDER_PATH [PATH_TO_LIST_OF_FILES]

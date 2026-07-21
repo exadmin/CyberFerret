@@ -34,9 +34,11 @@ The application uses an output abstraction that flushes after every complete lin
 output. Fatal errors and recoverable warnings go to standard error. Both streams follow the same prefix and flush
 rules.
 
-After a complete JSON-mode scan, the command prints `TEXT: Total files scanned N`. `N` counts files that were read and
-processed successfully. Files skipped after a read error are not counted. The command does not print the selected file
-list. Quick mode stops at the first finding without printing a final count.
+After printing the dictionary version, both modes print `TEXT: Scanning is in progress. Please wait.` and start timing
+Git selection and file scanning. Both modes finish with `TEXT: Total files scanned N` followed by
+`TEXT: Scanning is finished in S.SSS seconds.`. `N` counts files that were read and processed successfully. Files
+skipped after a read error are not counted. Quick mode includes the file that contains its first finding, prints the
+finding, and then prints the final count and elapsed time. The command does not print the selected file list.
 
 ## Dictionary refresh
 
@@ -114,6 +116,8 @@ Quick mode prints the first non-allowed match in this form and exits with code `
 TEXT: Signature "KEY" found in relative/path.txt at position 123
 ```
 
+It then prints the actual scanned-file count and elapsed time before exiting.
+
 JSON mode prints every non-allowed match as compact one-line JSON:
 
 ```text
@@ -122,8 +126,8 @@ JSON: {"key":"KEY","found":"complete exact match","position":123,"file":"relativ
 
 `found` contains the complete exact match without truncation. `position` is the zero-based byte offset of the match
 head. `file` is relative to `FOLDER_PATH` and always uses `/` separators. JSON mode finishes the complete file list,
-prints the total successfully scanned file count, and returns code `2` when it emitted at least one finding. Otherwise,
-it returns code `0`.
+prints the total successfully scanned file count and elapsed time, and returns code `2` when it emitted at least one
+finding. Otherwise, it returns code `0`.
 
 ## Components
 
@@ -154,7 +158,8 @@ Development follows test-driven development. Tests cover:
 - Quick-mode early termination and JSON-mode complete scanning.
 - Complete JSON match values, JSON escaping, byte offsets, relative paths, deterministic ordering, and file read errors.
 - Preservation of existing Git selection behavior without file-list output.
-- A final JSON-mode count that excludes files skipped after read errors.
+- Progress output and deterministic elapsed-time formatting in both modes.
+- Final counts that exclude read-error files and include the quick-mode finding file.
 
 Verification runs `go test ./...`, `go vet ./...`, and `go build ./...`. Race tests run when a CGO toolchain is
 available. Maven is outside this change's scope.
