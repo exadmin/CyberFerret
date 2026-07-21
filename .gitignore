@@ -42,3 +42,6 @@ build/
 **/dictionary-latest-cache.decrypted
 **/dictionary-latest-cache.encrypted
 **/logs.log
+
+# APM dependencies
+apm_modules/

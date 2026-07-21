@@ -1,0 +1,15 @@
+name: CyberFerret
+version: 1.0.0
+description: APM project for CyberFerret
+author: exadmin
+# Which agent platforms to deploy to (uncomment to pin):
+# targets:
+#   - copilot
+#   - claude
+
+dependencies:
+  apm:
+    - netcracker/qubership-ai-packages/agent-packages/qubership-essentials
+  mcp: []
+includes: auto
+scripts: {}
