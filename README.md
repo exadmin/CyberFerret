@@ -1,11 +1,38 @@
-# Cyber Ferret
+# Cyber Ferret, v2.x.x
 [<img src="./docs/cyber-ferret.jpg">]()
 
-Scans any files for different pre-defined signatures (supporting RegExp and other rules)
+Scans locally cloned Git-repository for different pre-defined signatures (supporting RegExp and other rules).
+The main difference to other popular opensource similar scanners are:
+* Ability to have centralized signatures dictionary
+* Dictionary is published in encrypted state and ecrypted during use
+* Both interfaces are supported: CLI & GUI
+* Ability to manage exclusions per exact signature and file in secured manner
 
-# Git repository scanning
-When you scan a Git repository, Cyber Ferret scans tracked files and untracked files that Git does not ignore. This
-includes newly created source files that have not been added to Git yet.
+Other base features are supported:
+* Ability to customize signatures to be found
+* Ability to define signatures using RegExp
+* Ability to define exclusions including wild-card expressions
+* Windows, Linux, MacOS is supported
+
+
+# High level usage flow
+[<img src="./docs/highlevel-diag.png">]()
+
+# Roles
+* Signatures dictionary owner - manages signatures dictionary and encrypts it with special password. It allows to publish/transfer dictionary over public network and service.
+* Team - uses CyberFerret and signatures dictionary. They also know special password but they don't care about dictionary transportation and update procedure.
+
+# Pre-requisites
+* Install [JDK 21 or newer](https://jdk.java.net/21/)
+* Install [JavaFX 21 or newer](https://gluonhq.com/products/javafx/)
+* Install Apache Maven (ver 3.9.x) from https://maven.apache.org/download.cgi
+* Install [Git](https://git-scm.com/downloads) and ensure `git` is available on `PATH`
+* Setup M2_HOME, JAVA_HOME and PATH (add maven and java) System Variables as recommended for Java and Maven usage
+
+Note, that CyberFerret CLI calls git to understand list of files to be ignored during scan.
+
+# Scanning procedure
+CyberFerret scans tracked files and untracked files that Git does not ignore. This includes newly created source files that have not been added to Git yet.
 
 Cyber Ferret skips files excluded by standard Git rules, including repository `.gitignore` files,
 `.git/info/exclude`, and the user's global Git excludes file. Git must be available on `PATH` to scan a Git
@@ -20,15 +47,10 @@ On Unix systems, the scanner also preserves and scans file names that contain by
 [<img src="./docs/run-example.gif">]()
 
 # How to build from sources via command line
-## Prerequisites
-* Install [JDK 21 or newer](https://jdk.java.net/21/)
-* Install [JavaFX 21 or newer](https://gluonhq.com/products/javafx/)
-* Install Apache Maven (ver 3.9.x) from https://maven.apache.org/download.cgi
-* Install [Git](https://git-scm.com/downloads) and ensure `git` is available on `PATH`
-* Setup M2_HOME, JAVA_HOME and PATH (add maven and java) System Variables as recommended for Java and Maven usage
-* Optional = setup JAVAFX_PATH System Variable for handy run of the application using predefined shell-scripts in ./fx/src/shell/*.* 
 
 ## Compilation & build
+WARN: to be updated!
+
 Navigate to the CyberFerret folder where ./pom.xml presents and run:
 ```shell
 mvn clean package assembly:single

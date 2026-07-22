@@ -1,0 +1,93 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Страница-1" id="CFQpvmosYLiYLGXwLUYY">
+    <mxGraphModel dx="858" dy="519" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="NsF2fxmr5ki1k-taQhI7-4" edge="1" parent="1" source="NsF2fxmr5ki1k-taQhI7-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="NsF2fxmr5ki1k-taQhI7-2" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="NsF2fxmr5ki1k-taQhI7-5" connectable="0" parent="NsF2fxmr5ki1k-taQhI7-4" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="Updates dictionary" vertex="1">
+          <mxGeometry relative="1" x="0.2133" y="-1" as="geometry">
+            <mxPoint x="-1" y="19" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="NsF2fxmr5ki1k-taQhI7-1" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" value="Dictionary Owner" vertex="1">
+          <mxGeometry height="60" width="30" x="227" y="368" as="geometry" />
+        </mxCell>
+        <mxCell id="NsF2fxmr5ki1k-taQhI7-6" edge="1" parent="1" source="NsF2fxmr5ki1k-taQhI7-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="NsF2fxmr5ki1k-taQhI7-3" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="NsF2fxmr5ki1k-taQhI7-7" connectable="0" parent="NsF2fxmr5ki1k-taQhI7-6" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="encrypt &amp;amp; push" vertex="1">
+          <mxGeometry relative="1" x="-0.1687" y="1" as="geometry">
+            <mxPoint y="-9" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="NsF2fxmr5ki1k-taQhI7-2" parent="1" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="&amp;lt;private git-repo&amp;gt;&lt;div&gt;Signatures Dictionary&lt;/div&gt;&lt;div&gt;[non-encrypted]&lt;/div&gt;" vertex="1">
+          <mxGeometry height="160" width="240" x="122" y="58" as="geometry" />
+        </mxCell>
+        <mxCell id="NsF2fxmr5ki1k-taQhI7-11" edge="1" parent="1" source="NsF2fxmr5ki1k-taQhI7-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="NsF2fxmr5ki1k-taQhI7-9" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="NsF2fxmr5ki1k-taQhI7-12" connectable="0" parent="NsF2fxmr5ki1k-taQhI7-11" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="Download Dictionary&amp;nbsp;&lt;div&gt;latest version&lt;/div&gt;" vertex="1">
+          <mxGeometry relative="1" x="-0.2095" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="NsF2fxmr5ki1k-taQhI7-3" parent="1" style="ellipse;shape=cloud;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="&amp;lt;public git-repo&amp;gt;&lt;div&gt;Signatures Dictionary&lt;/div&gt;&lt;div&gt;[encrypted]&lt;/div&gt;" vertex="1">
+          <mxGeometry height="160" width="240" x="442" y="58" as="geometry" />
+        </mxCell>
+        <mxCell id="NsF2fxmr5ki1k-taQhI7-8" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" value="Team" vertex="1">
+          <mxGeometry height="60" width="30" x="497.53999999999996" y="368" as="geometry" />
+        </mxCell>
+        <mxCell id="NsF2fxmr5ki1k-taQhI7-9" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="CyberFerret App" vertex="1">
+          <mxGeometry height="60" width="130" x="502" y="298" as="geometry" />
+        </mxCell>
+        <mxCell id="NsF2fxmr5ki1k-taQhI7-31" edge="1" parent="1" source="NsF2fxmr5ki1k-taQhI7-14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;" target="NsF2fxmr5ki1k-taQhI7-30" value="Do scan">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="NsF2fxmr5ki1k-taQhI7-13" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" value="Team" vertex="1">
+          <mxGeometry height="60" width="30" x="547.54" y="368" as="geometry" />
+        </mxCell>
+        <mxCell id="NsF2fxmr5ki1k-taQhI7-14" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" value="Team" vertex="1">
+          <mxGeometry height="60" width="30" x="597.54" y="368" as="geometry" />
+        </mxCell>
+        <mxCell id="NsF2fxmr5ki1k-taQhI7-15" edge="1" parent="1" source="NsF2fxmr5ki1k-taQhI7-1" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;dashed=1;dashPattern=8 8;" target="NsF2fxmr5ki1k-taQhI7-8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="NsF2fxmr5ki1k-taQhI7-16" connectable="0" parent="NsF2fxmr5ki1k-taQhI7-15" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="Share password" vertex="1">
+          <mxGeometry relative="1" x="0.2282" as="geometry">
+            <mxPoint x="-12" y="-10" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="NsF2fxmr5ki1k-taQhI7-20" parent="1" style="dashed=0;outlineConnect=0;html=1;align=center;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;shape=mxgraph.weblogos.github" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="296" y="98" as="geometry" />
+        </mxCell>
+        <mxCell id="NsF2fxmr5ki1k-taQhI7-21" parent="1" style="dashed=0;outlineConnect=0;html=1;align=center;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;shape=mxgraph.weblogos.github" value="" vertex="1">
+          <mxGeometry height="30" width="30" x="612" y="98" as="geometry" />
+        </mxCell>
+        <mxCell id="NsF2fxmr5ki1k-taQhI7-22" parent="1" style="points=[];aspect=fixed;html=1;align=center;shadow=0;dashed=0;fillColor=#000000;strokeColor=none;shape=mxgraph.alibaba_cloud.cloudshell;" value="" vertex="1">
+          <mxGeometry height="20" width="25.08" x="602.46" y="301" as="geometry" />
+        </mxCell>
+        <mxCell id="NsF2fxmr5ki1k-taQhI7-26" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#d5e8d4;strokeColor=#82b366;" value="1" vertex="1">
+          <mxGeometry height="20" width="20" x="172" y="288" as="geometry" />
+        </mxCell>
+        <mxCell id="NsF2fxmr5ki1k-taQhI7-27" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#d5e8d4;strokeColor=#82b366;" value="2" vertex="1">
+          <mxGeometry height="20" width="20" x="342" y="378" as="geometry" />
+        </mxCell>
+        <mxCell id="NsF2fxmr5ki1k-taQhI7-28" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#d5e8d4;strokeColor=#82b366;" value="3" vertex="1">
+          <mxGeometry height="20" width="20" x="392" y="103" as="geometry" />
+        </mxCell>
+        <mxCell id="NsF2fxmr5ki1k-taQhI7-29" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#d5e8d4;strokeColor=#82b366;" value="4" vertex="1">
+          <mxGeometry height="20" width="20" x="482" y="238" as="geometry" />
+        </mxCell>
+        <mxCell id="NsF2fxmr5ki1k-taQhI7-30" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;" value="Local Git Repo" vertex="1">
+          <mxGeometry height="80" width="53" x="722" y="358" as="geometry" />
+        </mxCell>
+        <mxCell id="NsF2fxmr5ki1k-taQhI7-32" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;fillColor=#d5e8d4;strokeColor=#82b366;" value="5" vertex="1">
+          <mxGeometry height="20" width="20" x="662" y="368" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
