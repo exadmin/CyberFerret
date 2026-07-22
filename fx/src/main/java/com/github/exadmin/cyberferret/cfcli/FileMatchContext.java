@@ -38,7 +38,7 @@ public record FileMatchContext(long lineNumber, String displayText) {
         String excerpt = lastCodePoints(before, CONTEXT_CODE_POINTS)
                 + exact
                 + firstCodePoints(after, CONTEXT_CODE_POINTS);
-        return new FileMatchContext(lineNumber, normalizeWhitespace(excerpt));
+        return new FileMatchContext(lineNumber, normalizeWhitespace(excerpt).strip());
     }
 
     private static boolean isLineBreak(byte value) {

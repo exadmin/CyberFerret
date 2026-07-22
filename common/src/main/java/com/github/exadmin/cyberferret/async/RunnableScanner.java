@@ -295,6 +295,7 @@ public class RunnableScanner extends ARunnable {
         String text = fileBody.substring(fromIndex, toIndex);
 
         text = text.replaceAll("\\s", " ");
+        text = text.trim();
         return text;
     }
 

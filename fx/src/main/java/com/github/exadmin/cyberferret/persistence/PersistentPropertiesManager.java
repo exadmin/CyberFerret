@@ -31,10 +31,8 @@ public class PersistentPropertiesManager {
             new AppStringProperty("dictionary.password", "", new HashMap<>());
     public static final AbstractPersistentProperty<Number> PATH_NAME_COLUMN_WIDTH =
             new AppDoubleProperty("tree-table.path-name-column.width", 200d, REG_MAP);
-    public static final AbstractPersistentProperty<Number> IGNORE_COLUMN_WIDTH =
-            new AppDoubleProperty("tree-table.ignore-column.width", 80d, REG_MAP);
-    public static final AbstractPersistentProperty<Number> ALLOWED_COLUMN_WIDTH =
-            new AppDoubleProperty("tree-table.allowed-column.width", 80d, REG_MAP);
+    public static final AbstractPersistentProperty<Number> STATUS_COLUMN_WIDTH =
+            new AppDoubleProperty("tree-table.status-column.width", 80d, REG_MAP);
     public static final AbstractPersistentProperty<Number> LINE_COLUMN_WIDTH =
             new AppDoubleProperty("tree-table.line-column.width", 80d, REG_MAP);
     public static final AbstractPersistentProperty<Number> EXACT_SIGNATURE_COLUMN_WIDTH =

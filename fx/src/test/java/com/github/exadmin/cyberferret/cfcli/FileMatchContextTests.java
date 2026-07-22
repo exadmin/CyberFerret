@@ -49,6 +49,17 @@ public class FileMatchContextTests {
     }
 
     @Test
+    public void removesWhitespaceFromExcerptEdges() throws Exception {
+        String contentText = "\t   before MATCH after  \t";
+        long position = "\t   before ".getBytes(StandardCharsets.UTF_8).length;
+
+        FileMatchContext context = FileMatchContext.from(
+                contentText.getBytes(StandardCharsets.UTF_8), position, "MATCH");
+
+        assertEquals("before MATCH after", context.displayText());
+    }
+
+    @Test
     public void rejectsInvalidPositionOrChangedContent() {
         byte[] content = "value".getBytes(StandardCharsets.UTF_8);
 

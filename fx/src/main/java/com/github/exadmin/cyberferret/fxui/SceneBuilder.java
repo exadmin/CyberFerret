@@ -13,6 +13,7 @@ import com.github.exadmin.cyberferret.model.FoundItemsContainer;
 import com.github.exadmin.cyberferret.model.FoundPathItem;
 import com.github.exadmin.cyberferret.model.ItemType;
 import com.github.exadmin.cyberferret.utils.FileUtils;
+import com.github.exadmin.cyberferret.utils.MiscUtils;
 import com.github.exadmin.cyberferret.utils.PasswordBasedEncryption;
 import javafx.application.Platform;
 import javafx.beans.property.ReadOnlyObjectWrapper;
@@ -30,7 +31,6 @@ import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
-import javafx.scene.control.cell.CheckBoxTreeTableCell;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.BorderPane;
@@ -56,6 +56,7 @@ import static com.github.exadmin.cyberferret.fxui.FxConstants.*;
 import static com.github.exadmin.cyberferret.persistence.PersistentPropertiesManager.*;
 
 public class SceneBuilder {
+    static final String EXCLUDED_ROW_STYLE = "-fx-background-color: #f0e73a;";
     private static final Logger log = LoggerFactory.getLogger(SceneBuilder.class);
 
     private final Stage primaryStage;
@@ -142,23 +143,25 @@ public class SceneBuilder {
         tpOnlineDictionary.setContent(vBoxRoot);
         vBoxRoot.setSpacing(8);
 
-        Label passwordLabel = new Label("Password");
-        passwordLabel.setMinWidth(DEFAULT_LABEL_WIDTH);
-        passwordLabel.setAlignment(Pos.CENTER_LEFT);
-        PasswordField passwordField = new PasswordField();
-        passwordField.setEditable(false);
-        String environmentPassword = System.getenv(AppConstants.SYS_ENV_VAR_PASSWORD);
-        passwordField.setText(environmentPassword == null ? "" : environmentPassword);
-        HBox passwordRow = new HBox(8, passwordLabel, passwordField);
-        HBox.setHgrow(passwordField, Priority.ALWAYS);
-        vBoxRoot.getChildren().add(passwordRow);
-
         ChooserBuilder chooserBuilder = new ChooserBuilder(primaryStage);
         vBoxRoot.getChildren().add(chooserBuilder.buildChooserBox(
-                "CF CLI executable",
+                "CyberFerret CLI executable",
                 CF_CLI_PATH.getFxProperty(),
                 "Select ...",
                 ChooserBuilder.CHOOSER_TYPE.EXECUTABLE));
+
+        String environmentPassword = System.getenv(AppConstants.SYS_ENV_VAR_PASSWORD);
+        String strStatus = MiscUtils.isEmpty(environmentPassword) ? "not found ✖" : "found ✔";
+        Label passwordLabel = new Label("Password in '" + AppConstants.SYS_ENV_VAR_PASSWORD + "' environment variable is " + strStatus);
+        passwordLabel.setMinWidth(DEFAULT_LABEL_WIDTH);
+        passwordLabel.setAlignment(Pos.CENTER_LEFT);
+        // PasswordField passwordField = new PasswordField();
+        // passwordField.setEditable(false);
+
+        // passwordField.setText(environmentPassword == null ? "" : environmentPassword);
+        HBox passwordRow = new HBox(8, passwordLabel);
+        // HBox.setHgrow(passwordField, Priority.ALWAYS);
+        vBoxRoot.getChildren().add(passwordRow);
 
         return tpOnlineDictionary;
     }
@@ -313,69 +316,53 @@ public class SceneBuilder {
 
 
         TreeTableColumn<FoundPathItem, String> colVisualName = new TreeTableColumn<>("Path name");
-        TreeTableColumn<FoundPathItem, Boolean> colIgnore = new TreeTableColumn<>("To be ignored");
-        TreeTableColumn<FoundPathItem, Boolean> colAllowed = new TreeTableColumn<>("Allowed");
+        TreeTableColumn<FoundPathItem, String> colStatus = new TreeTableColumn<>("Status");
         TreeTableColumn<FoundPathItem, Long> colLine = new TreeTableColumn<>("Line #");
         TreeTableColumn<FoundPathItem, String> colDisplayText = new TreeTableColumn<>("Found Text");
         TreeTableColumn<FoundPathItem, String> colExactSignature = new TreeTableColumn<>("Exact Signature");
 
         colVisualName.setCellValueFactory(param -> new ReadOnlyStringWrapper(param.getValue().getValue().getVisualName()));
-        colIgnore.setCellValueFactory(param -> new ReadOnlyObjectWrapper<>(param.getValue().getValue().isIgnored()));
-        colAllowed.setCellValueFactory(param -> new ReadOnlyObjectWrapper<>(param.getValue().getValue().isAllowedValue()));
+        colStatus.setCellValueFactory(param -> new ReadOnlyStringWrapper(statusFor(param.getValue().getValue())));
         colLine.setCellValueFactory(param -> new ReadOnlyObjectWrapper<>(param.getValue().getValue().getLineNumber()));
         colDisplayText.setCellValueFactory(param -> new ReadOnlyStringWrapper(param.getValue().getValue().getDisplayText()));
         colExactSignature.setCellValueFactory(param -> new ReadOnlyStringWrapper(param.getValue().getValue().getFoundString()));
-
-        colIgnore.setCellFactory(p -> {
-            CheckBoxTreeTableCell<FoundPathItem, Boolean> cell = new CheckBoxTreeTableCell<>();
-            cell.setAlignment(Pos.CENTER);
-            return cell;
-        });
-
 
         // disable sorting - temporary
         colVisualName.setSortable(false);
         colVisualName.setEditable(false);
         colLine.setSortable(false);
         colLine.setEditable(false);
-        colIgnore.setSortable(false);
-        colIgnore.setEditable(false);
+        colStatus.setSortable(false);
+        colStatus.setEditable(false);
         colExactSignature.setSortable(false);
         colExactSignature.setEditable(false);
         colDisplayText.setEditable(false);
         colDisplayText.setSortable(false);
-        colAllowed.setEditable(false);
-        colAllowed.setSortable(false);
 
         TreeTableView<FoundPathItem> ttView = new TreeTableView<>();
         ttView.getColumns().add(colVisualName);
-        ttView.getColumns().add(colIgnore);
-        ttView.getColumns().add(colAllowed);
+        ttView.getColumns().add(colStatus);
         ttView.getColumns().add(colLine);
         ttView.getColumns().add(colExactSignature);
         ttView.getColumns().add(colDisplayText);
 
         colVisualName.setPrefWidth(PATH_NAME_COLUMN_WIDTH.getValue().doubleValue());
-        colIgnore.setPrefWidth(IGNORE_COLUMN_WIDTH.getValue().doubleValue());
-        colAllowed.setPrefWidth(ALLOWED_COLUMN_WIDTH.getValue().doubleValue());
+        colStatus.setPrefWidth(STATUS_COLUMN_WIDTH.getValue().doubleValue());
         colLine.setPrefWidth(LINE_COLUMN_WIDTH.getValue().doubleValue());
         colExactSignature.setPrefWidth(EXACT_SIGNATURE_COLUMN_WIDTH.getValue().doubleValue());
         colDisplayText.setPrefWidth(FOUND_TEXT_COLUMN_WIDTH.getValue().doubleValue());
 
         Platform.runLater(() -> {
             colVisualName.setPrefWidth(PATH_NAME_COLUMN_WIDTH.getValue().doubleValue());
-            colIgnore.setPrefWidth(IGNORE_COLUMN_WIDTH.getValue().doubleValue());
-            colAllowed.setPrefWidth(ALLOWED_COLUMN_WIDTH.getValue().doubleValue());
+            colStatus.setPrefWidth(STATUS_COLUMN_WIDTH.getValue().doubleValue());
             colLine.setPrefWidth(LINE_COLUMN_WIDTH.getValue().doubleValue());
             colExactSignature.setPrefWidth(EXACT_SIGNATURE_COLUMN_WIDTH.getValue().doubleValue());
             colDisplayText.setPrefWidth(FOUND_TEXT_COLUMN_WIDTH.getValue().doubleValue());
 
             colVisualName.widthProperty().addListener(
                     (value, oldValue, newValue) -> PATH_NAME_COLUMN_WIDTH.parseValue(newValue));
-            colIgnore.widthProperty().addListener(
-                    (value, oldValue, newValue) -> IGNORE_COLUMN_WIDTH.parseValue(newValue));
-            colAllowed.widthProperty().addListener(
-                    (value, oldValue, newValue) -> ALLOWED_COLUMN_WIDTH.parseValue(newValue));
+            colStatus.widthProperty().addListener(
+                    (value, oldValue, newValue) -> STATUS_COLUMN_WIDTH.parseValue(newValue));
             colLine.widthProperty().addListener(
                     (value, oldValue, newValue) -> LINE_COLUMN_WIDTH.parseValue(newValue));
             colExactSignature.widthProperty().addListener(
@@ -396,7 +383,7 @@ public class SceneBuilder {
                     setContextMenu(null);
                 } else {
                     if (!isSelected && foundPathItem.isIgnored()) {
-                        setStyle("-fx-background-color: #5cb574;");
+                        setStyle(EXCLUDED_ROW_STYLE);
                     } else if (!isSelected && foundPathItem.isAllowedValue()) {
                         setStyle("-fx-background-color: #c1f7cf;");
                     } else if (!isSelected && foundPathItem.getFoundString() != null && !foundPathItem.getFoundString().isEmpty()) {
@@ -539,6 +526,18 @@ public class SceneBuilder {
 
 
         return tpExplorer;
+    }
+
+    static String statusFor(FoundPathItem item) {
+        return switch (item.getType()) {
+            case DIRECTORY -> "Folder";
+            case FILE -> "File";
+            case SIGNATURE -> {
+                if (item.isAllowedValue()) yield "Allowed";
+                if (item.isIgnored()) yield "Excluded";
+                yield "Warning";
+            }
+        };
     }
 
 
