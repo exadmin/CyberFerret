@@ -4,10 +4,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -74,5 +77,25 @@ public class CyberFerretCLITests {
         assertEquals(2, files.size());
         assertTrue(files.contains(rootFile.normalize()));
         assertTrue(files.contains(nestedFile.normalize()));
+    }
+
+    @Test
+    public void detailedScan_emptyStagedListDoesNotPrepareDictionary() throws IOException {
+        Path root = tempDir.resolve("repo-empty-staged-list");
+        Files.createDirectories(root);
+        Path listFile = tempDir.resolve("staged-empty.txt");
+        Files.writeString(listFile, "", StandardCharsets.UTF_8);
+        ByteArrayOutputStream stdout = new ByteArrayOutputStream();
+        ByteArrayOutputStream stderr = new ByteArrayOutputStream();
+
+        int exitCode = CyberFerretCLI.run(
+                new String[]{root.toString(), listFile.toString()},
+                Map.of(AppConstants.SYS_ENV_VAR_PASSWORD, "wrong-password"),
+                new PrintStream(stdout, true, StandardCharsets.UTF_8),
+                new PrintStream(stderr, true, StandardCharsets.UTF_8));
+
+        assertEquals(0, exitCode);
+        assertEquals("", stdout.toString(StandardCharsets.UTF_8));
+        assertEquals("", stderr.toString(StandardCharsets.UTF_8));
     }
 }

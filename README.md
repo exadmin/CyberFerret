@@ -50,6 +50,32 @@ After modularization, build artifacts are:
 * JavaFX app: `.\fx\target\cyberferret-fx.jar`
 * CLI app: `.\cli\target\cyberferret-cli.jar`
 
+# Command-line interface
+Set `CYBER_FERRET_PASSWORD` before running the CLI. The existing detailed scan remains available:
+
+```shell
+java -jar ./cli/target/cyberferret-cli.jar PATH_TO_REPOSITORY [PATH_TO_STAGED_FILES_LIST]
+```
+
+Automation can use quick mode, which does not print matched values or file contents:
+
+```shell
+java -jar ./cli/target/cyberferret-cli.jar --mode=quick PATH_TO_REPOSITORY
+```
+
+Quick mode returns `0` when the scan is clean, `1` when it finds a signature, and `2` when the scan cannot complete.
+Use `--cache-dir=PATH` to place the downloaded dictionary in an explicit directory. Without that option, the CLI keeps
+the existing cache behavior based on Git's `core.hooksPath` setting and the current directory.
+
+To prepare one cache snapshot and reuse it for several scans, fetch the dictionary once and then scan offline:
+
+```shell
+java -jar ./cli/target/cyberferret-cli.jar --dictionary-version --cache-dir=PATH
+java -jar ./cli/target/cyberferret-cli.jar --mode=quick --offline --cache-dir=PATH PATH_TO_REPOSITORY
+```
+
+`--dictionary-version` prints exactly one validated version line. An offline scan never refreshes the cached dictionary.
+
 # How to run - Windows version
 Replace "${PATH_TO_JAVA_FX_SDK}" with correct path to JavaFx SDK
 ```shell

@@ -7,6 +7,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
@@ -124,6 +126,72 @@ public class RunnableScannerTests {
         List<FoundPathItem> foundItems = foundItemsContainer.getFoundItemsCopy();
         assertEquals(1, foundItems.size());
         assertEquals(stagedFile.toAbsolutePath().normalize(), foundItems.getFirst().getFilePath());
+    }
+
+    @Test
+    public void cliMode_hidesMatchedValueWhenFindingsAreNotRevealed() throws IOException {
+        Path repoRoot = tempDir.resolve("repo-safe-output");
+        Files.createDirectories(repoRoot.resolve(".git"));
+        Files.writeString(repoRoot.resolve(".git/config"), "[core]", StandardCharsets.UTF_8);
+        Path stagedFile = repoRoot.resolve("secret.txt");
+        String sentinel = "DO_NOT_PRINT_THIS_SECRET";
+        Files.writeString(stagedFile, sentinel, StandardCharsets.UTF_8);
+
+        RunnableScanner scanner = scannerFor(repoRoot, stagedFile, Pattern.compile(sentinel));
+        scanner.setRevealFindings(false);
+        scanner.setPrintToConsole(true);
+
+        PrintStream originalOut = System.out;
+        ByteArrayOutputStream captured = new ByteArrayOutputStream();
+        try {
+            System.setOut(new PrintStream(captured, true, StandardCharsets.UTF_8));
+            scanner.run();
+        } finally {
+            System.setOut(originalOut);
+        }
+
+        assertTrue(scanner.isAnySignatureFound());
+        assertFalse(captured.toString(StandardCharsets.UTF_8).contains(sentinel));
+    }
+
+    @Test
+    public void cliMode_marksMissingSelectedFileAsOperationalFailure() throws IOException {
+        Path repoRoot = tempDir.resolve("repo-missing-file");
+        Files.createDirectories(repoRoot.resolve(".git"));
+        Files.writeString(repoRoot.resolve(".git/config"), "[core]", StandardCharsets.UTF_8);
+        Path missingFile = repoRoot.resolve("missing.txt");
+
+        RunnableScanner scanner = scannerFor(repoRoot, missingFile, Pattern.compile("secret"));
+        scanner.run();
+
+        assertTrue(scanner.hasOperationalFailure());
+    }
+
+    @Test
+    public void cliMode_marksEmptySignatureMapAsOperationalFailure() throws IOException {
+        Path repoRoot = tempDir.resolve("repo-empty-signatures");
+        Files.createDirectories(repoRoot.resolve(".git"));
+        Files.writeString(repoRoot.resolve(".git/config"), "[core]", StandardCharsets.UTF_8);
+
+        RunnableScanner scanner = new RunnableScanner(true);
+        scanner.setDirToScan(repoRoot.toString());
+        scanner.setFoundItemsContainer(new FoundItemsContainer());
+        scanner.setSignaturesMap(Map.of());
+        scanner.setStagedFiles(List.of());
+        scanner.run();
+
+        assertTrue(scanner.hasOperationalFailure());
+    }
+
+    private static RunnableScanner scannerFor(Path repoRoot, Path stagedFile, Pattern pattern) {
+        RunnableScanner scanner = new RunnableScanner(true);
+        scanner.setDirToScan(repoRoot.toString());
+        scanner.setFoundItemsContainer(new FoundItemsContainer());
+        scanner.setSignaturesMap(Map.of("test", pattern));
+        scanner.setAllowedSignaturesMap(Map.of());
+        scanner.setExcludeExtMap(Map.of());
+        scanner.setStagedFiles(List.of(stagedFile));
+        return scanner;
     }
 
     private static byte[] utf16LeWithBom(String value) {

@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 public class RunnableScannerGitFailureTests {
     @TempDir
@@ -39,6 +40,8 @@ public class RunnableScannerGitFailureTests {
         assertTrue(messages.stream().anyMatch(message ->
                 message.type() == FxCallback.FxCallbackType.ERROR
                         && message.text().contains("Cannot list Git repository files")));
+        assertTrue(scanner.hasOperationalFailure());
+        assertFalse(scanner.isSuccessful());
     }
 
     private record CallbackMessage(FxCallback.FxCallbackType type, String text) {

@@ -1,157 +1,149 @@
 package com.github.exadmin.cyberferret;
 
-import com.github.exadmin.cyberferret.async.RunnableCheckOnlineDictionary;
 import com.github.exadmin.cyberferret.async.RunnableScanner;
-import com.github.exadmin.cyberferret.async.RunnableSigsLoader;
 import com.github.exadmin.cyberferret.model.FoundItemsContainer;
-import com.github.exadmin.cyberferret.model.FoundPathItem;
 import com.github.exadmin.cyberferret.utils.*;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
+import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * This is CLI version of CyberFerret app with focus on quick initialization and run triggered by pre-commit framework.
  */
 public class CyberFerretCLI {
-    private static void printUsage() {
-        String errMsg = """
-                Usage: CyberFerretCLI $PATH_TO_REPOSITORY_TO_SCAN [$PATH_TO_FILE_WITH_LIST_OF_FILES]
-                Also, note that '{}' System Environment variable must be set
-                """;
-        errMsg = ConsoleUtils.format(errMsg, AppConstants.SYS_ENV_VAR_PASSWORD);
-        System.out.println(errMsg);
-    }
-
-    private static void terminateAppWithErrorCode(boolean printUsage) {
-        if (printUsage) printUsage();
-        System.exit(1);
-    }
-
     public static void main(String[] args) {
+        int exitCode = run(args, System.getenv(), System.out, System.err);
+        if (exitCode != 0) System.exit(exitCode);
+    }
+
+    static int run(String[] args, Map<String, String> environment, PrintStream out, PrintStream err) {
+        CliArguments arguments;
         try {
-            _main(args);
-        } catch (Throwable t) {
-            System.out.println("Error: " + t.getMessage());
-            System.exit(1);
+            arguments = CliArguments.parse(args);
+        } catch (RuntimeException exception) {
+            err.println("Invalid command-line arguments.");
+            printUsage(err);
+            return usesAutomationOptions(args) ? 2 : 1;
+        }
+
+        boolean detailed = arguments.command() == CliArguments.Command.DETAILED_SCAN;
+        List<Path> preloadedFiles = null;
+        if (detailed && arguments.stagedFilesList() != null) {
+            try {
+                preloadedFiles = loadExplicitStagedFiles(arguments, err);
+                if (preloadedFiles == null) return 1;
+                if (preloadedFiles.isEmpty()) return 0;
+            } catch (IOException exception) {
+                err.println("Cannot read the staged-files list.");
+                return 1;
+            }
+        }
+
+        String password = environment.get(AppConstants.SYS_ENV_VAR_PASSWORD);
+        if (password == null || password.isBlank()) {
+            err.println("Dictionary password is unavailable.");
+            return detailed ? 1 : 2;
+        }
+
+        try {
+            DictionarySession dictionary = DictionarySession.prepare(
+                    arguments.cacheDirectory(),
+                    arguments.offline(),
+                    password);
+            if (arguments.command() == CliArguments.Command.DICTIONARY_VERSION) {
+                out.println(dictionary.dictionaryVersion());
+                return 0;
+            }
+            return runScan(arguments, dictionary, preloadedFiles, out, err);
+        } catch (DictionarySession.DictionaryException exception) {
+            err.println(exception.getMessage());
+            return detailed ? 1 : 2;
+        } catch (Exception exception) {
+            err.println("CyberFerret could not complete the requested operation.");
+            return detailed ? 1 : 2;
         }
     }
 
-    private static void _main(String[] args) {
-        // Overall logic
-        // Step1: Check required program arguments are set
-        // Step2: Check required system env variables are set
-        // Step3: Ensure actual dictionary is downloaded
-        // Step4: Download dictionary if required
-        // Step5: Decrypt dictionary
-        // Step6: Run check over the git-repository
-
-        String appVer = MiscUtils.loadApplicationVersion();
-        ConsoleUtils.info("CyberFerretCLI version: " + appVer);
-
-        // Step1: Check required program arguments are set
-        if (args.length < 1 || args.length > 2) {
-            ConsoleUtils.error("Unexpected number of command line arguments");
-            terminateAppWithErrorCode(true);
+    private static int runScan(
+            CliArguments arguments,
+            DictionarySession dictionary,
+            List<Path> preloadedFiles,
+            PrintStream out,
+            PrintStream err) throws IOException {
+        Path repository = arguments.repository().toAbsolutePath().normalize();
+        boolean detailed = arguments.command() == CliArguments.Command.DETAILED_SCAN;
+        if (!FileUtils.isPathToDir(repository)) {
+            err.println("The repository path is not a readable directory.");
+            return detailed ? 1 : 2;
         }
 
-        final Path repoPathToScan = Path.of(args[0]);
-        if (!FileUtils.isPathToDir(repoPathToScan)) {
-            ConsoleUtils.error("Invalid path to scan directory {}", repoPathToScan);
-            terminateAppWithErrorCode(true);
+        List<Path> files;
+        if (preloadedFiles != null) {
+            files = preloadedFiles;
+        } else if (arguments.stagedFilesList() != null) {
+            files = loadExplicitStagedFiles(arguments, err);
+            if (files == null) return 1;
+        } else {
+            files = loadFilesFromRepository(repository);
         }
-
-        // Step2: Check required system env variable is set
-        final String pass = System.getenv(AppConstants.SYS_ENV_VAR_PASSWORD);
-        if (pass == null || pass.isEmpty()) {
-            ConsoleUtils.error("Environment variable '{}' must be set", AppConstants.SYS_ENV_VAR_PASSWORD);
-            terminateAppWithErrorCode(true);
-        }
-
-        List<Path> stagedFiles = new ArrayList<>();
-        boolean isErrorFound = false;
-        try {
-            if (args.length == 2) {
-                Path stagedFilesListPath = Path.of(args[1]);
-                if (!Files.isRegularFile(stagedFilesListPath)) {
-                    ConsoleUtils.error("Invalid path to files list {}", stagedFilesListPath);
-                    terminateAppWithErrorCode(true);
-                }
-                stagedFiles = loadStagedFiles(repoPathToScan, stagedFilesListPath);
-            } else {
-                stagedFiles = loadFilesFromRepository(repoPathToScan);
-            }
-
-            if (stagedFiles.isEmpty()) {
-                ConsoleUtils.error("No files found to scan");
-                return; // do not return error - this may happen when "Commit & Push with Amend is used with no changes in files"
-            }
-        } catch (IOException ex) {
-            ConsoleUtils.error("Error while loading files list. " + ex.getMessage());
-            isErrorFound = true;
-        } finally {
-            if (isErrorFound) {
-                terminateAppWithErrorCode(false);
-            }
-        }
-
-        // Step3: Ensure actual dictionary is downloaded
-        // The dictionarry will be downloaded into Git Global Hook path (only once per 4 hours)
-        RunnableCheckOnlineDictionary dictionaryDownloader = new RunnableCheckOnlineDictionary(true);
-        dictionaryDownloader.setPrintToConsole(true);
-        dictionaryDownloader.run();
-
-        // Step5: Run checks
-        RunnableSigsLoader sigsLoader = new RunnableSigsLoader(true);
-        sigsLoader.setPrintToConsole(true);
-        try {
-            String prefix = GitUtils.getConfigValue("core.hooksPath");
-            if (prefix == null) prefix = "";
-            Path path = Paths.get(prefix.isEmpty() ? "." : prefix, AppConstants.DICTIONARY_FILE_PATH_ENCRYPTED);
-            String encryptedBody = FileUtils.readFile(path);
-            String decryptedBody = PasswordBasedEncryption.decrypt(encryptedBody, pass);
-
-            byte[] bytes = decryptedBody.getBytes(StandardCharsets.UTF_8);
-            InputStream inputStream = new ByteArrayInputStream(bytes);
-            sigsLoader.setInputStream(inputStream);
-            sigsLoader.run();
-        } catch (Exception ex) {
-            ConsoleUtils.error("Error while loading signatures. " + ex.getMessage());
-            terminateAppWithErrorCode(false);
-        }
-
-        // Step6: Run scanner
-        FoundItemsContainer foundItemsContainer = new FoundItemsContainer();
+        if (files.isEmpty()) return 0;
 
         RunnableScanner runnableScanner = new RunnableScanner(true);
-        runnableScanner.setPrintToConsole(true);
-        runnableScanner.setFoundItemsContainer(foundItemsContainer);
-        runnableScanner.setSignaturesMap(sigsLoader.getSignaturesMap());
-        runnableScanner.setAllowedSignaturesMap(sigsLoader.getAllowedSignaturesMap());
-        runnableScanner.setExcludeExtMap(sigsLoader.getExcludeExtsMap());
-        runnableScanner.setDirToScan(repoPathToScan.toString());
-        runnableScanner.setStagedFiles(stagedFiles);
+        runnableScanner.setSilent(!detailed);
+        runnableScanner.setPrintToConsole(detailed);
+        runnableScanner.setRevealFindings(detailed);
+        runnableScanner.setFoundItemsContainer(new FoundItemsContainer());
+        runnableScanner.setSignaturesMap(dictionary.signaturesMap());
+        runnableScanner.setAllowedSignaturesMap(dictionary.allowedSignaturesMap());
+        runnableScanner.setExcludeExtMap(dictionary.excludeExtsMap());
+        runnableScanner.setDirToScan(repository.toString());
+        runnableScanner.setStagedFiles(files);
         runnableScanner.run();
 
-        // Step7: Analyze & Print results
-        for (FoundPathItem foundPathItem : foundItemsContainer.getFoundItemsCopy()) {
-            if (MiscUtils.isNotEmpty(foundPathItem.getFoundString())) {
-                ConsoleUtils.warn("'{}' is found in file '{}' at line {}", foundPathItem.getFoundString(), foundPathItem.getFilePath(), foundPathItem.getLineNumber());
-            }
+        if (runnableScanner.hasOperationalFailure()) {
+            err.println("CyberFerret could not complete the repository scan.");
+            return detailed ? 1 : 2;
         }
-
-        ConsoleUtils.info("Scanning is finished." + (runnableScanner.isAnySignatureFound() ? " Errors were found" : ""));
-
         if (runnableScanner.isAnySignatureFound()) {
-            terminateAppWithErrorCode(false);
+            if (!detailed) out.println("Findings detected");
+            return 1;
         }
+        return 0;
+    }
+
+    private static List<Path> loadExplicitStagedFiles(CliArguments arguments, PrintStream err) throws IOException {
+        Path repository = arguments.repository().toAbsolutePath().normalize();
+        if (!FileUtils.isPathToDir(repository)) {
+            err.println("The repository path is not a readable directory.");
+            return null;
+        }
+        Path listPath = arguments.stagedFilesList().toAbsolutePath().normalize();
+        if (!Files.isRegularFile(listPath)) {
+            err.println("The staged-files list is unavailable.");
+            return null;
+        }
+        return loadStagedFiles(repository, listPath);
+    }
+
+    private static boolean usesAutomationOptions(String[] args) {
+        for (String argument : args) {
+            if (argument.startsWith("--")) return true;
+        }
+        return false;
+    }
+
+    private static void printUsage(PrintStream stream) {
+        stream.println("Usage:");
+        stream.println("  CyberFerretCLI REPOSITORY [STAGED_FILES_LIST]");
+        stream.println("  CyberFerretCLI --mode=quick [--offline] [--cache-dir=PATH] REPOSITORY");
+        stream.println("  CyberFerretCLI --dictionary-version [--cache-dir=PATH]");
     }
 
     static List<Path> loadStagedFiles(Path rootPathToScan, Path stagedFilesListPath) throws IOException {

@@ -18,22 +18,48 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
+import java.util.Objects;
+import java.util.function.Predicate;
 
 public class RunnableCheckOnlineDictionary extends ARunnable {
     private static final Duration DICTIONARY_REFRESH_INTERVAL = Duration.ofHours(4);
+    private Path cacheDirectory;
+    private volatile Predicate<Path> downloadedDictionaryValidator = ignored -> true;
+    private volatile boolean rejectedDownloadedDictionary;
 
     public RunnableCheckOnlineDictionary(boolean isCLIMode) {
         super(isCLIMode);
     }
 
-    @Override
-    protected void _run() {
-        logInfo("Checking if new online dictionary exists");
+    public void setCacheDirectory(Path cacheDirectory) {
+        this.cacheDirectory = cacheDirectory == null ? null : cacheDirectory.toAbsolutePath().normalize();
+    }
+
+    public Path getDictionaryPath() {
+        if (cacheDirectory != null) {
+            return cacheDirectory.resolve(AppConstants.DICTIONARY_FILE_PATH_ENCRYPTED).normalize();
+        }
 
         String prefix = "";
         if (isCLIMode()) prefix = GitUtils.getConfigValue("core.hooksPath");
         if (prefix == null) prefix = "";
-        Path path = Paths.get(prefix, AppConstants.DICTIONARY_FILE_PATH_ENCRYPTED);
+        return Paths.get(prefix, AppConstants.DICTIONARY_FILE_PATH_ENCRYPTED);
+    }
+
+    public void setDownloadedDictionaryValidator(Predicate<Path> validator) {
+        downloadedDictionaryValidator = Objects.requireNonNull(validator);
+    }
+
+    public boolean hasRejectedDownloadedDictionary() {
+        return rejectedDownloadedDictionary;
+    }
+
+    @Override
+    protected void _run() {
+        rejectedDownloadedDictionary = false;
+        logInfo("Checking if new online dictionary exists");
+
+        Path path = getDictionaryPath();
         File savePath = path.toFile();
 
         if (savePath.exists()) {
@@ -76,7 +102,7 @@ public class RunnableCheckOnlineDictionary extends ARunnable {
                 try (InputStream inputStream = responseEntity.getContent()) {
                     Files.copy(inputStream, tempPath, StandardCopyOption.REPLACE_EXISTING);
                 }
-                moveWithReplace(tempPath, savePath.toPath());
+                if (!promoteDownloadedDictionary(tempPath, savePath.toPath())) return;
                 logInfo("File was downloaded successfully and saved in {}", savePath.getAbsoluteFile());
             }
         } catch (IOException ex) {
@@ -100,6 +126,22 @@ public class RunnableCheckOnlineDictionary extends ARunnable {
                 .build();
         request.setConfig(requestConfig);
         return request;
+    }
+
+    protected boolean promoteDownloadedDictionary(Path candidatePath, Path targetPath) throws IOException {
+        boolean valid;
+        try {
+            valid = downloadedDictionaryValidator.test(candidatePath);
+        } catch (RuntimeException exception) {
+            valid = false;
+        }
+        if (!valid) {
+            rejectedDownloadedDictionary = true;
+            logError("Downloaded dictionary failed validation. The cached dictionary was not changed.");
+            return false;
+        }
+        moveWithReplace(candidatePath, targetPath);
+        return true;
     }
 
     private Path createTempFileNearTarget(Path targetPath) throws IOException {
