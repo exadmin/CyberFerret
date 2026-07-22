@@ -398,3 +398,76 @@ func TestScanFilesWithExclusionsReportsAllowedExcludedMatch(t *testing.T) {
 		t.Fatalf("stdout = %q, want excluded event", stdout.String())
 	}
 }
+
+func TestScanFilesLimitsOnlyFoundMatchesPerSignatureAndFile(t *testing.T) {
+	root := t.TempDir()
+	content := "ALLOW EXCLUDE SECRET SECRET SECRET SECRET SECRET SECRET TOKEN"
+	file := writeTestFile(t, root, "repeated.txt", content)
+	exclusions := exclusionSet{textHashesByFileHash: map[string]map[string]struct{}{
+		testSHA256("repeated.txt"): {testSHA256("EXCLUDE"): {}},
+	}}
+	loaded := dictionary{
+		allowed: map[string]struct{}{"allow": {}},
+		signatures: []signature{
+			{key: "SECRET", expression: regexp.MustCompile(`ALLOW|EXCLUDE|SECRET`)},
+			{key: "TOKEN", expression: regexp.MustCompile(`TOKEN`)},
+		},
+	}
+	var stdout bytes.Buffer
+
+	result, err := scanFilesWithExclusions(
+		root,
+		[]string{file},
+		loaded,
+		modeJSON,
+		exclusions,
+		newLineOutput(&stdout),
+		newLineOutput(&bytes.Buffer{}),
+	)
+
+	if err != nil || !result.found || result.scannedCount != 1 {
+		t.Fatalf("scan result = %#v, error = %v; want findings in one scanned file", result, err)
+	}
+	output := stdout.String()
+	if got := strings.Count(output, `"type":"found","key":"SECRET"`); got != 5 {
+		t.Fatalf("SECRET found event count = %d, want 5; output = %q", got, output)
+	}
+	if !strings.Contains(output, `"type":"allowed","key":"SECRET","found":"ALLOW"`) {
+		t.Fatalf("output = %q, want allowed event", output)
+	}
+	if !strings.Contains(output, `"type":"excluded","key":"SECRET","found":"EXCLUDE"`) {
+		t.Fatalf("output = %q, want excluded event", output)
+	}
+	if !strings.Contains(output, `"type":"found","key":"TOKEN","found":"TOKEN"`) {
+		t.Fatalf("output = %q, want TOKEN finding after SECRET reaches its limit", output)
+	}
+}
+
+func TestScanFilesSharesFindingLimitAcrossSignaturesWithSameKey(t *testing.T) {
+	root := t.TempDir()
+	file := writeTestFile(t, root, "repeated.txt", "A A A A A A B B B B B B")
+	loaded := dictionary{
+		allowed: map[string]struct{}{},
+		signatures: []signature{
+			{key: "SHARED", expression: regexp.MustCompile(`A`)},
+			{key: "SHARED", expression: regexp.MustCompile(`B`)},
+		},
+	}
+	var stdout bytes.Buffer
+
+	result, err := scanFiles(
+		root,
+		[]string{file},
+		loaded,
+		modeJSON,
+		newLineOutput(&stdout),
+		newLineOutput(&bytes.Buffer{}),
+	)
+
+	if err != nil || !result.found || result.scannedCount != 1 {
+		t.Fatalf("scan result = %#v, error = %v; want findings in one scanned file", result, err)
+	}
+	if got := strings.Count(stdout.String(), `"type":"found","key":"SHARED"`); got != 5 {
+		t.Fatalf("SHARED found event count = %d, want 5; output = %q", got, stdout.String())
+	}
+}

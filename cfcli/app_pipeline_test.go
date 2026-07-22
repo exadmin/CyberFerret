@@ -22,7 +22,7 @@ func TestRunWithDependenciesRequiresPassword(t *testing.T) {
 
 	exitCode := runWithDependencies(context.Background(), []string{root}, &stdout, &stderr, dependencies)
 
-	if exitCode != 1 || !strings.Contains(stderr.String(), "TEXT: dictionary password") {
+	if exitCode != 1 || !strings.Contains(stderr.String(), "TEXT: Dictionary password") {
 		t.Fatalf("exit code = %d, stderr = %q", exitCode, stderr.String())
 	}
 }
@@ -55,6 +55,7 @@ func TestRunWithDependenciesQuickReturnsTwoOnFirstFinding(t *testing.T) {
 	if strings.Contains(stdout.String(), "TEXT: "+root) {
 		t.Fatalf("quick output contains file list: %q", stdout.String())
 	}
+	assertCurrentDictionaryOutput(t, stdout.String())
 	if !strings.HasSuffix(
 		stdout.String(),
 		"TEXT: Total files scanned 1\nTEXT: Scanning is finished in 1.234 seconds.\n",
@@ -78,6 +79,15 @@ func TestRunWithDependenciesJSONCompletesAndReturnsTwo(t *testing.T) {
 			"TEXT: Total files scanned 1\nTEXT: Scanning is finished in 1.234 seconds.\n",
 		) {
 		t.Fatalf("exit code = %d, stdout = %q, stderr = %q", exitCode, stdout.String(), stderr.String())
+	}
+	assertCurrentDictionaryOutput(t, stdout.String())
+}
+
+func assertCurrentDictionaryOutput(t *testing.T, output string) {
+	t.Helper()
+	want := currentDictionaryOutput()
+	if !strings.Contains(output, want) {
+		t.Fatalf("stdout = %q, want dictionary status and path %q", output, want)
 	}
 }
 

@@ -17,7 +17,7 @@ var dictionaryIV = []byte{0, 2, 3, 4, 5, 4, 3, 2, 1, 0, 1, 2, 3, 4, 5, 0}
 
 func decryptDictionary(ciphertext []byte, password string) ([]byte, error) {
 	if password == "" {
-		return nil, fmt.Errorf("dictionary password environment variable CYBER_FERRET_PASSWORD is not set")
+		return nil, fmt.Errorf("Dictionary password environment variable CYBER_FERRET_PASSWORD is not set")
 	}
 	decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(string(ciphertext)))
 	if err != nil {

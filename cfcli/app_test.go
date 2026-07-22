@@ -50,7 +50,8 @@ func TestRunReportsTotalFilesScanned(t *testing.T) {
 	if exitCode != 0 {
 		t.Fatalf("run() exit code = %d, want 0; stderr = %q", exitCode, stderr.String())
 	}
-	want := "TEXT: Dictionary version: 1.0\n" +
+	want := currentDictionaryOutput() +
+		"TEXT: Dictionary version: 1.0\n" +
 		"TEXT: Scanning is in progress. Please wait.\n" +
 		"TEXT: Total files scanned 2\n" +
 		"TEXT: Scanning is finished in 1.234 seconds.\n"
@@ -97,7 +98,8 @@ func TestRunReportsRuntimeErrors(t *testing.T) {
 			if exitCode != 1 {
 				t.Fatalf("run() exit code = %d, want 1", exitCode)
 			}
-			wantOutput := "TEXT: Dictionary version: 1.0\nTEXT: Scanning is in progress. Please wait.\n"
+			wantOutput := currentDictionaryOutput() +
+				"TEXT: Dictionary version: 1.0\nTEXT: Scanning is in progress. Please wait.\n"
 			if stdout.String() != wantOutput {
 				t.Fatalf("run() stdout = %q, want version and progress", stdout.String())
 			}
@@ -125,11 +127,45 @@ func TestRunReportsUnavailableGit(t *testing.T) {
 	if exitCode != 1 {
 		t.Fatalf("run() exit code = %d, want 1", exitCode)
 	}
-	wantOutput := "TEXT: Dictionary version: 1.0\nTEXT: Scanning is in progress. Please wait.\n"
+	wantOutput := currentDictionaryOutput() +
+		"TEXT: Dictionary version: 1.0\nTEXT: Scanning is in progress. Please wait.\n"
 	if stdout.String() != wantOutput {
 		t.Fatalf("run() stdout = %q, want version and progress", stdout.String())
 	}
 	if !strings.Contains(stderr.String(), "git ls-files") {
 		t.Fatalf("run() stderr = %q, want Git operation", stderr.String())
 	}
+}
+
+func TestDictionaryStatusMessage(t *testing.T) {
+	tests := []struct {
+		state cacheState
+		want  string
+	}{
+		{state: cacheCurrent, want: "Dictionary is up to date."},
+		{state: cacheUpdated, want: "Dictionary was updated."},
+		{
+			state: cacheFallback,
+			want:  "Dictionary was not updated due to network issues; using the existing dictionary.",
+		},
+	}
+	for _, test := range tests {
+		if got := dictionaryStatusMessage(test.state); got != test.want {
+			t.Errorf("dictionaryStatusMessage(%v) = %q, want %q", test.state, got, test.want)
+		}
+	}
+}
+
+func TestDictionaryDisplayPath(t *testing.T) {
+	home := filepath.Join(string(filepath.Separator), "users", "scanner")
+	cache := filepath.Join(home, ".qubership", cacheFileName)
+
+	if got, want := dictionaryDisplayPath(cache, home), "~/.qubership/"+cacheFileName; got != want {
+		t.Fatalf("dictionaryDisplayPath() = %q, want %q", got, want)
+	}
+}
+
+func currentDictionaryOutput() string {
+	return "TEXT: Dictionary is up to date.\n" +
+		"TEXT: Dictionary path: ~/.qubership/" + cacheFileName + "\n"
 }

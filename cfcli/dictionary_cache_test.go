@@ -13,6 +13,12 @@ import (
 	"time"
 )
 
+func TestDictionaryCacheFilename(t *testing.T) {
+	if cacheFileName != "sensitive-signatures.encrypted" {
+		t.Fatalf("cacheFileName = %q, want sensitive-signatures.encrypted", cacheFileName)
+	}
+}
+
 func TestCacheRefresherKeepsFreshCache(t *testing.T) {
 	home := t.TempDir()
 	now := time.Date(2026, 7, 21, 12, 0, 0, 0, time.UTC)
@@ -29,13 +35,14 @@ func TestCacheRefresherKeepsFreshCache(t *testing.T) {
 	refresher := testCacheRefresher(home, now, server.URL, time.Second)
 	var messages bytes.Buffer
 
-	got, err := refresher.refresh(context.Background(), newLineOutput(&messages))
+	result, err := refresher.refresh(context.Background(), newLineOutput(&messages))
 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got != cache || requests.Load() != 0 {
-		t.Fatalf("refresh() = %q, requests = %d; want %q and 0", got, requests.Load(), cache)
+	if result.path != cache || result.home != home || result.state != cacheCurrent || requests.Load() != 0 {
+		t.Fatalf("refresh() = %#v, requests = %d; want path %q, home %q, state %v, and 0 requests",
+			result, requests.Load(), cache, home, cacheCurrent)
 	}
 }
 
@@ -52,17 +59,20 @@ func TestCacheRefresherReplacesStaleCache(t *testing.T) {
 	defer server.Close()
 	refresher := testCacheRefresher(home, now, server.URL, time.Second)
 
-	got, err := refresher.refresh(context.Background(), newLineOutput(&bytes.Buffer{}))
+	result, err := refresher.refresh(context.Background(), newLineOutput(&bytes.Buffer{}))
 
 	if err != nil {
 		t.Fatal(err)
 	}
-	content, err := os.ReadFile(got)
+	content, err := os.ReadFile(result.path)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if string(content) != "updated" {
 		t.Fatalf("cache = %q, want updated", content)
+	}
+	if result.home != home || result.state != cacheUpdated {
+		t.Fatalf("refresh() = %#v, want home %q and state %v", result, home, cacheUpdated)
 	}
 	assertNoTemporaryCacheFiles(t, filepath.Dir(cache))
 }
@@ -75,13 +85,13 @@ func TestCacheRefresherCreatesMissingCache(t *testing.T) {
 	defer server.Close()
 	refresher := testCacheRefresher(home, time.Now(), server.URL, time.Second)
 
-	got, err := refresher.refresh(context.Background(), newLineOutput(&bytes.Buffer{}))
+	result, err := refresher.refresh(context.Background(), newLineOutput(&bytes.Buffer{}))
 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := filepath.Join(home, ".qubership", cacheFileName); got != want {
-		t.Fatalf("cache path = %q, want %q", got, want)
+	if want := filepath.Join(home, ".qubership", cacheFileName); result.path != want || result.state != cacheUpdated {
+		t.Fatalf("refresh() = %#v, want path %q and state %v", result, want, cacheUpdated)
 	}
 }
 
@@ -95,13 +105,14 @@ func TestCacheRefresherFallsBackToStaleCache(t *testing.T) {
 	refresher := testCacheRefresher(home, time.Now().Add(24*time.Hour), server.URL, time.Second)
 	var messages bytes.Buffer
 
-	got, err := refresher.refresh(context.Background(), newLineOutput(&messages))
+	result, err := refresher.refresh(context.Background(), newLineOutput(&messages))
 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got != cache || !strings.Contains(messages.String(), "TEXT: Dictionary refresh failed") {
-		t.Fatalf("refresh() = %q, messages = %q", got, messages.String())
+	if result.path != cache || result.state != cacheFallback ||
+		!strings.Contains(messages.String(), "TEXT: Dictionary refresh failed") {
+		t.Fatalf("refresh() = %#v, messages = %q", result, messages.String())
 	}
 }
 
@@ -130,7 +141,7 @@ func TestCacheRefresherTimeoutDoesNotReplaceStaleCacheLater(t *testing.T) {
 	refresher := testCacheRefresher(home, time.Now().Add(24*time.Hour), server.URL, 20*time.Millisecond)
 	var messages bytes.Buffer
 
-	got, err := refresher.refresh(context.Background(), newLineOutput(&messages))
+	result, err := refresher.refresh(context.Background(), newLineOutput(&messages))
 
 	if err != nil {
 		t.Fatal(err)
@@ -140,8 +151,9 @@ func TestCacheRefresherTimeoutDoesNotReplaceStaleCacheLater(t *testing.T) {
 	if readErr != nil {
 		t.Fatal(readErr)
 	}
-	if got != cache || string(content) != "stale" || !strings.Contains(messages.String(), "timed out") {
-		t.Fatalf("path = %q, cache = %q, messages = %q", got, content, messages.String())
+	if result.path != cache || result.state != cacheFallback || string(content) != "stale" ||
+		!strings.Contains(messages.String(), "timed out") {
+		t.Fatalf("result = %#v, cache = %q, messages = %q", result, content, messages.String())
 	}
 	assertNoTemporaryCacheFiles(t, filepath.Dir(cache))
 }

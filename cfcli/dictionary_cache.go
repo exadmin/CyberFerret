@@ -12,7 +12,7 @@ import (
 
 const (
 	dictionaryURL  = "https://raw.githubusercontent.com/exadmin/CyberFerretDictionary/main/dictionary-latest.encrypted"
-	cacheFileName  = "dictionary-latest-cache.encrypted"
+	cacheFileName  = "sensitive-signatures.encrypted"
 	cacheMaxAge    = 8 * time.Hour
 	refreshTimeout = 15 * time.Second
 	maxCacheSize   = 16 * 1024 * 1024
@@ -26,19 +26,33 @@ type cacheRefresher struct {
 	timeout time.Duration
 }
 
-func (r cacheRefresher) refresh(ctx context.Context, output *lineOutput) (string, error) {
+type cacheState int
+
+const (
+	cacheCurrent cacheState = iota
+	cacheUpdated
+	cacheFallback
+)
+
+type cacheResult struct {
+	path  string
+	home  string
+	state cacheState
+}
+
+func (r cacheRefresher) refresh(ctx context.Context, output *lineOutput) (cacheResult, error) {
 	home, err := r.homeDir()
 	if err != nil {
-		return "", fmt.Errorf("resolve home directory: %w", err)
+		return cacheResult{}, fmt.Errorf("resolve home directory: %w", err)
 	}
 	cachePath := filepath.Join(home, ".qubership", cacheFileName)
 	info, statErr := os.Stat(cachePath)
 	cacheExists := statErr == nil && info.Mode().IsRegular()
 	if statErr != nil && !os.IsNotExist(statErr) {
-		return "", fmt.Errorf("inspect dictionary cache %q: %w", cachePath, statErr)
+		return cacheResult{}, fmt.Errorf("inspect dictionary cache %q: %w", cachePath, statErr)
 	}
 	if cacheExists && r.now().Sub(info.ModTime()) <= cacheMaxAge {
-		return cachePath, nil
+		return cacheResult{path: cachePath, home: home, state: cacheCurrent}, nil
 	}
 
 	timeout := r.timeout
@@ -59,15 +73,15 @@ func (r cacheRefresher) refresh(ctx context.Context, output *lineOutput) (string
 		refreshErr = fmt.Errorf("timed out after %s", timeout)
 	}
 	if refreshErr == nil {
-		return cachePath, nil
+		return cacheResult{path: cachePath, home: home, state: cacheUpdated}, nil
 	}
 	if err := output.text("Dictionary refresh failed: %v", refreshErr); err != nil {
-		return "", fmt.Errorf("write refresh warning: %w", err)
+		return cacheResult{}, fmt.Errorf("write refresh warning: %w", err)
 	}
 	if cacheExists {
-		return cachePath, nil
+		return cacheResult{path: cachePath, home: home, state: cacheFallback}, nil
 	}
-	return "", fmt.Errorf("dictionary cache is unavailable after refresh: %w", refreshErr)
+	return cacheResult{}, fmt.Errorf("dictionary cache is unavailable after refresh: %w", refreshErr)
 }
 
 func (r cacheRefresher) download(ctx context.Context, destination string) error {

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -46,9 +47,18 @@ func runWithDependencies(
 		return 1
 	}
 
-	cachePath, err := dependencies.refresher.refresh(ctx, errorOutput)
+	cache, err := dependencies.refresher.refresh(ctx, errorOutput)
 	if err != nil {
 		writeFatal(errorOutput, "Cannot prepare dictionary cache: %v", err)
+		return 1
+	}
+	cachePath := cache.path
+	if err := output.text("%s", dictionaryStatusMessage(cache.state)); err != nil {
+		writeFatal(errorOutput, "Cannot write dictionary status: %v", err)
+		return 1
+	}
+	if err := output.text("Dictionary path: %s", dictionaryDisplayPath(cache.path, cache.home)); err != nil {
+		writeFatal(errorOutput, "Cannot write dictionary path: %v", err)
 		return 1
 	}
 	encrypted, err := os.ReadFile(cachePath)
@@ -132,4 +142,21 @@ func runWithDependencies(
 
 func writeFatal(output *lineOutput, format string, args ...any) {
 	_ = output.text(format, args...)
+}
+
+func dictionaryStatusMessage(state cacheState) string {
+	return map[cacheState]string{
+		cacheCurrent:  "Dictionary is up to date.",
+		cacheUpdated:  "Dictionary was updated.",
+		cacheFallback: "Dictionary was not updated due to network issues; using the existing dictionary.",
+	}[state]
+}
+
+func dictionaryDisplayPath(path, home string) string {
+	relative, err := filepath.Rel(home, path)
+	outsideHome := relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator))
+	if err == nil && !filepath.IsAbs(relative) && !outsideHome {
+		return "~/" + filepath.ToSlash(relative)
+	}
+	return filepath.ToSlash(filepath.Clean(path))
 }

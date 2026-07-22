@@ -52,7 +52,7 @@ rejected.
 
 ## Dictionary cache
 
-The encrypted cache is `~/.qubership/dictionary-latest-cache.encrypted`. A missing cache or one older than eight hours
+The encrypted cache is `~/.qubership/sensitive-signatures.encrypted`. A missing cache or one older than eight hours
 is refreshed from the CyberFerretDictionary repository. Refresh has a 15-second timeout. A failed refresh falls back
 to an existing cache.
 

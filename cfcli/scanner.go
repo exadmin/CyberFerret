@@ -7,6 +7,8 @@ import (
 	"strings"
 )
 
+const maxFindingsPerSignaturePerFile = 5
+
 type finding struct {
 	Type     string `json:"type"`
 	Key      string `json:"key"`
@@ -145,9 +147,13 @@ func scanFilesConfigured(
 		}
 		scannedCount++
 		extension := strings.ToLower(strings.TrimPrefix(filepath.Ext(path), "."))
+		findingCounts := make(map[string]int)
 
 		for _, currentSignature := range loaded.signatures {
 			if _, excluded := currentSignature.excludedExtensions[extension]; excluded {
+				continue
+			}
+			if findingCounts[currentSignature.key] >= maxFindingsPerSignaturePerFile {
 				continue
 			}
 			for _, match := range currentSignature.expression.FindAllIndex(content, -1) {
@@ -181,6 +187,7 @@ func scanFilesConfigured(
 					continue
 				}
 				foundAny = true
+				findingCounts[currentSignature.key]++
 				if mode == modeQuick {
 					if err := output.text(
 						"Signature %q found in %s at position %d",
@@ -200,6 +207,9 @@ func scanFilesConfigured(
 					File:     relativePath,
 				}); err != nil {
 					return scanResult{}, fmt.Errorf("write JSON finding: %w", err)
+				}
+				if findingCounts[currentSignature.key] == maxFindingsPerSignaturePerFile {
+					break
 				}
 			}
 		}
