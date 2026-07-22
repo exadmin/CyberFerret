@@ -1,15 +1,21 @@
 name: Release CF CLI
-run-name: Release CF CLI ${{ github.ref_name }}
+run-name: Release CF CLI ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
 
 on:
   push:
     tags:
       - "cfcli-v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag to create in cfcli-v* format
+        required: true
+        type: string
 
 permissions: {}
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -86,14 +92,33 @@ jobs:
 
       - name: Create GitHub release
         env:
+          EVENT_NAME: ${{ github.event_name }}
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: Release-${{ github.ref_name }}
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          RELEASE_TARGET: ${{ github.sha }}
         shell: bash
         run: |
           set -euo pipefail
-          gh release create "$RELEASE_TAG" \
-            dist/cfcli-windows-amd64.exe \
-            dist/cfcli-linux-amd64 \
-            --verify-tag \
-            --generate-notes \
-            --title "$RELEASE_TAG"
+          if [[ ! "$RELEASE_TAG" =~ ^cfcli-v.+$ ]]; then
+            echo "Invalid release tag '$RELEASE_TAG': expected cfcli-v* format." >&2
+            exit 1
+          fi
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" >/dev/null 2>&1; then
+              echo "Cannot create release tag '$RELEASE_TAG': the tag already exists." >&2
+              exit 1
+            fi
+            gh release create "$RELEASE_TAG" \
+              dist/cfcli-windows-amd64.exe \
+              dist/cfcli-linux-amd64 \
+              --target "$RELEASE_TARGET" \
+              --generate-notes \
+              --title "$RELEASE_TAG"
+          else
+            gh release create "$RELEASE_TAG" \
+              dist/cfcli-windows-amd64.exe \
+              dist/cfcli-linux-amd64 \
+              --verify-tag \
+              --generate-notes \
+              --title "$RELEASE_TAG"
+          fi

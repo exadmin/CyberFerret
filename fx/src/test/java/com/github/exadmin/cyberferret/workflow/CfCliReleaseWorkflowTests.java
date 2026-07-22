@@ -25,6 +25,10 @@ class CfCliReleaseWorkflowTests {
         String workflow = Files.readString(WORKFLOW);
 
         assertContains(workflow, "cfcli-v*");
+        assertContains(workflow, "workflow_dispatch:");
+        assertContains(workflow, "tag:");
+        assertContains(workflow, "github.sha");
+        assertContains(workflow, "--target");
         assertContains(workflow, "permissions: {}");
         assertContains(workflow, "contents: write");
         assertContains(workflow, "persist-credentials: false");
@@ -54,6 +58,7 @@ class CfCliReleaseWorkflowTests {
                 Pattern.compile("uses: [^\\s]+@v\\d").matcher(workflow).find(),
                 "Actions must not use floating version tags"
         );
+        assertFalse(workflow.contains("Release-"), "Release tags must not add a Release- prefix");
     }
 
     private static void assertContains(String workflow, String expected) {
