@@ -31,13 +31,8 @@ func TestScanFilesQuickStopsAtFirstNonAllowedFinding(t *testing.T) {
 	if !result.found || result.scannedCount != 1 {
 		t.Fatalf("scanFiles() result = %#v, want found with one scanned file", result)
 	}
-	event := finding{Type: "found", Key: "SECRET", Found: "SECRET", Line: 1, File: "a.txt"}
-	commandLines, err := formatQuickCommandLines(root, event)
-	if err != nil {
-		t.Fatal(err)
-	}
 	want := `JSON: {"type":"found","key":"SECRET","found":"SECRET","line":1,"file":"a.txt"}` + "\n" +
-		commandLines
+		"TEXT: To print exclusion commands, run cfcli with --mode=quick --print=details.\n"
 	if stdout.String() != want {
 		t.Fatalf("stdout = %q, want %q", stdout.String(), want)
 	}
@@ -219,6 +214,7 @@ func TestScanFilesVerboseListsFoldersAndFilesBeforeScanning(t *testing.T) {
 		modeJSON,
 		exclusionSet{},
 		true,
+		false,
 		newLineOutput(&stdout),
 		newLineOutput(&bytes.Buffer{}),
 	)
@@ -253,6 +249,7 @@ func TestScanFilesVerboseListsExcludedPathsWithoutDescendantFiles(t *testing.T) 
 		modeQuick,
 		exclusions,
 		true,
+		false,
 		newLineOutput(&stdout),
 		newLineOutput(&stderr),
 	)
@@ -406,32 +403,11 @@ func TestScanFilesWithExclusionsQuickOutputIsSilent(t *testing.T) {
 	if err != nil || !result.found || result.scannedCount != 2 {
 		t.Fatalf("scan result = %#v, error = %v; want finding and two scanned files", result, err)
 	}
-	event := finding{Type: "found", Key: "SECRET", Found: "SECRET", Line: 1, File: "reported.txt"}
-	commandLines, err := formatQuickCommandLines(root, event)
-	if err != nil {
-		t.Fatal(err)
-	}
 	want := `JSON: {"type":"found","key":"SECRET","found":"SECRET","line":1,"file":"reported.txt"}` + "\n" +
-		commandLines
+		"TEXT: To print exclusion commands, run cfcli with --mode=quick --print=details.\n"
 	if stdout.String() != want {
 		t.Fatalf("stdout = %q", stdout.String())
 	}
-}
-
-func formatQuickCommandLines(root string, event finding) (string, error) {
-	commands, err := formatExcludeCommands(root, event)
-	if err != nil {
-		return "", err
-	}
-	var formatted strings.Builder
-	for _, command := range commands {
-		formatted.WriteString("TEXT: ")
-		formatted.WriteString(command.Label)
-		formatted.WriteString(": ")
-		formatted.WriteString(command.Command)
-		formatted.WriteByte('\n')
-	}
-	return formatted.String(), nil
 }
 
 func TestScanFilesWithExclusionsReportsAllowedExcludedMatch(t *testing.T) {

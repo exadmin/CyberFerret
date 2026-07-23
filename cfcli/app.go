@@ -52,6 +52,14 @@ func runWithDependencies(
 		_ = writeHelp(errorOutput)
 		return 1
 	}
+	if parsed.printDetails && parsed.mode != modeQuick {
+		if err := output.text(
+			"Warning: --print=details applies only to --mode=quick and will be ignored.",
+		); err != nil {
+			writeFatal(errorOutput, "Cannot write print option warning: %v", err)
+			return 1
+		}
+	}
 
 	cache, err := dependencies.refresher.refresh(ctx, errorOutput)
 	if err != nil {
@@ -124,6 +132,7 @@ func runWithDependencies(
 		parsed.mode,
 		exclusions,
 		parsed.verbose,
+		parsed.printDetails,
 		output,
 		errorOutput,
 	)
@@ -149,7 +158,8 @@ func runWithDependencies(
 func writeHelp(output *lineOutput) error {
 	lines := []string{
 		"Usage:",
-		"  cfcli [--mode=quick|--mode=json] [--verbose=true|--verbose=false] FOLDER_PATH [PATH_TO_LIST_OF_FILES]",
+		"  cfcli [--mode=quick|--mode=json] [--print=details] [--verbose=true|--verbose=false] " +
+			"FOLDER_PATH [PATH_TO_LIST_OF_FILES]",
 		"  cfcli exclude FOLDER_PATH JSON_OBJECT",
 		"",
 		"The exclude command adds a found event to FOLDER_PATH/.qubership/grand-report.json.",
