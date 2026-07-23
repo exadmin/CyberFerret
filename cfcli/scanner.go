@@ -40,7 +40,7 @@ func scanFiles(
 	mode scanMode,
 	output, errors *lineOutput,
 ) (scanResult, error) {
-	return scanFilesConfigured(root, files, loaded, mode, exclusionSet{}, false, output, errors)
+	return scanFilesConfigured(root, files, loaded, mode, exclusionSet{}, false, false, output, errors)
 }
 
 func scanFilesWithExclusions(
@@ -51,7 +51,7 @@ func scanFilesWithExclusions(
 	exclusions exclusionSet,
 	output, errors *lineOutput,
 ) (scanResult, error) {
-	return scanFilesConfigured(root, files, loaded, mode, exclusions, false, output, errors)
+	return scanFilesConfigured(root, files, loaded, mode, exclusions, false, false, output, errors)
 }
 
 func scanFilesConfigured(
@@ -61,6 +61,7 @@ func scanFilesConfigured(
 	mode scanMode,
 	exclusions exclusionSet,
 	verbose bool,
+	printDetails bool,
 	output, errors *lineOutput,
 ) (scanResult, error) {
 	absoluteRoot, err := filepath.Abs(root)
@@ -193,21 +194,27 @@ func scanFilesConfigured(
 				findingCounts[currentSignature.key]++
 				event := newFinding(currentSignature.key, exact, line, relativePath)
 				if mode == modeQuick {
-					commands, err := formatExcludeCommands(root, event)
-					if err != nil {
-						return scanResult{}, fmt.Errorf("format quick exclusion commands: %w", err)
-					}
 					if err := output.json(event); err != nil {
 						return scanResult{}, fmt.Errorf("write quick finding: %w", err)
 					}
-					for _, command := range commands {
-						if err := output.text("%s: %s", command.Label, command.Command); err != nil {
-							return scanResult{}, fmt.Errorf(
-								"write %s quick exclusion command: %w",
-								command.Label,
-								err,
-							)
+					if printDetails {
+						commands, err := formatExcludeCommands(root, event)
+						if err != nil {
+							return scanResult{}, fmt.Errorf("format quick exclusion commands: %w", err)
 						}
+						for _, command := range commands {
+							if err := output.text("%s: %s", command.Label, command.Command); err != nil {
+								return scanResult{}, fmt.Errorf(
+									"write %s quick exclusion command: %w",
+									command.Label,
+									err,
+								)
+							}
+						}
+					} else if err := output.text(
+						"To print exclusion commands, run cfcli with --mode=quick --print=details.",
+					); err != nil {
+						return scanResult{}, fmt.Errorf("write quick exclusion hint: %w", err)
 					}
 					return scanResult{found: true, scannedCount: scannedCount}, nil
 				}

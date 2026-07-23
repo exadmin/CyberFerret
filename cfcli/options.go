@@ -13,10 +13,11 @@ const (
 )
 
 type options struct {
-	mode     scanMode
-	verbose  bool
-	root     string
-	listPath *string
+	mode         scanMode
+	printDetails bool
+	verbose      bool
+	root         string
+	listPath     *string
 }
 
 type usageError struct{}
@@ -36,6 +37,12 @@ parseLeadingOptions:
 			if parsed.mode != modeQuick && parsed.mode != modeJSON {
 				return options{}, fmt.Errorf("invalid mode %q", parsed.mode)
 			}
+		case strings.HasPrefix(args[0], "--print="):
+			value := strings.TrimPrefix(args[0], "--print=")
+			if value != "details" {
+				return options{}, fmt.Errorf("invalid print value %q", value)
+			}
+			parsed.printDetails = true
 		case strings.HasPrefix(args[0], "--verbose="):
 			value := strings.TrimPrefix(args[0], "--verbose=")
 			switch value {
@@ -56,7 +63,9 @@ parseLeadingOptions:
 		return options{}, &usageError{}
 	}
 	for _, arg := range args {
-		if strings.HasPrefix(arg, "--mode=") || strings.HasPrefix(arg, "--verbose=") {
+		if strings.HasPrefix(arg, "--mode=") ||
+			strings.HasPrefix(arg, "--print=") ||
+			strings.HasPrefix(arg, "--verbose=") {
 			return options{}, fmt.Errorf("options must precede positional arguments")
 		}
 	}

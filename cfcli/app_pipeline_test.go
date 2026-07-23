@@ -52,9 +52,10 @@ func TestRunWithDependenciesQuickReturnsTwoOnFirstFinding(t *testing.T) {
 	if exitCode != 2 || !strings.Contains(
 		stdout.String(),
 		`JSON: {"type":"found","key":"SECRET","found":"SECRET","line":1,"file":"secret.txt"}`,
-	) || !strings.Contains(stdout.String(), "TEXT: POSIX: cfcli exclude ") ||
-		!strings.Contains(stdout.String(), "TEXT: PowerShell: cfcli exclude ") ||
-		!strings.Contains(stdout.String(), "TEXT: cmd.exe: cfcli exclude ") {
+	) || !strings.Contains(
+		stdout.String(),
+		"TEXT: To print exclusion commands, run cfcli with --mode=quick --print=details.\n",
+	) || strings.Contains(stdout.String(), "cfcli exclude ") {
 		t.Fatalf("exit code = %d, stdout = %q, stderr = %q", exitCode, stdout.String(), stderr.String())
 	}
 	if strings.Contains(stdout.String(), "TEXT: "+root) {
@@ -66,6 +67,30 @@ func TestRunWithDependenciesQuickReturnsTwoOnFirstFinding(t *testing.T) {
 		"TEXT: Total files scanned 1\nTEXT: Scanning is finished in 1.234 seconds.\n",
 	) {
 		t.Fatalf("quick output lacks scan summary: %q", stdout.String())
+	}
+}
+
+func TestRunWithDependenciesQuickPrintDetailsPrintsExclusionCommands(t *testing.T) {
+	root := initRepository(t)
+	writeTestFile(t, root, "secret.txt", "contains SECRET")
+	dependencies := testAppDependencies(t, "VERSION=1.0\nSECRET=SECRET\n", "test-password")
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	exitCode := runWithDependencies(
+		context.Background(),
+		[]string{"--mode=quick", "--print=details", root},
+		&stdout,
+		&stderr,
+		dependencies,
+	)
+
+	if exitCode != 2 ||
+		!strings.Contains(stdout.String(), "TEXT: POSIX: cfcli exclude ") ||
+		!strings.Contains(stdout.String(), "TEXT: PowerShell: cfcli exclude ") ||
+		!strings.Contains(stdout.String(), "TEXT: cmd.exe: cfcli exclude ") ||
+		strings.Contains(stdout.String(), "To print exclusion commands") {
+		t.Fatalf("exit code = %d, stdout = %q, stderr = %q", exitCode, stdout.String(), stderr.String())
 	}
 }
 
@@ -87,6 +112,31 @@ func TestRunWithDependenciesJSONCompletesAndReturnsTwo(t *testing.T) {
 		t.Fatalf("exit code = %d, stdout = %q, stderr = %q", exitCode, stdout.String(), stderr.String())
 	}
 	assertCurrentDictionaryOutput(t, stdout.String())
+}
+
+func TestRunWithDependenciesPrintDetailsWarnsOutsideQuickMode(t *testing.T) {
+	root := initRepository(t)
+	writeTestFile(t, root, "secret.txt", "SECRET")
+	dependencies := testAppDependencies(t, "VERSION=1.0\nSECRET=SECRET\n", "test-password")
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	exitCode := runWithDependencies(
+		context.Background(),
+		[]string{"--print=details", root},
+		&stdout,
+		&stderr,
+		dependencies,
+	)
+
+	if exitCode != 2 ||
+		!strings.Contains(
+			stdout.String(),
+			"TEXT: Warning: --print=details applies only to --mode=quick and will be ignored.\n",
+		) ||
+		strings.Contains(stdout.String(), "cfcli exclude ") {
+		t.Fatalf("exit code = %d, stdout = %q, stderr = %q", exitCode, stdout.String(), stderr.String())
+	}
 }
 
 func assertCurrentDictionaryOutput(t *testing.T, output string) {

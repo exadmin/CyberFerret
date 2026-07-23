@@ -33,6 +33,12 @@ Stop after the first non-allowed finding:
 ./cfcli --mode=quick /path/to/repository
 ```
 
+Print copy-ready exclusion commands after the first non-allowed finding:
+
+```shell
+./cfcli --mode=quick --print=details /path/to/repository
+```
+
 Restrict either mode to a staged-file list:
 
 ```shell
@@ -45,10 +51,11 @@ Report each folder and file immediately before the scanner processes it:
 ./cfcli --verbose=true --mode=json /path/to/repository
 ```
 
-`--mode` and `--verbose` are optional, may appear in either order, and must precede `FOLDER_PATH`. Verbose defaults to
-`false` and accepts only `true` or `false`. The optional list contains one Git path per line. Each path is relative to
-`FOLDER_PATH`. Empty lines and duplicate paths are ignored. Absolute paths and paths that escape `FOLDER_PATH` are
-rejected.
+`--mode`, `--print`, and `--verbose` are optional, may appear in any order, and must precede `FOLDER_PATH`.
+`--print=details` applies only to quick mode. In other modes, the scanner prints a warning and ignores it. Verbose
+defaults to `false` and accepts only `true` or `false`. The optional list contains one Git path per line. Each path is
+relative to `FOLDER_PATH`. Empty lines and duplicate paths are ignored. Absolute paths and paths that escape
+`FOLDER_PATH` are rejected.
 
 ## Exclude a finding
 
@@ -96,9 +103,16 @@ Every flushed output line starts with `TEXT: ` or `JSON: `. JSON findings have t
 JSON: {"type":"found","key":"SIGNATURE","found":"matched value","line":43,"file":"relative/path.txt"}
 ```
 
-After a quick-mode finding, three `TEXT:` lines contain the matching `cfcli exclude` command for POSIX shells,
-PowerShell, and `cmd.exe`. Copy the command after the label for your shell to add the finding to `grand-report.json`.
-The variants are always printed in that order, regardless of the operating system that runs `cfcli`.
+After a quick-mode finding, the scanner prints a short hint:
+
+```text
+TEXT: To print exclusion commands, run cfcli with --mode=quick --print=details.
+```
+
+With `--mode=quick --print=details`, three `TEXT:` lines contain the matching `cfcli exclude` command for POSIX
+shells, PowerShell, and `cmd.exe`. Copy the command after the label for your shell to add the finding to
+`grand-report.json`. The variants are always printed in that order, regardless of the operating system that runs
+`cfcli`.
 
 ```text
 TEXT: POSIX: cfcli exclude '/path/to/repository' 'JSON: {"type":"found",...}'

@@ -50,6 +50,7 @@ func TestRunPrintsExpandedHelpForInsufficientArguments(t *testing.T) {
 		}
 		for _, expected := range []string{
 			"TEXT: Usage:\n",
+			"TEXT:   cfcli [--mode=quick|--mode=json] [--print=details]",
 			"TEXT:   cfcli exclude FOLDER_PATH JSON_OBJECT\n",
 			"TEXT: The exclude command adds a found event",
 			"TEXT: JSON_OBJECT may start with \"JSON:\"",
