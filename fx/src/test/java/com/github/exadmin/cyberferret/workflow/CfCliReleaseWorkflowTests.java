@@ -35,7 +35,11 @@ class CfCliReleaseWorkflowTests {
         assertContains(workflow, "cancel-in-progress: false");
         assertContains(workflow, "timeout-minutes:");
         assertContains(workflow, "cfcli-windows-amd64.exe");
+        assertContains(workflow, "cfcli-windows-arm64.exe");
         assertContains(workflow, "cfcli-linux-amd64");
+        assertContains(workflow, "cfcli-linux-arm64");
+        assertContains(workflow, "cfcli-darwin-amd64");
+        assertContains(workflow, "cfcli-darwin-arm64");
         assertContains(workflow, "mkdir --parents dist");
         assertContains(workflow, "CGO_ENABLED: \"0\"");
         assertContains(workflow, "-trimpath");
@@ -67,7 +71,7 @@ class CfCliReleaseWorkflowTests {
 
     private static Path repositoryRoot() {
         Path candidate = Path.of(System.getProperty("user.dir")).toAbsolutePath();
-        while (candidate != null && !Files.isDirectory(candidate.resolve(".git"))) {
+        while (candidate != null && !Files.exists(candidate.resolve(".git"))) {
             candidate = candidate.getParent();
         }
         if (candidate == null) {

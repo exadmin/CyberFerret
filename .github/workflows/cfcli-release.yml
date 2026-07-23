@@ -51,25 +51,27 @@ jobs:
       - name: Prepare release directory
         run: mkdir --parents dist
 
-      - name: Build Windows AMD64
+      - name: Build release binaries
         working-directory: cfcli
         env:
           CGO_ENABLED: "0"
-          GOARCH: amd64
-          GOOS: windows
-        run: >-
-          go build -trimpath -ldflags="-s -w -buildid="
-          -o ../dist/cfcli-windows-amd64.exe .
-
-      - name: Build Linux AMD64
-        working-directory: cfcli
-        env:
-          CGO_ENABLED: "0"
-          GOARCH: amd64
-          GOOS: linux
-        run: >-
-          go build -trimpath -ldflags="-s -w -buildid="
-          -o ../dist/cfcli-linux-amd64 .
+        shell: bash
+        run: |
+          set -euo pipefail
+          build() {
+            local goos="$1"
+            local goarch="$2"
+            local extension="$3"
+            GOOS="$goos" GOARCH="$goarch" go build \
+              -trimpath -ldflags="-s -w -buildid=" \
+              -o "../dist/cfcli-${goos}-${goarch}${extension}" .
+          }
+          build linux amd64 ""
+          build linux arm64 ""
+          build darwin amd64 ""
+          build darwin arm64 ""
+          build windows amd64 ".exe"
+          build windows arm64 ".exe"
 
       - name: Install UPX
         shell: bash
@@ -111,6 +113,10 @@ jobs:
             gh release create "$RELEASE_TAG" \
               dist/cfcli-windows-amd64.exe \
               dist/cfcli-linux-amd64 \
+              dist/cfcli-windows-arm64.exe \
+              dist/cfcli-linux-arm64 \
+              dist/cfcli-darwin-amd64 \
+              dist/cfcli-darwin-arm64 \
               --target "$RELEASE_TARGET" \
               --generate-notes \
               --title "$RELEASE_TAG"
@@ -118,6 +124,10 @@ jobs:
             gh release create "$RELEASE_TAG" \
               dist/cfcli-windows-amd64.exe \
               dist/cfcli-linux-amd64 \
+              dist/cfcli-windows-arm64.exe \
+              dist/cfcli-linux-arm64 \
+              dist/cfcli-darwin-amd64 \
+              dist/cfcli-darwin-arm64 \
               --verify-tag \
               --generate-notes \
               --title "$RELEASE_TAG"
