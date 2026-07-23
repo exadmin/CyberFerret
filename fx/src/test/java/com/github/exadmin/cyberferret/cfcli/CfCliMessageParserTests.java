@@ -4,10 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class CfCliMessageParserTests {
     private final CfCliMessageParser parser = new CfCliMessageParser();
@@ -35,14 +32,14 @@ public class CfCliMessageParserTests {
         for (String type : new String[]{"found", "allowed", "excluded"}) {
             String line = "JSON: {\"unknown\":true,\"type\":\"" + type
                     + "\",\"key\":\"TOKEN\\\"\\\\\\u0020KEY\",\"found\":\"value\\n😀\","
-                    + "\"position\":17,\"file\":\"src/file.txt\"}";
+                    + "\"line\":17,\"file\":\"src/file.txt\"}";
 
             CfCliMessage message = parser.parse(line).orElseThrow();
 
             assertEquals(type, message.type());
             assertEquals("TOKEN\"\\ KEY", message.key());
             assertEquals("value\n😀", message.found());
-            assertEquals(17L, message.position());
+            assertEquals(17L, message.line());
             assertTrue(message.isSignature());
         }
     }
@@ -55,7 +52,10 @@ public class CfCliMessageParserTests {
                 "JSON: {\"type\":\"found\",\"key\":\"K\",\"found\":\"V\",\"file\":\"f\"}"));
         assertThrows(IOException.class, () -> parser.parse(
                 "JSON: {\"type\":\"found\",\"key\":\"K\",\"found\":\"V\","
-                        + "\"position\":-1,\"file\":\"f\"}"));
+                        + "\"line\":0,\"file\":\"f\"}"));
+        assertThrows(IOException.class, () -> parser.parse(
+                "JSON: {\"type\":\"found\",\"key\":\"K\",\"found\":\"V\","
+                        + "\"position\":17,\"file\":\"f\"}"));
         assertThrows(IOException.class, () -> parser.parse("JSON: {\"type\":\"future\",\"file\":\"f\"}"));
     }
 }

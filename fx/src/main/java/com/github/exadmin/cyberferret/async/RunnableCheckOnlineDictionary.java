@@ -2,21 +2,21 @@ package com.github.exadmin.cyberferret.async;
 
 import com.github.exadmin.cyberferret.AppConstants;
 import com.github.exadmin.cyberferret.utils.GitUtils;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpStatus;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
-import org.apache.http.HttpStatus;
-import org.apache.http.HttpEntity;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 
 public class RunnableCheckOnlineDictionary extends ARunnable {

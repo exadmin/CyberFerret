@@ -22,7 +22,7 @@ public final class CfCliMessageParser {
                 stringValue(values, "folder"),
                 stringValue(values, "key"),
                 stringValue(values, "found"),
-                longValue(values, "position"));
+                longValue(values, "line"));
         validate(message);
         return Optional.of(message);
     }
@@ -52,7 +52,7 @@ public final class CfCliMessageParser {
             case "found", "allowed" -> validateSignature(message);
             case "excluded" -> {
                 if (message.file() == null) throw new IOException("Excluded event is missing \"file\"");
-                boolean hasSignatureField = message.key() != null || message.found() != null || message.position() != null;
+                boolean hasSignatureField = message.key() != null || message.found() != null || message.line() != null;
                 if (hasSignatureField) validateSignature(message);
             }
             default -> throw new IOException("Unsupported JSON event type \"" + message.type() + "\"");
@@ -60,10 +60,10 @@ public final class CfCliMessageParser {
     }
 
     private static void validateSignature(CfCliMessage message) throws IOException {
-        if (message.file() == null || message.key() == null || message.found() == null || message.position() == null) {
+        if (message.file() == null || message.key() == null || message.found() == null || message.line() == null) {
             throw new IOException("Signature event is missing a required field");
         }
-        if (message.position() < 0) throw new IOException("Signature position cannot be negative");
+        if (message.line() < 1) throw new IOException("Signature line must be positive");
     }
 
     private static final class Cursor {

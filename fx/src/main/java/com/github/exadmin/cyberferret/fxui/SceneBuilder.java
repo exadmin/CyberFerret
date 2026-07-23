@@ -2,12 +2,12 @@ package com.github.exadmin.cyberferret.fxui;
 
 import com.github.exadmin.cyberferret.AppConstants;
 import com.github.exadmin.cyberferret.async.*;
+import com.github.exadmin.cyberferret.cfcli.CfCliExecutable;
+import com.github.exadmin.cyberferret.cfcli.CfCliScanner;
+import com.github.exadmin.cyberferret.cfcli.CfCliTreeAssembler;
 import com.github.exadmin.cyberferret.exclude.Excluder;
 import com.github.exadmin.cyberferret.fxui.helpers.AlertBuilder;
 import com.github.exadmin.cyberferret.fxui.helpers.ChooserBuilder;
-import com.github.exadmin.cyberferret.cfcli.CfCliScanner;
-import com.github.exadmin.cyberferret.cfcli.CfCliExecutable;
-import com.github.exadmin.cyberferret.cfcli.CfCliTreeAssembler;
 import com.github.exadmin.cyberferret.model.FoundFileItemListener;
 import com.github.exadmin.cyberferret.model.FoundItemsContainer;
 import com.github.exadmin.cyberferret.model.FoundPathItem;
@@ -16,9 +16,9 @@ import com.github.exadmin.cyberferret.utils.FileUtils;
 import com.github.exadmin.cyberferret.utils.MiscUtils;
 import com.github.exadmin.cyberferret.utils.PasswordBasedEncryption;
 import javafx.application.Platform;
+import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
-import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
@@ -46,13 +46,14 @@ import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
 
-import static com.github.exadmin.cyberferret.fxui.FxConstants.*;
+import static com.github.exadmin.cyberferret.fxui.FxConstants.DEFAULT_BUTTON_WIDTH;
+import static com.github.exadmin.cyberferret.fxui.FxConstants.DEFAULT_LABEL_WIDTH;
 import static com.github.exadmin.cyberferret.persistence.PersistentPropertiesManager.*;
 
 public class SceneBuilder {
@@ -155,12 +156,7 @@ public class SceneBuilder {
         Label passwordLabel = new Label("Password in '" + AppConstants.SYS_ENV_VAR_PASSWORD + "' environment variable is " + strStatus);
         passwordLabel.setMinWidth(DEFAULT_LABEL_WIDTH);
         passwordLabel.setAlignment(Pos.CENTER_LEFT);
-        // PasswordField passwordField = new PasswordField();
-        // passwordField.setEditable(false);
-
-        // passwordField.setText(environmentPassword == null ? "" : environmentPassword);
         HBox passwordRow = new HBox(8, passwordLabel);
-        // HBox.setHgrow(passwordField, Priority.ALWAYS);
         vBoxRoot.getChildren().add(passwordRow);
 
         return tpOnlineDictionary;

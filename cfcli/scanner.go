@@ -10,11 +10,11 @@ import (
 const maxFindingsPerSignaturePerFile = 5
 
 type finding struct {
-	Type     string `json:"type"`
-	Key      string `json:"key"`
-	Found    string `json:"found"`
-	Position int    `json:"position"`
-	File     string `json:"file"`
+	Type  string `json:"type"`
+	Key   string `json:"key"`
+	Found string `json:"found"`
+	Line  int    `json:"line"`
+	File  string `json:"file"`
 }
 
 type excludedPathEvent struct {
@@ -156,16 +156,19 @@ func scanFilesConfigured(
 			if findingCounts[currentSignature.key] >= maxFindingsPerSignaturePerFile {
 				continue
 			}
+			lineCursor := 0
+			line := 1
 			for _, match := range currentSignature.expression.FindAllIndex(content, -1) {
+				lineCursor, line = lineAt(content, match[0], lineCursor, line)
 				exact := string(content[match[0]:match[1]])
 				if exclusions.excludesMatch(relativePath, exact) {
 					if mode == modeJSON {
 						if err := output.json(finding{
-							Type:     "excluded",
-							Key:      currentSignature.key,
-							Found:    exact,
-							Position: match[0],
-							File:     relativePath,
+							Type:  "excluded",
+							Key:   currentSignature.key,
+							Found: exact,
+							Line:  line,
+							File:  relativePath,
 						}); err != nil {
 							return scanResult{}, fmt.Errorf("write excluded finding: %w", err)
 						}
@@ -175,11 +178,11 @@ func scanFilesConfigured(
 				if loaded.isAllowed(exact) {
 					if mode == modeJSON {
 						if err := output.json(finding{
-							Type:     "allowed",
-							Key:      currentSignature.key,
-							Found:    exact,
-							Position: match[0],
-							File:     relativePath,
+							Type:  "allowed",
+							Key:   currentSignature.key,
+							Found: exact,
+							Line:  line,
+							File:  relativePath,
 						}); err != nil {
 							return scanResult{}, fmt.Errorf("write allowed finding: %w", err)
 						}
@@ -189,23 +192,12 @@ func scanFilesConfigured(
 				foundAny = true
 				findingCounts[currentSignature.key]++
 				if mode == modeQuick {
-					if err := output.text(
-						"Signature %q found in %s at position %d",
-						currentSignature.key,
-						relativePath,
-						match[0],
-					); err != nil {
+					if err := writeFoundFinding(output, currentSignature.key, exact, line, relativePath); err != nil {
 						return scanResult{}, fmt.Errorf("write quick finding: %w", err)
 					}
 					return scanResult{found: true, scannedCount: scannedCount}, nil
 				}
-				if err := output.json(finding{
-					Type:     "found",
-					Key:      currentSignature.key,
-					Found:    exact,
-					Position: match[0],
-					File:     relativePath,
-				}); err != nil {
+				if err := writeFoundFinding(output, currentSignature.key, exact, line, relativePath); err != nil {
 					return scanResult{}, fmt.Errorf("write JSON finding: %w", err)
 				}
 				if findingCounts[currentSignature.key] == maxFindingsPerSignaturePerFile {
@@ -216,6 +208,35 @@ func scanFilesConfigured(
 	}
 
 	return scanResult{found: foundAny, scannedCount: scannedCount}, nil
+}
+
+func writeFoundFinding(output *lineOutput, key, exact string, line int, relativePath string) error {
+	return output.json(finding{
+		Type:  "found",
+		Key:   key,
+		Found: exact,
+		Line:  line,
+		File:  relativePath,
+	})
+}
+
+func lineAt(content []byte, offset, cursor, line int) (int, int) {
+	for cursor < offset {
+		switch content[cursor] {
+		case '\r':
+			line++
+			cursor++
+			if cursor < offset && content[cursor] == '\n' {
+				cursor++
+			}
+		case '\n':
+			line++
+			cursor++
+		default:
+			cursor++
+		}
+	}
+	return cursor, line
 }
 
 func relativeParentPaths(relativePath string) []string {

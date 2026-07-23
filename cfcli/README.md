@@ -67,15 +67,15 @@ a nonempty, whitespace-free local part at `example.com`. It rejects an empty loc
 Every flushed output line starts with `TEXT: ` or `JSON: `. JSON findings have this shape:
 
 ```text
-JSON: {"type":"found","key":"SIGNATURE","found":"matched value","position":42,"file":"relative/path.txt"}
+JSON: {"type":"found","key":"SIGNATURE","found":"matched value","line":43,"file":"relative/path.txt"}
 ```
 
 JSON mode also reports dictionary allowed values and applied grand-report exclusions:
 
 ```text
-JSON: {"type":"allowed","key":"SIGNATURE","found":"matched value","position":42,"file":"relative/path.txt"}
+JSON: {"type":"allowed","key":"SIGNATURE","found":"matched value","line":43,"file":"relative/path.txt"}
 JSON: {"type":"excluded","file":"relative/directory"}
-JSON: {"type":"excluded","key":"SIGNATURE","found":"matched value","position":42,"file":"relative/path.txt"}
+JSON: {"type":"excluded","key":"SIGNATURE","found":"matched value","line":43,"file":"relative/path.txt"}
 ```
 
 With `--verbose=true`, the command emits parent folders once and each file before processing it:
@@ -93,11 +93,12 @@ Each fully excluded file or directory is reported once. Quick mode does not repo
 matches. With verbose enabled, it does report full path exclusions after their `list` events. Only `found` events count
 as findings and cause exit code `2`. If a match is both allowed and excluded, only the `excluded` event is emitted.
 
-`found` contains the complete exact match, and `position` is the zero-based byte offset. JSON mode does not print the
-selected paths. After the dictionary version, both modes print `TEXT: Scanning is in progress. Please wait.`. After
-scanning, both modes print `TEXT: Total files scanned N` and `TEXT: Scanning is finished in S.SSS seconds.`. `N`
-excludes files skipped after read errors or full grand-report exclusions. In quick mode, it includes the file with the
-first finding and excludes files that were not visited after the stop.
+`found` contains the complete exact match, and `line` is the one-based number of the line containing the match. JSON
+mode does not print the selected paths. After the dictionary version, both modes print
+`TEXT: Scanning is in progress. Please wait.`. After scanning, both modes print `TEXT: Total files scanned N` and
+`TEXT: Scanning is finished in S.SSS seconds.`. `N` excludes files skipped after read errors or full grand-report
+exclusions. In quick mode, it includes the file with the first finding and excludes files that were not visited after
+the stop.
 
 Exit codes are:
 

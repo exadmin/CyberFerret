@@ -57,7 +57,7 @@ public final class CfCliTreeAssembler {
         signature.setIgnored("excluded".equals(message.type()));
         try {
             FileMatchContext context = FileMatchContext.from(
-                    contentFor(fileItem.getFilePath()), message.position(), message.found());
+                    contentFor(fileItem.getFilePath()), message.line(), message.found());
             signature.setLineNumber(context.lineNumber());
             signature.setDisplayText(context.displayText());
         } catch (IOException ex) {

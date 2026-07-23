@@ -1,6 +1,7 @@
 package com.github.exadmin.cyberferret.async;
-import com.github.exadmin.cyberferret.exclude.ExcludeFileModel;
+
 import com.github.exadmin.cyberferret.exclude.ExcludeFileJsonCodec;
+import com.github.exadmin.cyberferret.exclude.ExcludeFileModel;
 import com.github.exadmin.cyberferret.exclude.Excluder;
 import com.github.exadmin.cyberferret.model.FoundItemsContainer;
 import com.github.exadmin.cyberferret.model.FoundPathItem;
@@ -14,8 +15,8 @@ import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -128,13 +129,13 @@ public class RunnableScanner extends ARunnable {
 
         // try (var executor = Executors.newSingleThreadExecutor()) {
         try (var executor = Executors.newWorkStealingPool(8)) {
-            list.forEach(pathItem -> {
+            for (FoundPathItem pathItem : list) {
                 executor.submit(() -> {
                     numberOfThreadsInProgress.incrementAndGet();
 
                     // update progress rate
                     int currentCount = processedItemsCount.incrementAndGet();
-                    int progressRate =  currentCount * 100 / totalItemsCount;
+                    int progressRate = currentCount * 100 / totalItemsCount;
                     int rateToLog = nextRate.updateAndGet(rate -> progressRate > rate ? rate + 10 : rate);
                     if (progressRate > rateToLog - 10) {
                         if (isCLIMode()) logInfo("Scan rate is {}%", progressRate);
@@ -149,7 +150,7 @@ public class RunnableScanner extends ARunnable {
 
                     numberOfThreadsInProgress.decrementAndGet();
                 });
-            });
+            }
         }
 
         logInfo("Scanning completed for 100%");

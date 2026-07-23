@@ -6,7 +6,7 @@ public record CfCliMessage(
         String folder,
         String key,
         String found,
-        Long position) {
+        Long line) {
 
     public boolean isSignature() {
         return key != null;

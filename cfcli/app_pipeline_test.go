@@ -49,7 +49,10 @@ func TestRunWithDependenciesQuickReturnsTwoOnFirstFinding(t *testing.T) {
 
 	exitCode := runWithDependencies(context.Background(), []string{"--mode=quick", root}, &stdout, &stderr, dependencies)
 
-	if exitCode != 2 || !strings.Contains(stdout.String(), `TEXT: Signature "SECRET" found`) {
+	if exitCode != 2 || !strings.Contains(
+		stdout.String(),
+		`JSON: {"type":"found","key":"SECRET","found":"SECRET","line":1,"file":"secret.txt"}`,
+	) {
 		t.Fatalf("exit code = %d, stdout = %q, stderr = %q", exitCode, stdout.String(), stderr.String())
 	}
 	if strings.Contains(stdout.String(), "TEXT: "+root) {
@@ -139,7 +142,7 @@ func TestRunWithDependenciesAppliesGrandReportExclusions(t *testing.T) {
 
 	if exitCode != 0 || !strings.Contains(
 		stdout.String(),
-		`JSON: {"type":"excluded","key":"SECRET","found":"SECRET","position":0,"file":"secret.txt"}`,
+		`JSON: {"type":"excluded","key":"SECRET","found":"SECRET","line":1,"file":"secret.txt"}`,
 	) {
 		t.Fatalf("exit code = %d, stdout = %q, stderr = %q", exitCode, stdout.String(), stderr.String())
 	}

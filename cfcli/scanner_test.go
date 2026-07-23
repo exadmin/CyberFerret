@@ -31,7 +31,7 @@ func TestScanFilesQuickStopsAtFirstNonAllowedFinding(t *testing.T) {
 	if !result.found || result.scannedCount != 1 {
 		t.Fatalf("scanFiles() result = %#v, want found with one scanned file", result)
 	}
-	if want := "TEXT: Signature \"SECRET\" found in a.txt at position 9\n"; stdout.String() != want {
+	if want := `JSON: {"type":"found","key":"SECRET","found":"SECRET","line":1,"file":"a.txt"}` + "\n"; stdout.String() != want {
 		t.Fatalf("stdout = %q, want %q", stdout.String(), want)
 	}
 	if stderr.Len() != 0 || strings.Contains(stdout.String(), first) || strings.Contains(stdout.String(), "SKIPPED") {
@@ -64,15 +64,51 @@ func TestScanFilesJSONEmitsCompleteFindingsAndTotal(t *testing.T) {
 	if len(lines) != 2 {
 		t.Fatalf("output lines = %#v, want two findings", lines)
 	}
-	wantFirst := `JSON: {"type":"found","key":"LETTERS","found":"ABCDEFGHIJKLMNOPQ","position":4,"file":"nested/result.txt"}`
+	wantFirst := `JSON: {"type":"found","key":"LETTERS","found":"ABCDEFGHIJKLMNOPQ","line":1,"file":"nested/result.txt"}`
 	if lines[0] != wantFirst {
 		t.Fatalf("first finding = %q, want %q", lines[0], wantFirst)
 	}
-	if lines[1] != `JSON: {"type":"found","key":"LETTERS","found":"XYZ","position":0,"file":"other.txt"}` {
+	if lines[1] != `JSON: {"type":"found","key":"LETTERS","found":"XYZ","line":1,"file":"other.txt"}` {
 		t.Fatalf("second finding = %q", lines[1])
 	}
 	if stderr.Len() != 0 {
 		t.Fatalf("stderr = %q, want empty", stderr.String())
+	}
+}
+
+func TestScanFilesReportsOneBasedMatchLines(t *testing.T) {
+	root := t.TempDir()
+	file := writeTestFile(t, root, "lines.txt", "SECRET\né SECRET\r\nx SECRET\ry SECRET SECRET")
+	loaded := dictionary{
+		allowed: map[string]struct{}{},
+		signatures: []signature{{
+			key:        "SECRET",
+			expression: regexp.MustCompile(`SECRET`),
+		}},
+	}
+	var stdout bytes.Buffer
+
+	result, err := scanFiles(
+		root,
+		[]string{file},
+		loaded,
+		modeJSON,
+		newLineOutput(&stdout),
+		newLineOutput(&bytes.Buffer{}),
+	)
+
+	if err != nil || !result.found || result.scannedCount != 1 {
+		t.Fatalf("scan result = %#v, error = %v; want five findings in one file", result, err)
+	}
+	want := strings.Join([]string{
+		`JSON: {"type":"found","key":"SECRET","found":"SECRET","line":1,"file":"lines.txt"}`,
+		`JSON: {"type":"found","key":"SECRET","found":"SECRET","line":2,"file":"lines.txt"}`,
+		`JSON: {"type":"found","key":"SECRET","found":"SECRET","line":3,"file":"lines.txt"}`,
+		`JSON: {"type":"found","key":"SECRET","found":"SECRET","line":4,"file":"lines.txt"}`,
+		`JSON: {"type":"found","key":"SECRET","found":"SECRET","line":4,"file":"lines.txt"}`,
+	}, "\n") + "\n"
+	if stdout.String() != want {
+		t.Fatalf("stdout = %q, want %q", stdout.String(), want)
 	}
 }
 
@@ -157,7 +193,7 @@ func TestScanFilesJSONReportsExactAllowedWithoutFinding(t *testing.T) {
 	if err != nil || result.found || result.scannedCount != 1 {
 		t.Fatalf("scan result = %#v, error = %v; want allowed event without finding", result, err)
 	}
-	want := `JSON: {"type":"allowed","key":"TOKEN","found":"Token123","position":0,"file":"allowed.txt"}` + "\n"
+	want := `JSON: {"type":"allowed","key":"TOKEN","found":"Token123","line":1,"file":"allowed.txt"}` + "\n"
 	if stdout.String() != want {
 		t.Fatalf("stdout = %q, want %q", stdout.String(), want)
 	}
@@ -329,7 +365,7 @@ func TestScanFilesWithExclusionsSuppressesOnlyExactFileMatch(t *testing.T) {
 	}
 	if !strings.Contains(
 		stdout.String(),
-		`JSON: {"type":"excluded","key":"SECRET","found":"SECRET","position":0,"file":"excluded.txt"}`,
+		`JSON: {"type":"excluded","key":"SECRET","found":"SECRET","line":1,"file":"excluded.txt"}`,
 	) || !strings.Contains(stdout.String(), `"file":"reported.txt"`) {
 		t.Fatalf("stdout = %q", stdout.String())
 	}
@@ -363,8 +399,8 @@ func TestScanFilesWithExclusionsQuickOutputIsSilent(t *testing.T) {
 	if err != nil || !result.found || result.scannedCount != 2 {
 		t.Fatalf("scan result = %#v, error = %v; want finding and two scanned files", result, err)
 	}
-	if strings.Contains(stdout.String(), "JSON:") ||
-		stdout.String() != "TEXT: Signature \"SECRET\" found in reported.txt at position 0\n" {
+	if stdout.String() !=
+		`JSON: {"type":"found","key":"SECRET","found":"SECRET","line":1,"file":"reported.txt"}`+"\n" {
 		t.Fatalf("stdout = %q", stdout.String())
 	}
 }

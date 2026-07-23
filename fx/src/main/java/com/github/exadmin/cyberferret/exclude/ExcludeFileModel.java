@@ -37,13 +37,13 @@ public class ExcludeFileModel {
         if (itemToRemove != null) getSignatures().remove(itemToRemove);
     }
 
-    public ExcludeSignatureItem add(String textHash, String relFileNameHash) {
+    public void add(String textHash, String relFileNameHash) {
         ExcludeSignatureItem newItem = new ExcludeSignatureItem();
         newItem.setTextHash(textHash);
         newItem.setFileHash(relFileNameHash);
         getSignatures().add(newItem);
 
-        return newItem;
+        // return newItem;
     }
 
     public void doSortBeforeSaving() {

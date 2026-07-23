@@ -13,10 +13,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class CfCliTreeAssemblerTests {
     @TempDir
@@ -35,9 +32,9 @@ public class CfCliTreeAssemblerTests {
         assembler.accept(message("list", null, "src", null, null, null));
         assembler.accept(message("list", null, "src/nested", null, null, null));
         assembler.accept(message("list", "src/nested/file.txt", null, null, null, null));
-        assembler.accept(message("found", "src/nested/file.txt", null, "F", "FOUND", 0L));
-        assembler.accept(message("allowed", "src/nested/file.txt", null, "A", "ALLOWED", 6L));
-        assembler.accept(message("excluded", "src/nested/file.txt", null, "E", "EXCLUDED", 14L));
+        assembler.accept(message("found", "src/nested/file.txt", null, "F", "FOUND", 1L));
+        assembler.accept(message("allowed", "src/nested/file.txt", null, "A", "ALLOWED", 1L));
+        assembler.accept(message("excluded", "src/nested/file.txt", null, "E", "EXCLUDED", 1L));
 
         List<FoundPathItem> items = container.getFoundItemsCopy();
         assertEquals(6, items.size());
@@ -85,7 +82,7 @@ public class CfCliTreeAssemblerTests {
         CfCliTreeAssembler assembler = new CfCliTreeAssembler(root, container, warnings::add);
 
         assembler.accept(message("list", "missing.txt", null, null, null, null));
-        assembler.accept(message("found", "missing.txt", null, "KEY", "VALUE", 0L));
+        assembler.accept(message("found", "missing.txt", null, "KEY", "VALUE", 1L));
 
         FoundPathItem signature = container.getFoundItemsCopy().getLast();
         assertEquals(ItemType.SIGNATURE, signature.getType());
@@ -100,7 +97,7 @@ public class CfCliTreeAssemblerTests {
             String folder,
             String key,
             String found,
-            Long position) {
-        return new CfCliMessage(type, file, folder, key, found, position);
+            Long line) {
+        return new CfCliMessage(type, file, folder, key, found, line);
     }
 }

@@ -2,47 +2,55 @@ package com.github.exadmin.cyberferret.cfcli;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 
 public record FileMatchContext(long lineNumber, String displayText) {
     private static final int CONTEXT_CODE_POINTS = 50;
 
-    public static FileMatchContext from(byte[] content, long position, String exact) throws IOException {
-        if (position < 0 || position > Integer.MAX_VALUE || position > content.length) {
-            throw new IOException("Signature byte position is outside the file");
-        }
-        int matchStart = (int) position;
-        byte[] exactBytes = exact.getBytes(StandardCharsets.UTF_8);
-        int matchEnd = matchStart + exactBytes.length;
-        if (matchEnd > content.length
-                || !Arrays.equals(exactBytes, Arrays.copyOfRange(content, matchStart, matchEnd))) {
-            throw new IOException("File content does not match the reported signature position");
+    public static FileMatchContext from(byte[] content, long line, String exact) throws IOException {
+        if (line < 1) {
+            throw new IOException("Signature line must be positive");
         }
 
-        long lineNumber = 1;
-        for (int index = 0; index < matchStart; index++) {
-            if (content[index] == '\n'
-                    || (content[index] == '\r'
-                            && (index + 1 >= matchStart || content[index + 1] != '\n'))) {
-                lineNumber++;
+        int lineStart = 0;
+        long currentLine = 1;
+        while (currentLine < line) {
+            int lineBreak = findLineBreak(content, lineStart);
+            if (lineBreak == content.length) {
+                throw new IOException("Signature line is outside the file");
             }
+            lineStart = afterLineBreak(content, lineBreak);
+            currentLine++;
         }
 
-        int lineStart = matchStart;
-        while (lineStart > 0 && !isLineBreak(content[lineStart - 1])) lineStart--;
-        int lineEnd = matchEnd;
-        while (lineEnd < content.length && !isLineBreak(content[lineEnd])) lineEnd++;
+        int lineEnd = findLineBreak(content, lineStart);
+        String lineText = new String(content, lineStart, lineEnd - lineStart, StandardCharsets.UTF_8);
+        int matchStart = lineText.indexOf(exact);
+        if (matchStart < 0) {
+            throw new IOException("File line does not contain the reported signature");
+        }
+        int matchEnd = matchStart + exact.length();
 
-        String before = new String(content, lineStart, matchStart - lineStart, StandardCharsets.UTF_8);
-        String after = new String(content, matchEnd, lineEnd - matchEnd, StandardCharsets.UTF_8);
+        String before = lineText.substring(0, matchStart);
+        String after = lineText.substring(matchEnd);
         String excerpt = lastCodePoints(before, CONTEXT_CODE_POINTS)
                 + exact
                 + firstCodePoints(after, CONTEXT_CODE_POINTS);
-        return new FileMatchContext(lineNumber, normalizeWhitespace(excerpt).strip());
+        return new FileMatchContext(line, normalizeWhitespace(excerpt).strip());
     }
 
-    private static boolean isLineBreak(byte value) {
-        return value == '\n' || value == '\r';
+    private static int findLineBreak(byte[] content, int start) {
+        int index = start;
+        while (index < content.length && content[index] != '\n' && content[index] != '\r') {
+            index++;
+        }
+        return index;
+    }
+
+    private static int afterLineBreak(byte[] content, int index) {
+        if (content[index] == '\r' && index + 1 < content.length && content[index + 1] == '\n') {
+            return index + 2;
+        }
+        return index + 1;
     }
 
     private static String lastCodePoints(String value, int count) {
