@@ -191,13 +191,27 @@ func scanFilesConfigured(
 				}
 				foundAny = true
 				findingCounts[currentSignature.key]++
+				event := newFinding(currentSignature.key, exact, line, relativePath)
 				if mode == modeQuick {
-					if err := writeFoundFinding(output, currentSignature.key, exact, line, relativePath); err != nil {
+					commands, err := formatExcludeCommands(root, event)
+					if err != nil {
+						return scanResult{}, fmt.Errorf("format quick exclusion commands: %w", err)
+					}
+					if err := output.json(event); err != nil {
 						return scanResult{}, fmt.Errorf("write quick finding: %w", err)
+					}
+					for _, command := range commands {
+						if err := output.text("%s: %s", command.Label, command.Command); err != nil {
+							return scanResult{}, fmt.Errorf(
+								"write %s quick exclusion command: %w",
+								command.Label,
+								err,
+							)
+						}
 					}
 					return scanResult{found: true, scannedCount: scannedCount}, nil
 				}
-				if err := writeFoundFinding(output, currentSignature.key, exact, line, relativePath); err != nil {
+				if err := output.json(event); err != nil {
 					return scanResult{}, fmt.Errorf("write JSON finding: %w", err)
 				}
 				if findingCounts[currentSignature.key] == maxFindingsPerSignaturePerFile {
@@ -210,14 +224,14 @@ func scanFilesConfigured(
 	return scanResult{found: foundAny, scannedCount: scannedCount}, nil
 }
 
-func writeFoundFinding(output *lineOutput, key, exact string, line int, relativePath string) error {
-	return output.json(finding{
+func newFinding(key, exact string, line int, relativePath string) finding {
+	return finding{
 		Type:  "found",
 		Key:   key,
 		Found: exact,
 		Line:  line,
 		File:  relativePath,
-	})
+	}
 }
 
 func lineAt(content []byte, offset, cursor, line int) (int, int) {

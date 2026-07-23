@@ -50,6 +50,32 @@ Report each folder and file immediately before the scanner processes it:
 `FOLDER_PATH`. Empty lines and duplicate paths are ignored. Absolute paths and paths that escape `FOLDER_PATH` are
 rejected.
 
+## Exclude a finding
+
+Add a `found` event to the repository's `.qubership/grand-report.json`:
+
+```shell
+./cfcli exclude /path/to/repository \
+  '{"type":"found","key":"EMAIL","found":"ci.noreply@example.com","line":89,"file":"docs/notifications.md"}'
+```
+
+The JSON argument may include the CLI protocol prefix:
+
+```shell
+./cfcli exclude /path/to/repository \
+  'JSON: {"type":"found","key":"EMAIL","found":"ci.noreply@example.com","line":89,"file":"docs/notifications.md"}'
+```
+
+The command hashes the exact `found` and `file` values with SHA-256, preserves existing exclusions, removes a duplicate
+of the same pair, and sorts the report in the same order as the FX application. It creates `.qubership` and
+`grand-report.json` when needed. The repository folder must already exist.
+
+Only `found` events are supported. Invalid events and invalid existing reports produce an error without changing the
+report. This command does not refresh or decrypt the dictionary and does not require `CYBER_FERRET_PASSWORD`.
+
+Running `cfcli` without arguments or with an incomplete `exclude` command prints help for both scan and exclusion
+syntax.
+
 ## Dictionary cache
 
 The encrypted cache is `~/.qubership/sensitive-signatures.encrypted`. A missing cache or one older than eight hours
@@ -69,6 +95,19 @@ Every flushed output line starts with `TEXT: ` or `JSON: `. JSON findings have t
 ```text
 JSON: {"type":"found","key":"SIGNATURE","found":"matched value","line":43,"file":"relative/path.txt"}
 ```
+
+After a quick-mode finding, three `TEXT:` lines contain the matching `cfcli exclude` command for POSIX shells,
+PowerShell, and `cmd.exe`. Copy the command after the label for your shell to add the finding to `grand-report.json`.
+The variants are always printed in that order, regardless of the operating system that runs `cfcli`.
+
+```text
+TEXT: POSIX: cfcli exclude '/path/to/repository' 'JSON: {"type":"found",...}'
+TEXT: PowerShell: cfcli exclude 'C:\path\to\repository' 'JSON: {"type":"found",...}'
+TEXT: cmd.exe: cfcli exclude "C:\path\to\repository" "JSON: {\"type\":\"found\",...}"
+```
+
+`cmd.exe` expands text such as `%NAME%` as an environment variable before starting `cfcli`, including inside double
+quotes. Use the PowerShell command when a path or finding contains percent-delimited text that could be expanded.
 
 JSON mode also reports dictionary allowed values and applied grand-report exclusions:
 

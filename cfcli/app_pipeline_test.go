@@ -52,7 +52,9 @@ func TestRunWithDependenciesQuickReturnsTwoOnFirstFinding(t *testing.T) {
 	if exitCode != 2 || !strings.Contains(
 		stdout.String(),
 		`JSON: {"type":"found","key":"SECRET","found":"SECRET","line":1,"file":"secret.txt"}`,
-	) {
+	) || !strings.Contains(stdout.String(), "TEXT: POSIX: cfcli exclude ") ||
+		!strings.Contains(stdout.String(), "TEXT: PowerShell: cfcli exclude ") ||
+		!strings.Contains(stdout.String(), "TEXT: cmd.exe: cfcli exclude ") {
 		t.Fatalf("exit code = %d, stdout = %q, stderr = %q", exitCode, stdout.String(), stderr.String())
 	}
 	if strings.Contains(stdout.String(), "TEXT: "+root) {
@@ -77,6 +79,7 @@ func TestRunWithDependenciesJSONCompletesAndReturnsTwo(t *testing.T) {
 	exitCode := runWithDependencies(context.Background(), []string{root}, &stdout, &stderr, dependencies)
 
 	if exitCode != 2 || !strings.Contains(stdout.String(), `JSON: {"type":"found","key":"SECRET"`) ||
+		strings.Contains(stdout.String(), "cfcli exclude ") ||
 		!strings.HasSuffix(
 			stdout.String(),
 			"TEXT: Total files scanned 1\nTEXT: Scanning is finished in 1.234 seconds.\n",

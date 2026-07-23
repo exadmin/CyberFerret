@@ -19,6 +19,12 @@ type options struct {
 	listPath *string
 }
 
+type usageError struct{}
+
+func (e *usageError) Error() string {
+	return "invalid argument count"
+}
+
 func parseOptions(args []string) (options, error) {
 	parsed := options{mode: modeJSON}
 
@@ -28,7 +34,7 @@ parseLeadingOptions:
 		case strings.HasPrefix(args[0], "--mode="):
 			parsed.mode = scanMode(strings.TrimPrefix(args[0], "--mode="))
 			if parsed.mode != modeQuick && parsed.mode != modeJSON {
-				return options{}, fmt.Errorf("invalid mode %q; %s", parsed.mode, usage)
+				return options{}, fmt.Errorf("invalid mode %q", parsed.mode)
 			}
 		case strings.HasPrefix(args[0], "--verbose="):
 			value := strings.TrimPrefix(args[0], "--verbose=")
@@ -38,7 +44,7 @@ parseLeadingOptions:
 			case "false":
 				parsed.verbose = false
 			default:
-				return options{}, fmt.Errorf("invalid verbose value %q; %s", value, usage)
+				return options{}, fmt.Errorf("invalid verbose value %q", value)
 			}
 		default:
 			break parseLeadingOptions
@@ -47,11 +53,11 @@ parseLeadingOptions:
 	}
 
 	if len(args) < 1 || len(args) > 2 {
-		return options{}, fmt.Errorf("%s", usage)
+		return options{}, &usageError{}
 	}
 	for _, arg := range args {
 		if strings.HasPrefix(arg, "--mode=") || strings.HasPrefix(arg, "--verbose=") {
-			return options{}, fmt.Errorf("options must precede positional arguments; %s", usage)
+			return options{}, fmt.Errorf("options must precede positional arguments")
 		}
 	}
 	parsed.root = args[0]

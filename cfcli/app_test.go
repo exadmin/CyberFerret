@@ -25,9 +25,38 @@ func TestRunRejectsInvalidArgumentCounts(t *testing.T) {
 		}
 		if !strings.Contains(
 			stderr.String(),
-			"TEXT: usage: cfcli [--mode=quick|--mode=json] [--verbose=true|--verbose=false] FOLDER_PATH [PATH_TO_LIST_OF_FILES]",
+			"TEXT: Usage:\n",
 		) {
 			t.Fatalf("run(%q) stderr = %q, want usage", args, stderr.String())
+		}
+	}
+}
+
+func TestRunPrintsExpandedHelpForInsufficientArguments(t *testing.T) {
+	tests := [][]string{
+		nil,
+		{"exclude"},
+		{"exclude", "root"},
+		{"exclude", "root", `{}`, "extra"},
+	}
+	for _, args := range tests {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		exitCode := runWithDependencies(context.Background(), args, &stdout, &stderr, appDependencies{})
+
+		if exitCode != 1 || stdout.Len() != 0 {
+			t.Fatalf("run(%q) exit code = %d, stdout = %q", args, exitCode, stdout.String())
+		}
+		for _, expected := range []string{
+			"TEXT: Usage:\n",
+			"TEXT:   cfcli exclude FOLDER_PATH JSON_OBJECT\n",
+			"TEXT: The exclude command adds a found event",
+			"TEXT: JSON_OBJECT may start with \"JSON:\"",
+		} {
+			if !strings.Contains(stderr.String(), expected) {
+				t.Fatalf("run(%q) stderr = %q, want %q", args, stderr.String(), expected)
+			}
 		}
 	}
 }

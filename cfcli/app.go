@@ -11,8 +11,6 @@ import (
 	"time"
 )
 
-const usage = "usage: cfcli [--mode=quick|--mode=json] [--verbose=true|--verbose=false] FOLDER_PATH [PATH_TO_LIST_OF_FILES]"
-
 type appDependencies struct {
 	refresher cacheRefresher
 	getenv    func(string) string
@@ -39,11 +37,19 @@ func runWithDependencies(
 	stdout, stderr io.Writer,
 	dependencies appDependencies,
 ) int {
+	if isExcludeCommand(args) {
+		return runExcludeCommand(args, stdout, stderr)
+	}
+
 	output := newLineOutput(stdout)
 	errorOutput := newLineOutput(stderr)
 	parsed, err := parseOptions(args)
 	if err != nil {
-		writeFatal(errorOutput, "%v", err)
+		var argumentCountError *usageError
+		if !errors.As(err, &argumentCountError) {
+			writeFatal(errorOutput, "%v", err)
+		}
+		_ = writeHelp(errorOutput)
 		return 1
 	}
 
@@ -138,6 +144,23 @@ func runWithDependencies(
 		return 2
 	}
 	return 0
+}
+
+func writeHelp(output *lineOutput) error {
+	lines := []string{
+		"Usage:",
+		"  cfcli [--mode=quick|--mode=json] [--verbose=true|--verbose=false] FOLDER_PATH [PATH_TO_LIST_OF_FILES]",
+		"  cfcli exclude FOLDER_PATH JSON_OBJECT",
+		"",
+		"The exclude command adds a found event to FOLDER_PATH/.qubership/grand-report.json.",
+		"JSON_OBJECT may start with \"JSON:\" and must have type \"found\", found, and file fields.",
+	}
+	for _, line := range lines {
+		if err := output.text("%s", line); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func writeFatal(output *lineOutput, format string, args ...any) {

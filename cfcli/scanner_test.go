@@ -31,7 +31,14 @@ func TestScanFilesQuickStopsAtFirstNonAllowedFinding(t *testing.T) {
 	if !result.found || result.scannedCount != 1 {
 		t.Fatalf("scanFiles() result = %#v, want found with one scanned file", result)
 	}
-	if want := `JSON: {"type":"found","key":"SECRET","found":"SECRET","line":1,"file":"a.txt"}` + "\n"; stdout.String() != want {
+	event := finding{Type: "found", Key: "SECRET", Found: "SECRET", Line: 1, File: "a.txt"}
+	commandLines, err := formatQuickCommandLines(root, event)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `JSON: {"type":"found","key":"SECRET","found":"SECRET","line":1,"file":"a.txt"}` + "\n" +
+		commandLines
+	if stdout.String() != want {
 		t.Fatalf("stdout = %q, want %q", stdout.String(), want)
 	}
 	if stderr.Len() != 0 || strings.Contains(stdout.String(), first) || strings.Contains(stdout.String(), "SKIPPED") {
@@ -399,10 +406,32 @@ func TestScanFilesWithExclusionsQuickOutputIsSilent(t *testing.T) {
 	if err != nil || !result.found || result.scannedCount != 2 {
 		t.Fatalf("scan result = %#v, error = %v; want finding and two scanned files", result, err)
 	}
-	if stdout.String() !=
-		`JSON: {"type":"found","key":"SECRET","found":"SECRET","line":1,"file":"reported.txt"}`+"\n" {
+	event := finding{Type: "found", Key: "SECRET", Found: "SECRET", Line: 1, File: "reported.txt"}
+	commandLines, err := formatQuickCommandLines(root, event)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `JSON: {"type":"found","key":"SECRET","found":"SECRET","line":1,"file":"reported.txt"}` + "\n" +
+		commandLines
+	if stdout.String() != want {
 		t.Fatalf("stdout = %q", stdout.String())
 	}
+}
+
+func formatQuickCommandLines(root string, event finding) (string, error) {
+	commands, err := formatExcludeCommands(root, event)
+	if err != nil {
+		return "", err
+	}
+	var formatted strings.Builder
+	for _, command := range commands {
+		formatted.WriteString("TEXT: ")
+		formatted.WriteString(command.Label)
+		formatted.WriteString(": ")
+		formatted.WriteString(command.Command)
+		formatted.WriteByte('\n')
+	}
+	return formatted.String(), nil
 }
 
 func TestScanFilesWithExclusionsReportsAllowedExcludedMatch(t *testing.T) {
