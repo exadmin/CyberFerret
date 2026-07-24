@@ -45,3 +45,6 @@ build/
 
 # APM dependencies
 apm_modules/
+
+# CF-CLI
+cfcli/tmp/*

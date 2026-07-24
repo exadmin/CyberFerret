@@ -7,6 +7,7 @@ func TestParseOptions(t *testing.T) {
 		name        string
 		args        []string
 		wantMode    scanMode
+		wantDetails bool
 		wantVerbose bool
 		wantRoot    string
 		wantList    string
@@ -20,11 +21,14 @@ func TestParseOptions(t *testing.T) {
 		{name: "verbose false", args: []string{"--verbose=false", "root"}, wantMode: modeJSON, wantRoot: "root"},
 		{name: "verbose before mode", args: []string{"--verbose=true", "--mode=quick", "root"}, wantMode: modeQuick, wantVerbose: true, wantRoot: "root"},
 		{name: "mode before verbose", args: []string{"--mode=quick", "--verbose=true", "root"}, wantMode: modeQuick, wantVerbose: true, wantRoot: "root"},
+		{name: "print details", args: []string{"--mode=quick", "--print=details", "root"}, wantMode: modeQuick, wantDetails: true, wantRoot: "root"},
 		{name: "invalid mode", args: []string{"--mode=bad", "root"}, wantErr: true},
+		{name: "invalid print", args: []string{"--print=full", "root"}, wantErr: true},
 		{name: "invalid verbose", args: []string{"--verbose=yes", "root"}, wantErr: true},
 		{name: "missing root", args: []string{"--mode=quick"}, wantErr: true},
 		{name: "too many positional arguments", args: []string{"root", "list", "extra"}, wantErr: true},
 		{name: "mode after root", args: []string{"root", "--mode=quick"}, wantErr: true},
+		{name: "print after root", args: []string{"root", "--print=details"}, wantErr: true},
 		{name: "verbose after root", args: []string{"root", "--verbose=true"}, wantErr: true},
 	}
 
@@ -40,11 +44,13 @@ func TestParseOptions(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got.mode != test.wantMode || got.verbose != test.wantVerbose || got.root != test.wantRoot {
+			if got.mode != test.wantMode || got.printDetails != test.wantDetails ||
+				got.verbose != test.wantVerbose || got.root != test.wantRoot {
 				t.Fatalf(
-					"parseOptions() = %#v, want mode %q, verbose %t, and root %q",
+					"parseOptions() = %#v, want mode %q, print details %t, verbose %t, and root %q",
 					got,
 					test.wantMode,
+					test.wantDetails,
 					test.wantVerbose,
 					test.wantRoot,
 				)
