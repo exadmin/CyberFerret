@@ -250,8 +250,8 @@ func TestRunExcludeUpdatesReportWithoutScanDependencies(t *testing.T) {
 	)
 
 	reportPath := filepath.Join(root, ".qubership", "grand-report.json")
-	if exitCode != 0 {
-		t.Fatalf("exit code = %d, want 0; stderr = %q", exitCode, stderr.String())
+	if exitCode != exitClean {
+		t.Fatalf("exit code = %d, want %d; stderr = %q", exitCode, exitClean, stderr.String())
 	}
 	if stdout.String() != fmt.Sprintf("TEXT: Exclusions file was updated: %s\n", reportPath) {
 		t.Fatalf("stdout = %q", stdout.String())
@@ -275,7 +275,7 @@ func TestRunExcludeRejectsUnsupportedType(t *testing.T) {
 	)
 
 	want := "TEXT: Cannot exclude event type \"allowed\": only \"found\" is supported. No files were changed.\n"
-	if exitCode != 1 || stdout.Len() != 0 || stderr.String() != want {
+	if exitCode != exitFailure || stdout.Len() != 0 || stderr.String() != want {
 		t.Fatalf("exit code = %d, stdout = %q, stderr = %q; want stderr %q", exitCode, stdout.String(), stderr.String(), want)
 	}
 	if _, err := os.Stat(filepath.Join(root, ".qubership", "grand-report.json")); !os.IsNotExist(err) {
@@ -310,7 +310,7 @@ func TestRunExcludeRejectsInvalidInvocation(t *testing.T) {
 				appDependencies{},
 			)
 
-			if exitCode != 1 || stdout.Len() != 0 || !strings.HasPrefix(stderr.String(), "TEXT:") {
+			if exitCode != exitFailure || stdout.Len() != 0 || !strings.HasPrefix(stderr.String(), "TEXT:") {
 				t.Fatalf("exit code = %d, stdout = %q, stderr = %q", exitCode, stdout.String(), stderr.String())
 			}
 			if _, err := os.Stat(filepath.Join(root, ".qubership", "grand-report.json")); !os.IsNotExist(err) {
@@ -335,7 +335,7 @@ func TestRunExcludeLeavesMalformedReportUnchanged(t *testing.T) {
 		appDependencies{},
 	)
 
-	if exitCode != 1 || stdout.Len() != 0 || !strings.Contains(stderr.String(), "No files were changed.") {
+	if exitCode != exitFailure || stdout.Len() != 0 || !strings.Contains(stderr.String(), "No files were changed.") {
 		t.Fatalf("exit code = %d, stdout = %q, stderr = %q", exitCode, stdout.String(), stderr.String())
 	}
 	content, err := os.ReadFile(reportPath)
@@ -389,7 +389,7 @@ func TestRunScansWithListFileNamedExclude(t *testing.T) {
 		testAppDependencies(t, "VERSION=1.0\n", "test-password"),
 	)
 
-	if exitCode != 0 || !strings.Contains(stdout.String(), "TEXT: Total files scanned 1\n") {
+	if exitCode != exitClean || !strings.Contains(stdout.String(), "TEXT: Total files scanned 1\n") {
 		t.Fatalf("exit code = %d, stdout = %q, stderr = %q", exitCode, stdout.String(), stderr.String())
 	}
 }
@@ -407,7 +407,7 @@ func TestRunRejectsRemovedFolderFirstExcludeSyntax(t *testing.T) {
 		appDependencies{},
 	)
 
-	if exitCode != 1 || stdout.Len() != 0 || !strings.Contains(stderr.String(), "TEXT: Usage:") {
+	if exitCode != exitFailure || stdout.Len() != 0 || !strings.Contains(stderr.String(), "TEXT: Usage:") {
 		t.Fatalf("exit code = %d, stdout = %q, stderr = %q", exitCode, stdout.String(), stderr.String())
 	}
 	if _, err := os.Stat(filepath.Join(root, ".qubership", "grand-report.json")); !os.IsNotExist(err) {

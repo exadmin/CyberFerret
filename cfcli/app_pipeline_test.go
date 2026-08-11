@@ -22,7 +22,7 @@ func TestRunWithDependenciesRequiresPassword(t *testing.T) {
 
 	exitCode := runWithDependencies(context.Background(), []string{root}, &stdout, &stderr, dependencies)
 
-	if exitCode != 1 || !strings.Contains(stderr.String(), "TEXT: Dictionary password") {
+	if exitCode != exitFailure || !strings.Contains(stderr.String(), "TEXT: Dictionary password") {
 		t.Fatalf("exit code = %d, stderr = %q", exitCode, stderr.String())
 	}
 }
@@ -38,7 +38,7 @@ func TestRunWithDependenciesMapsInvalidRegexpToExitCodeThree(t *testing.T) {
 
 	exitCode := runWithDependencies(context.Background(), []string{root}, &stdout, &stderr, dependencies)
 
-	if exitCode != 3 || !strings.Contains(stderr.String(), "TEXT: Cannot compile dictionary regexp") {
+	if exitCode != exitBadExpression || !strings.Contains(stderr.String(), "TEXT: Cannot compile dictionary regexp") {
 		t.Fatalf("exit code = %d, stderr = %q", exitCode, stderr.String())
 	}
 }
@@ -55,7 +55,7 @@ func TestRunWithDependenciesQuickReturnsTwoOnFirstFinding(t *testing.T) {
 
 	exitCode := runWithDependencies(context.Background(), []string{"--mode=quick", root}, &stdout, &stderr, dependencies)
 
-	if exitCode != 2 || !strings.Contains(
+	if exitCode != exitFindings || !strings.Contains(
 		stdout.String(),
 		`JSON: {"type":"found","key":"SECRET","found":"SECRET","line":1,"file":"secret.txt"}`,
 	) || !strings.Contains(
@@ -93,7 +93,7 @@ func TestRunWithDependenciesQuickPrintDetailsPrintsExclusionCommands(t *testing.
 		dependencies,
 	)
 
-	if exitCode != 2 ||
+	if exitCode != exitFindings ||
 		!strings.Contains(stdout.String(), "TEXT: POSIX: cfcli exclude ") ||
 		!strings.Contains(stdout.String(), "TEXT: PowerShell: cfcli exclude ") ||
 		!strings.Contains(stdout.String(), "TEXT: cmd.exe: cfcli exclude ") ||
@@ -114,7 +114,7 @@ func TestRunWithDependenciesJSONCompletesAndReturnsTwo(t *testing.T) {
 
 	exitCode := runWithDependencies(context.Background(), []string{root}, &stdout, &stderr, dependencies)
 
-	if exitCode != 2 || !strings.Contains(stdout.String(), `JSON: {"type":"found","key":"SECRET"`) ||
+	if exitCode != exitFindings || !strings.Contains(stdout.String(), `JSON: {"type":"found","key":"SECRET"`) ||
 		strings.Contains(stdout.String(), "cfcli exclude ") ||
 		!strings.HasSuffix(
 			stdout.String(),
@@ -142,7 +142,7 @@ func TestRunWithDependenciesPrintDetailsWarnsOutsideQuickMode(t *testing.T) {
 		dependencies,
 	)
 
-	if exitCode != 2 ||
+	if exitCode != exitFindings ||
 		!strings.Contains(
 			stdout.String(),
 			"TEXT: Warning: --print=details applies only to --mode=quick and will be ignored.\n",
@@ -189,7 +189,7 @@ func TestRunWithDependenciesAcceptsRelativeFolderPath(t *testing.T) {
 		dependencies,
 	)
 
-	if exitCode != 0 || !strings.HasSuffix(
+	if exitCode != exitClean || !strings.HasSuffix(
 		stdout.String(),
 		"TEXT: Total files scanned 1\nTEXT: Scanning is finished in 1.234 seconds.\n",
 	) {
@@ -211,7 +211,7 @@ func TestRunWithDependenciesAppliesGrandReportExclusions(t *testing.T) {
 
 	exitCode := runWithDependencies(context.Background(), []string{root}, &stdout, &stderr, dependencies)
 
-	if exitCode != 0 || !strings.Contains(
+	if exitCode != exitClean || !strings.Contains(
 		stdout.String(),
 		`JSON: {"type":"excluded","key":"SECRET","found":"SECRET","line":1,"file":"secret.txt"}`,
 	) {
@@ -237,7 +237,7 @@ func TestRunWithDependenciesEnablesVerboseListOutput(t *testing.T) {
 		dependencies,
 	)
 
-	if exitCode != 0 || !strings.Contains(stdout.String(), `JSON: {"type":"list","file":"safe.txt"}`) {
+	if exitCode != exitClean || !strings.Contains(stdout.String(), `JSON: {"type":"list","file":"safe.txt"}`) {
 		t.Fatalf("exit code = %d, stdout = %q, stderr = %q", exitCode, stdout.String(), stderr.String())
 	}
 }

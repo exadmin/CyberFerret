@@ -155,7 +155,7 @@ the stop.
 
 Exit codes are:
 
-- `0`: The scan completes without findings.
+- `0`: The scan completes without findings, or the `exclude` command succeeds.
 - `1`: Arguments, cache access, password lookup, decryption, or another runtime operation fails.
 - `2`: At least one non-allowed match is found.
 - `3`: A dictionary expression is incompatible with Go RE2.
