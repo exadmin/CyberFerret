@@ -11,12 +11,18 @@ import (
 	"time"
 )
 
+// appDependencies holds the process-level services runWithDependencies would otherwise reach for
+// directly, so a test can supply a temporary home, a fixed clock, and a known password. A nil now
+// falls back to [time.Now]. A nil getenv leaves the dictionary password empty, which decryption
+// then rejects.
 type appDependencies struct {
 	refresher cacheRefresher
 	getenv    func(string) string
 	now       func() time.Time
 }
 
+// run performs one cfcli invocation with the live dictionary endpoint, the process environment,
+// and the wall clock. It returns the exit code documented on [runWithDependencies].
 func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	return runWithDependencies(ctx, args, stdout, stderr, appDependencies{
 		refresher: cacheRefresher{
@@ -31,6 +37,18 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	})
 }
 
+// runWithDependencies performs one cfcli invocation against the given dependencies and returns the
+// process exit code:
+//
+//   - 0: the scan found nothing, or the exclude subcommand succeeded
+//   - 1: any other failure — bad arguments, the dictionary, decryption, scanning, an exclusion
+//     update, or a write
+//   - 2: the scan reported at least one finding that no allow rule or exclusion covered
+//   - 3: a dictionary expression does not compile under Go's RE2 engine
+//
+// Scan output goes to stdout. The usage help, every fatal message, and the dictionary warnings go
+// to stderr; the --print=details warning is the one warning written to stdout. An "exclude" first
+// argument is dispatched to [runExcludeCommand] before any option is parsed.
 func runWithDependencies(
 	ctx context.Context,
 	args []string,
@@ -173,6 +191,9 @@ func writeHelp(output *lineOutput) error {
 	return nil
 }
 
+// writeFatal writes a message for a failure the caller exits on. It discards the write error:
+// every caller already returns a nonzero exit code, and the only stream left to report a failed
+// write on is the one that just failed.
 func writeFatal(output *lineOutput, format string, args ...any) {
 	_ = output.text(format, args...)
 }
@@ -185,6 +206,9 @@ func dictionaryStatusMessage(state cacheState) string {
 	}[state]
 }
 
+// dictionaryDisplayPath renders path for a human reader: a path inside home becomes "~/" followed
+// by the remainder, and anything else is cleaned and left as it is. The result always uses "/"
+// separators, including on Windows.
 func dictionaryDisplayPath(path, home string) string {
 	relative, err := filepath.Rel(home, path)
 	outsideHome := relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator))

@@ -9,6 +9,9 @@ import (
 	"time"
 )
 
+// A dictionary expression Go RE2 cannot compile ends the run with exit code 3,
+// and the message on stderr carries the absolute path of the cache file that
+// holds the expression.
 func TestRegexpCompileErrorIncludesDictionaryPath(t *testing.T) {
 	root := initRepository(t)
 	home := t.TempDir()

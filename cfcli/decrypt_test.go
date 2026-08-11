@@ -6,6 +6,10 @@ import (
 	"testing"
 )
 
+// The fixed ciphertext decrypts under the same parameters the Java class PasswordBasedEncryption
+// decrypts published dictionaries with. A failure here means a crypto parameter drifted from that
+// class, so published dictionaries no longer decrypt; compare the IV, salt, iteration count, and key
+// length against the Java constants rather than adjusting the vector.
 func TestDecryptDictionaryMatchesJavaVector(t *testing.T) {
 	const ciphertext = "nzn8A/OYyg6yMGSNTqYRzsRQ4G/x0BkR2x9W7Wqq8Kw="
 

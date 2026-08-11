@@ -10,19 +10,36 @@ import (
 	"unicode/utf16"
 )
 
+// signature is one dictionary key together with the pattern a scan matches file contents against.
 type signature struct {
-	key                string
-	expression         *regexp.Regexp
+	// key is the dictionary key, reported as the key of every finding this signature produces.
+	key string
+	// expression carries the (?is) flags, so it matches case-insensitively and its dot spans
+	// newlines.
+	expression *regexp.Regexp
+	// excludedExtensions holds lowercase extensions without the leading dot. A file whose
+	// extension is present is never matched against expression.
 	excludedExtensions map[string]struct{}
 }
 
+// dictionary is the compiled form of the decrypted dictionary file, as built by [loadDictionary].
 type dictionary struct {
-	version         string
-	signatures      []signature
-	allowed         map[string]struct{}
+	// version is the value of the VERSION key, empty when the file carries none.
+	version string
+	// signatures keep the order of the dictionary file, which is the order a scan applies them
+	// in.
+	signatures []signature
+	// allowed holds exact values that suppress a finding, lowercased, so a lookup has to
+	// lowercase too.
+	allowed map[string]struct{}
+	// allowedPatterns holds the allowed values that carried a wildcard, compiled by
+	// [compileAllowedPattern].
 	allowedPatterns []*regexp.Regexp
 }
 
+// regexpCompileError reports a dictionary expression that Go's RE2 engine rejects, such as one
+// using a lookbehind. It is a distinct type so that a caller can tell a broken dictionary from
+// other load failures with errors.As; cfcli exits with code 3 for it.
 type regexpCompileError struct {
 	key        string
 	expression string
@@ -37,6 +54,9 @@ func (e *regexpCompileError) Unwrap() error {
 	return e.cause
 }
 
+// dictionaryEntry is one key/value line of the dictionary file, decoded but not yet interpreted.
+// live is false once a later line repeats the key, so only a key's last occurrence reaches the
+// [dictionary].
 type dictionaryEntry struct {
 	key   string
 	value string
@@ -48,6 +68,17 @@ type signatureSpec struct {
 	expression string
 }
 
+// loadDictionary compiles the decrypted dictionary text into a [dictionary]. A parenthesized suffix
+// on the key decides what its value means:
+//
+//   - (regexp) holds a regular expression to match file contents against;
+//   - (allowed) holds a value that suppresses a finding, exact or, with a '*', a wildcard;
+//   - (exclude-ext) holds a comma-separated list of extensions the key before the suffix skips.
+//
+// A key without a suffix is a literal phrase, VERSION sets the version, and any other key holding a
+// parenthesis is an error. Duplicate keys are reported through output and the last value wins.
+//
+// loadDictionary returns a *regexpCompileError when a signature does not compile.
 func loadDictionary(plaintext []byte, output *lineOutput) (dictionary, error) {
 	entries, err := parseDictionaryEntries(plaintext, output)
 	if err != nil {
@@ -114,6 +145,9 @@ func loadDictionary(plaintext []byte, output *lineOutput) (dictionary, error) {
 	return result, nil
 }
 
+// compileAllowedPattern compiles an allowed value that carries a wildcard. Each '*' matches one or
+// more non-whitespace characters, every other character is literal, and the pattern has to match a
+// detected value whole, ignoring case.
 func compileAllowedPattern(value string) (*regexp.Regexp, error) {
 	parts := strings.Split(value, "*")
 	for index := range parts {
@@ -122,6 +156,8 @@ func compileAllowedPattern(value string) (*regexp.Regexp, error) {
 	return regexp.Compile(`(?i)^` + strings.Join(parts, `\S+`) + `\z`)
 }
 
+// isAllowed reports whether exact, the text a signature matched, is one the dictionary declares
+// harmless: an exact allowed value ignoring case, or a match of one of the wildcard patterns.
 func (d dictionary) isAllowed(exact string) bool {
 	if _, allowed := d.allowed[strings.ToLower(exact)]; allowed {
 		return true
@@ -134,6 +170,12 @@ func (d dictionary) isAllowed(exact string) bool {
 	return false
 }
 
+// parseDictionaryEntries reads plaintext as key=value lines in the Java properties escaping
+// convention: it skips blank lines and lines whose first non-blank character is '#', splits every
+// other line at its first '=', and unescapes both halves with [unescapeProperty]. A line without
+// '=' and a line with an empty key are both errors. The key is trimmed and the value is not, so a
+// value keeps the spaces around it. The entries keep file order, and a repeated key clears live on
+// the earlier entry and writes a warning through output.
 func parseDictionaryEntries(plaintext []byte, output *lineOutput) ([]dictionaryEntry, error) {
 	entries := make([]dictionaryEntry, 0)
 	positions := make(map[string]int)
@@ -177,6 +219,9 @@ func parseDictionaryEntries(plaintext []byte, output *lineOutput) ([]dictionaryE
 	return entries, nil
 }
 
+// unescapeProperty decodes the escapes a Java properties file may carry: \t, \n, \r, \f, and \uXXXX
+// including a surrogate pair. A backslash before any other character yields that character, and a
+// trailing backslash stays a backslash.
 func unescapeProperty(value string) (string, error) {
 	var result strings.Builder
 	for index := 0; index < len(value); index++ {
@@ -220,6 +265,8 @@ func unescapeProperty(value string) (string, error) {
 	return result.String(), nil
 }
 
+// parseUnicodePropertyEscape decodes the four hex digits after the 'u' at markerIndex. It returns
+// the rune, which may be an unpaired surrogate, and the index of the last digit it consumed.
 func parseUnicodePropertyEscape(value string, markerIndex int) (rune, int, error) {
 	if markerIndex+4 >= len(value) {
 		return 0, markerIndex, fmt.Errorf("incomplete Unicode escape")
@@ -232,6 +279,9 @@ func parseUnicodePropertyEscape(value string, markerIndex int) (rune, int, error
 	return rune(parsed), markerIndex + 4, nil
 }
 
+// literalExpression turns a literal dictionary value into a regular expression: punctuation is
+// quoted so it keeps no regexp meaning, each single space becomes \s+ so any whitespace matches,
+// and word boundaries at both ends keep the phrase from matching inside a longer word.
 func literalExpression(value string) string {
 	parts := strings.Split(value, " ")
 	for index := range parts {

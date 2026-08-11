@@ -19,6 +19,8 @@ func TestLineOutputWritesAndFlushesText(t *testing.T) {
 	}
 }
 
+// An encoded value occupies a single flushed line, so a reader that splits the
+// output on newlines gets whole JSON documents.
 func TestLineOutputWritesAndFlushesJSON(t *testing.T) {
 	var destination bytes.Buffer
 	output := newLineOutput(&destination)

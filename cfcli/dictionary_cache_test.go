@@ -13,6 +13,8 @@ import (
 	"time"
 )
 
+// The cache file keeps the name the README documents and cfcli prints. Renaming it is a
+// user-visible change rather than a refactor, so update the documentation and this test together.
 func TestDictionaryCacheFilename(t *testing.T) {
 	if cacheFileName != "sensitive-signatures.encrypted" {
 		t.Fatalf("cacheFileName = %q, want sensitive-signatures.encrypted", cacheFileName)
@@ -131,6 +133,10 @@ func TestCacheRefresherFailsWithoutCache(t *testing.T) {
 	}
 }
 
+// A download that outlives the refresh timeout never touches the cache afterwards, and leaves no
+// temporary file behind. The server here blocks until the request context is cancelled, so a
+// failure means the download goroutine still wrote to the cache directory once refresh had already
+// returned the stale file.
 func TestCacheRefresherTimeoutDoesNotReplaceStaleCacheLater(t *testing.T) {
 	home := t.TempDir()
 	cache := writeCacheFile(t, home, "stale")

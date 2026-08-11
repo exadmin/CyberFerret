@@ -28,6 +28,9 @@ func TestEnumerateGitFilesIncludesTrackedAndNonIgnoredUntracked(t *testing.T) {
 	}
 }
 
+// An untracked file stays out of the result when any exclude source git
+// consults as standard hides it: a .gitignore, .git/info/exclude, or the file
+// core.excludesFile names.
 func TestEnumerateGitFilesHonorsStandardExclusions(t *testing.T) {
 	root := initRepository(t)
 	writeTestFile(t, root, ".gitignore", "repository-ignored.txt\n")
@@ -70,6 +73,8 @@ func TestEnumerateGitFilesHonorsNegatedRules(t *testing.T) {
 	}
 }
 
+// A ~/.gitignore_global excludes untracked files even when no git configuration
+// references it: [enumerateGitFiles] passes it to git as an extra exclude file.
 func TestEnumerateGitFilesHonorsDetectedHomeGitignoreGlobal(t *testing.T) {
 	root := initRepository(t)
 	home := t.TempDir()
@@ -123,6 +128,8 @@ func runTestGit(t *testing.T, root string, args ...string) {
 	}
 }
 
+// writeTestFile writes content to relativePath under root, creating any missing
+// parent directories, and returns the path it wrote.
 func writeTestFile(t *testing.T, root, relativePath, content string) string {
 	t.Helper()
 	path := filepath.Join(root, filepath.FromSlash(relativePath))

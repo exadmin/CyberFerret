@@ -78,6 +78,8 @@ func TestScanFilesJSONEmitsCompleteFindingsAndTotal(t *testing.T) {
 	}
 }
 
+// Line numbers count from 1, and LF, CRLF, and a lone CR each end exactly one
+// line. Two matches on one line both report that line.
 func TestScanFilesReportsOneBasedMatchLines(t *testing.T) {
 	root := t.TempDir()
 	file := writeTestFile(t, root, "lines.txt", "SECRET\né SECRET\r\nx SECRET\ry SECRET SECRET")
@@ -114,6 +116,9 @@ func TestScanFilesReportsOneBasedMatchLines(t *testing.T) {
 	}
 }
 
+// A signature's excluded extensions are compared against the lowercased file
+// extension, so a .ZIP file skips a signature that lists zip. The file is still
+// read and counted as scanned.
 func TestScanFilesHonorsExcludedExtensionsCaseInsensitively(t *testing.T) {
 	root := t.TempDir()
 	file := writeTestFile(t, root, "archive.ZIP", "SECRET")
@@ -375,6 +380,9 @@ func TestScanFilesWithExclusionsSuppressesOnlyExactFileMatch(t *testing.T) {
 	}
 }
 
+// Quick mode reports nothing about the exclusions it applies: neither a skipped
+// path nor a suppressed match produces an event. It walks past both and stops at
+// the first match the grand report leaves alone.
 func TestScanFilesWithExclusionsQuickOutputIsSilent(t *testing.T) {
 	root := t.TempDir()
 	excludedFile := writeTestFile(t, root, "excluded.txt", "SECRET")
@@ -410,6 +418,8 @@ func TestScanFilesWithExclusionsQuickOutputIsSilent(t *testing.T) {
 	}
 }
 
+// A match that the dictionary allows and the grand report also excludes is
+// reported as excluded, not as allowed, and does not count as a finding.
 func TestScanFilesWithExclusionsReportsAllowedExcludedMatch(t *testing.T) {
 	root := t.TempDir()
 	file := writeTestFile(t, root, "allowed.txt", "SECRET")

@@ -13,8 +13,15 @@ import (
 	"unicode/utf8"
 )
 
+// dictionaryIV is the fixed AES-CBC initialization vector the published dictionary is encrypted
+// with. It, the salt and iteration count in [decryptDictionary], and the padding scheme all mirror
+// the constants the Java class PasswordBasedEncryption decrypts the same dictionaries with; a change
+// on either side makes every already published dictionary undecryptable.
 var dictionaryIV = []byte{0, 2, 3, 4, 5, 4, 3, 2, 1, 0, 1, 2, 3, 4, 5, 0}
 
+// decryptDictionary decodes ciphertext as Base64 text, ignoring surrounding whitespace, and
+// decrypts it under a key derived from password. The plaintext has to be valid UTF-8; anything else
+// is an error, as is an empty password. The returned slice is a fresh copy.
 func decryptDictionary(ciphertext []byte, password string) ([]byte, error) {
 	if password == "" {
 		return nil, fmt.Errorf("Dictionary password environment variable CYBER_FERRET_PASSWORD is not set")
@@ -48,6 +55,7 @@ func deriveKey(password, salt []byte, iterations, keyLength int) []byte {
 	return pbkdf2(password, salt, iterations, keyLength, sha256.New)
 }
 
+// pbkdf2 derives keyLength bytes, not bits, from password and salt using newHash as the HMAC hash.
 func pbkdf2(password, salt []byte, iterations, keyLength int, newHash func() hash.Hash) []byte {
 	hashLength := newHash().Size()
 	blocks := (keyLength + hashLength - 1) / hashLength
@@ -74,6 +82,9 @@ func pbkdf2(password, salt []byte, iterations, keyLength int, newHash func() has
 	return derived[:keyLength]
 }
 
+// removePKCS7Padding strips the trailing padding and returns a prefix of plaintext that shares its
+// backing array. It reports an error when the final byte is not a padding length within blockSize,
+// or when the bytes it covers do not all repeat it.
 func removePKCS7Padding(plaintext []byte, blockSize int) ([]byte, error) {
 	if len(plaintext) == 0 {
 		return nil, fmt.Errorf("invalid PKCS padding: plaintext is empty")

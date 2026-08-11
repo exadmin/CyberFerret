@@ -10,6 +10,13 @@ import (
 	"strings"
 )
 
+// enumerateGitFiles returns every file git accounts for under root: all tracked
+// files, plus the untracked files that survive git's standard exclude rules. A
+// tracked file stays in the set even when an ignore rule matches it.
+//
+// Keys are paths relative to root, using the separator of the running OS. A
+// regular ~/.gitignore_global also excludes untracked files, whether or not
+// git's own configuration references it.
 func enumerateGitFiles(ctx context.Context, root string) (map[string]struct{}, error) {
 	selected := make(map[string]struct{})
 	untrackedArgs := []string{"ls-files", "--others", "--exclude-standard", "-z"}

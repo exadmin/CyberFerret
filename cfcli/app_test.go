@@ -9,6 +9,9 @@ import (
 	"testing"
 )
 
+// A scan invocation with no positional argument, or with more than two, exits 1 with the usage
+// text on stderr and nothing on stdout. The zero-value dependencies are part of the rule: the
+// argument count has to be rejected before anything calls the nil homeDir behind the refresher.
 func TestRunRejectsInvalidArgumentCounts(t *testing.T) {
 	tests := [][]string{{}, {"root", "list", "extra"}}
 	for _, args := range tests {
@@ -32,6 +35,9 @@ func TestRunRejectsInvalidArgumentCounts(t *testing.T) {
 	}
 }
 
+// A wrong argument count for either command form prints the whole usage block, scan form and
+// exclude form together, so a user who mistyped one still sees the other. Add an entry to the
+// expected list here when writeHelp gains a line.
 func TestRunPrintsExpandedHelpForInsufficientArguments(t *testing.T) {
 	tests := [][]string{
 		nil,
@@ -62,6 +68,9 @@ func TestRunPrintsExpandedHelpForInsufficientArguments(t *testing.T) {
 	}
 }
 
+// A clean scan exits 0 and prints the dictionary status, path, and version, then the progress
+// line, the file count, and the elapsed time, with nothing on stderr. The check compares the whole
+// stdout transcript, so a line added anywhere in the run has to be added to want as well.
 func TestRunReportsTotalFilesScanned(t *testing.T) {
 	root := initRepository(t)
 	writeTestFile(t, root, "a.txt", "a")
@@ -93,6 +102,10 @@ func TestRunReportsTotalFilesScanned(t *testing.T) {
 	}
 }
 
+// Every invocation whose file set cannot be established exits 1: a missing directory, a file in
+// place of a directory, a directory outside any Git repository, and a file list that cannot be
+// read. The stdout transcript stops after the progress line, and stderr names the operation that
+// failed.
 func TestRunReportsRuntimeErrors(t *testing.T) {
 	nonGitDirectory := t.TempDir()
 	rootFile := filepath.Join(t.TempDir(), "root.txt")
@@ -167,6 +180,8 @@ func TestRunReportsUnavailableGit(t *testing.T) {
 	}
 }
 
+// Every cacheState maps to its own status line. Add a case here when a state joins the cacheState
+// constants, or the run prints a bare "TEXT: " line for it.
 func TestDictionaryStatusMessage(t *testing.T) {
 	tests := []struct {
 		state cacheState
