@@ -8,8 +8,14 @@ import (
 	"path/filepath"
 )
 
+// fullPathExclusionHash stands where a text hash would stand in grand-report.json and excludes the
+// paired path outright: the file itself, or every file beneath it when the path is a directory. It
+// is a literal marker rather than the SHA-256 of anything.
 const fullPathExclusionHash = "00000000"
 
+// exclusionSet holds the exclusions loaded from grand-report.json. The outer key is the SHA-256 hex
+// of a path normalized by [normalizeRelativePath], the inner key the SHA-256 hex of an exact match
+// or [fullPathExclusionHash]; hashing the match is what makes text exclusions case-sensitive.
 type exclusionSet struct {
 	textHashesByFileHash map[string]map[string]struct{}
 }
@@ -23,6 +29,9 @@ type grandReportExclusion struct {
 	FileHash string `json:"f-hash"`
 }
 
+// loadExclusions reads the exclusions from root/.qubership/grand-report.json. A missing file yields
+// an empty set silently; an unreadable or malformed one yields an empty set after a warning naming
+// the absolute report path, so a broken report never stops a scan.
 func loadExclusions(root string, warnings *lineOutput) exclusionSet {
 	loaded := exclusionSet{textHashesByFileHash: make(map[string]map[string]struct{})}
 	reportPath, err := filepath.Abs(filepath.Join(root, ".qubership", "grand-report.json"))
@@ -58,6 +67,9 @@ func (e exclusionSet) excludesPath(relativePath string) bool {
 	return len(e.excludedPaths(relativePath)) > 0
 }
 
+// excludedPaths returns the whole-path exclusions that cover relativePath: the path itself and each
+// of its ancestors up to the repository root, outermost first. The result is empty when no
+// exclusion covers the path.
 func (e exclusionSet) excludedPaths(relativePath string) []string {
 	candidates := []string{normalizeRelativePath(relativePath)}
 	for candidates[len(candidates)-1] != "" {
@@ -87,6 +99,8 @@ func (e exclusionSet) contains(textHash, fileHash string) bool {
 	return found
 }
 
+// normalizeRelativePath returns path in the cleaned, slash-separated form the exclusion hashes are
+// computed over. The repository root becomes the empty string.
 func normalizeRelativePath(path string) string {
 	cleaned := filepath.ToSlash(filepath.Clean(filepath.FromSlash(path)))
 	if cleaned == "." {

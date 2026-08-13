@@ -28,6 +28,9 @@ func TestSelectFilesReturnsSortedAbsoluteGitSelection(t *testing.T) {
 	}
 }
 
+// A listed path is selected only when Git also reports it, so an entry that is
+// ignored or nonexistent drops out. Blank lines, repeated entries, and CRLF line
+// endings leave the selection unchanged.
 func TestSelectFilesRestrictsResultsToListedPaths(t *testing.T) {
 	root := initRepository(t)
 	included := writeTestFile(t, root, "dir/included.txt", "included")
@@ -102,6 +105,8 @@ func TestSelectFilesRejectsInvalidRoot(t *testing.T) {
 	}
 }
 
+// A tracked symbolic link to a file is selected; one to a directory is not, and
+// neither are the files behind it.
 func TestSelectFilesHandlesSymbolicLinksWithoutTraversingDirectories(t *testing.T) {
 	root := initRepository(t)
 	targetFile := writeTestFile(t, root, "target.txt", "target")

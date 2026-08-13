@@ -10,6 +10,10 @@ import (
 	"time"
 )
 
+// Fixed parameters of the dictionary cache. cacheFileName is user-facing: the README documents the
+// cache as ~/.qubership/sensitive-signatures.encrypted and cfcli prints that path, so renaming it
+// leaves the previous cache behind unread. maxCacheSize is a byte count, and a download above it is
+// discarded rather than truncated.
 const (
 	dictionaryURL  = "https://raw.githubusercontent.com/exadmin/CyberFerretDictionary/main/dictionary-latest.encrypted"
 	cacheFileName  = "sensitive-signatures.encrypted"
@@ -18,6 +22,9 @@ const (
 	maxCacheSize   = 16 * 1024 * 1024
 )
 
+// cacheRefresher keeps the encrypted dictionary in the user's home directory up to date. client,
+// now, and homeDir have to be set; an empty url falls back to [dictionaryURL] and a non-positive
+// timeout to [refreshTimeout].
 type cacheRefresher struct {
 	client  *http.Client
 	now     func() time.Time
@@ -26,6 +33,9 @@ type cacheRefresher struct {
 	timeout time.Duration
 }
 
+// cacheState records how a [cacheRefresher.refresh] call ended: the cache was young enough to use
+// as it was, the download replaced it, or the download failed and the cache on disk serves on past
+// its age limit.
 type cacheState int
 
 const (
@@ -34,12 +44,21 @@ const (
 	cacheFallback
 )
 
+// cacheResult locates the cache a scan should read. home is the resolved home directory, carried
+// alongside path so a caller can abbreviate it to a leading tilde when it prints the path.
 type cacheResult struct {
 	path  string
 	home  string
 	state cacheState
 }
 
+// refresh returns the cache a scan should read, downloading a new copy first when the file is
+// missing or older than [cacheMaxAge]. A cache within that age costs no request at all.
+//
+// A failed or timed-out download is not fatal while a cache exists: refresh writes the reason
+// through output and returns the existing file with state [cacheFallback], however stale. It fails
+// when the home directory cannot be resolved, when the cache path cannot be inspected, or when the
+// download failed with no cache to fall back on.
 func (r cacheRefresher) refresh(ctx context.Context, output *lineOutput) (cacheResult, error) {
 	home, err := r.homeDir()
 	if err != nil {
@@ -84,6 +103,10 @@ func (r cacheRefresher) refresh(ctx context.Context, output *lineOutput) (cacheR
 	return cacheResult{}, fmt.Errorf("dictionary cache is unavailable after refresh: %w", refreshErr)
 }
 
+// download fetches the dictionary into destination, creating its directory when needed. The body
+// goes to a temporary file in that same directory, readable only by its owner, and replaces
+// destination in one rename once it has arrived whole, so a cancelled or failed download leaves the
+// previous cache untouched and nothing behind. A body over [maxCacheSize] bytes is rejected.
 func (r cacheRefresher) download(ctx context.Context, destination string) error {
 	url := r.url
 	if url == "" {

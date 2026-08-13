@@ -27,6 +27,9 @@ func TestRunWithDependenciesRequiresPassword(t *testing.T) {
 	}
 }
 
+// A dictionary pattern that Go's RE2 engine rejects ends the run with exit code 3 rather than the
+// generic 1, so a caller can tell a broken dictionary from a broken environment. The case here is
+// a lookbehind, which RE2 has no equivalent for.
 func TestRunWithDependenciesMapsInvalidRegexpToExitCodeThree(t *testing.T) {
 	root := initRepository(t)
 	dependencies := testAppDependencies(t, "BAD(regexp)=(?<=token)value\n", "test-password")
@@ -40,6 +43,9 @@ func TestRunWithDependenciesMapsInvalidRegexpToExitCodeThree(t *testing.T) {
 	}
 }
 
+// Quick mode stops at the first finding: it emits that one found event, exits 2, and prints the
+// hint that names the flag combination for exclusion commands rather than the commands themselves.
+// It still prints the scan summary the other modes print.
 func TestRunWithDependenciesQuickReturnsTwoOnFirstFinding(t *testing.T) {
 	root := initRepository(t)
 	writeTestFile(t, root, "secret.txt", "contains SECRET")
@@ -70,6 +76,8 @@ func TestRunWithDependenciesQuickReturnsTwoOnFirstFinding(t *testing.T) {
 	}
 }
 
+// Quick mode with --print=details prints a ready-to-run exclude command for each supported shell
+// in place of the hint, never both.
 func TestRunWithDependenciesQuickPrintDetailsPrintsExclusionCommands(t *testing.T) {
 	root := initRepository(t)
 	writeTestFile(t, root, "secret.txt", "contains SECRET")
@@ -94,6 +102,9 @@ func TestRunWithDependenciesQuickPrintDetailsPrintsExclusionCommands(t *testing.
 	}
 }
 
+// The default JSON mode reports a finding and keeps going, so the scan summary and the dictionary
+// status lines are all present alongside the found event, and exit code 2 arrives at the end
+// rather than in place of the rest of the output.
 func TestRunWithDependenciesJSONCompletesAndReturnsTwo(t *testing.T) {
 	root := initRepository(t)
 	writeTestFile(t, root, "secret.txt", "SECRET")
@@ -114,6 +125,8 @@ func TestRunWithDependenciesJSONCompletesAndReturnsTwo(t *testing.T) {
 	assertCurrentDictionaryOutput(t, stdout.String())
 }
 
+// Outside quick mode --print=details is ignored with a warning on stdout, and no exclude command
+// is printed. The scan itself runs to completion and still reports the finding through exit 2.
 func TestRunWithDependenciesPrintDetailsWarnsOutsideQuickMode(t *testing.T) {
 	root := initRepository(t)
 	writeTestFile(t, root, "secret.txt", "SECRET")
@@ -147,6 +160,8 @@ func assertCurrentDictionaryOutput(t *testing.T, output string) {
 	}
 }
 
+// FOLDER_PATH may be given relative to the working directory. The test changes the process working
+// directory to reach that case, so it cannot run in parallel with anything else in the package.
 func TestRunWithDependenciesAcceptsRelativeFolderPath(t *testing.T) {
 	root := initRepository(t)
 	writeTestFile(t, root, "safe.txt", "safe")
@@ -182,6 +197,9 @@ func TestRunWithDependenciesAcceptsRelativeFolderPath(t *testing.T) {
 	}
 }
 
+// A match covered by a grand-report exclusion is reported as an excluded event instead of a found
+// one, so the run still exits 0. The report file itself stays eligible for scanning, which is why
+// the count is two for one written file.
 func TestRunWithDependenciesAppliesGrandReportExclusions(t *testing.T) {
 	root := initRepository(t)
 	writeTestFile(t, root, "secret.txt", "SECRET")
@@ -224,6 +242,11 @@ func TestRunWithDependenciesEnablesVerboseListOutput(t *testing.T) {
 	}
 }
 
+// testAppDependencies builds dependencies for an offline run. The dictionary cache it writes under
+// a temporary home is fresh, so the refresher serves it without touching the nil HTTP client and
+// the run reports the dictionary as up to date. The clock returns a fixed instant, then one
+// 1234 ms later for every call after the first, which is the "1.234 seconds" the expected
+// transcripts contain.
 func testAppDependencies(t *testing.T, plaintext, password string) appDependencies {
 	t.Helper()
 	home := t.TempDir()
@@ -253,6 +276,9 @@ func testAppDependencies(t *testing.T, plaintext, password string) appDependenci
 	}
 }
 
+// encryptDictionaryForTest produces what decryptDictionary expects: PKCS#7-padded AES-CBC under a
+// key derived from password with the same salt, iteration count, and IV, then Base64. Change it in
+// step with decryptDictionary, or every test that loads a dictionary fails while decrypting.
 func encryptDictionaryForTest(t *testing.T, plaintext []byte, password string) string {
 	t.Helper()
 	key := deriveKey([]byte(password), []byte("bsd87918hediu"), 65536, 32)

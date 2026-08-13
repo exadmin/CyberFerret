@@ -11,12 +11,18 @@ import (
 	"strings"
 )
 
+// excludeEvent is the part of a [finding] the exclude command acts on. The remaining finding fields
+// are ignored, so an event copied verbatim out of the scanner's JSON output is a valid argument.
 type excludeEvent struct {
 	Type  string `json:"type"`
 	Found string `json:"found"`
 	File  string `json:"file"`
 }
 
+// strictGrandReport mirrors [grandReport] for decoding only. Its Exclusions pointer, and the
+// pointer fields of [strictGrandReportExclusion], tell an absent key from a present one, which is
+// what lets [decodeGrandReport] reject a report missing "exclusions", "t-hash", or "f-hash"
+// instead of substituting a zero value.
 type strictGrandReport struct {
 	Exclusions *[]strictGrandReportExclusion `json:"exclusions"`
 }
@@ -26,6 +32,9 @@ type strictGrandReportExclusion struct {
 	FileHash *string `json:"f-hash"`
 }
 
+// UnmarshalJSON decodes one exclusion, requiring the object to hold "t-hash" followed by "f-hash"
+// and nothing else. Field order carries no meaning in JSON otherwise, so a report that spells the
+// two keys in the other order is rejected rather than accepted.
 func (e *strictGrandReportExclusion) UnmarshalJSON(content []byte) error {
 	decoder := json.NewDecoder(bytes.NewReader(content))
 	opening, err := decoder.Token()
@@ -81,6 +90,8 @@ func (e *unsupportedExcludeEventTypeError) Error() string {
 	)
 }
 
+// excludeCommandError reports a failure that left every file as it was. Error appends that promise
+// to message, so message must not repeat it and must end with its own punctuation.
 type excludeCommandError struct {
 	message string
 }
@@ -120,6 +131,9 @@ func quotePowerShellArgument(value string) string {
 	return "'" + strings.ReplaceAll(value, "'", "''") + "'"
 }
 
+// quoteCmdArgument quotes value for a cmd.exe command line under the CommandLineToArgvW rules: a
+// run of backslashes is doubled only when a quote or the end of the argument follows it, and a
+// quote is escaped by that doubled run plus one more backslash.
 func quoteCmdArgument(value string) string {
 	var quoted strings.Builder
 	quoted.WriteByte('"')
@@ -144,6 +158,9 @@ func quoteCmdArgument(value string) string {
 	return quoted.String()
 }
 
+// formatExcludeCommands renders the cfcli exclude invocation that would suppress event, once for
+// each supported shell: POSIX, PowerShell, then cmd.exe, always in that order and whatever
+// operating system cfcli runs on.
 func formatExcludeCommands(root string, event finding) ([]shellCommand, error) {
 	absoluteRoot, err := filepath.Abs(root)
 	if err != nil {
@@ -178,6 +195,11 @@ func (e *excludeCommandError) Error() string {
 	return e.message + " No files were changed."
 }
 
+// updateExclusions adds the event encoded in encodedEvent to root/.qubership/grand-report.json,
+// creating the directory and the file when they are absent, and returns the absolute path of the
+// report it wrote. The new content goes to a temporary file in the same directory and is renamed
+// over the old one, and every rejection happens before that rename, so a failure leaves an existing
+// report byte-for-byte unchanged.
 func updateExclusions(root, encodedEvent string) (string, error) {
 	event, err := parseExcludeEvent(encodedEvent)
 	if err != nil {
@@ -260,6 +282,10 @@ func updateExclusions(root, encodedEvent string) (string, error) {
 	return reportPath, nil
 }
 
+// decodeGrandReport parses a report strictly: an empty object decodes as an empty report, and
+// anything else must be an "exclusions" array whose objects carry "t-hash" and "f-hash" and nothing
+// more. Unknown fields, duplicate keys, and trailing content are errors rather than omissions,
+// because [updateExclusions] rewrites the whole file and whatever this decoder drops would be lost.
 func decodeGrandReport(content []byte) (grandReport, error) {
 	var compact bytes.Buffer
 	if json.Compact(&compact, content) == nil && compact.String() == "{}" {
@@ -301,6 +327,9 @@ func decodeGrandReport(content []byte) (grandReport, error) {
 	return report, nil
 }
 
+// validateUniqueJSONKeys rejects content that repeats a field name in any of its objects.
+// encoding/json keeps the last of a repeated key without complaining, which would silently drop the
+// earlier value on the next rewrite.
 func validateUniqueJSONKeys(content []byte) error {
 	decoder := json.NewDecoder(bytes.NewReader(content))
 	decoder.UseNumber()
@@ -359,6 +388,9 @@ func validateJSONValue(decoder *json.Decoder) error {
 	return err
 }
 
+// parseExcludeEvent decodes encoded into an [excludeEvent], tolerating the "JSON:" line prefix that
+// cfcli itself prints so a finding can be pasted straight from the scan output. Only a "found"
+// event with a nonempty "found" and "file" is accepted.
 func parseExcludeEvent(encoded string) (excludeEvent, error) {
 	encoded = strings.TrimSpace(encoded)
 	if strings.HasPrefix(encoded, "JSON:") {

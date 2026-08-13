@@ -7,8 +7,17 @@ import (
 	"strings"
 )
 
+// maxFindingsPerSignaturePerFile caps the found events one file may report for
+// one signature key. Signatures that share a key share the cap, and allowed and
+// excluded matches do not count against it; reaching the cap ends the file's
+// reporting for that key altogether.
 const maxFindingsPerSignaturePerFile = 5
 
+// finding is the JSON event carrying one signature match.
+//
+// Type is found, allowed, or excluded, and only a found event makes the scan
+// report a failure. Line is the 1-based line holding the match, and File is
+// relative to the scan root with / separators.
 type finding struct {
 	Type  string `json:"type"`
 	Key   string `json:"key"`
@@ -17,17 +26,29 @@ type finding struct {
 	File  string `json:"file"`
 }
 
+// excludedPathEvent is the JSON event for a file or folder the grand report
+// excludes whole. A single match suppressed by an exact-text exclusion is
+// reported as a [finding] with Type excluded instead.
 type excludedPathEvent struct {
 	Type string `json:"type"`
 	File string `json:"file"`
 }
 
+// listPathEvent is the JSON event verbose mode emits for a folder or file before
+// the scan reaches it. Exactly one of File and Folder is set, and a folder is
+// reported once however many of its files follow.
 type listPathEvent struct {
 	Type   string `json:"type"`
 	File   string `json:"file,omitempty"`
 	Folder string `json:"folder,omitempty"`
 }
 
+// scanResult summarizes one scan pass.
+//
+// found is true when at least one match survived both the dictionary allowed
+// list and the grand-report exclusions. scannedCount counts the files that were
+// read, so it excludes files skipped by a path exclusion or a read error, and in
+// quick mode it stops at the file holding the first finding.
 type scanResult struct {
 	found        bool
 	scannedCount int
@@ -54,6 +75,21 @@ func scanFilesWithExclusions(
 	return scanFilesConfigured(root, files, loaded, mode, exclusions, false, false, output, errors)
 }
 
+// scanFilesConfigured scans files for dictionary signature matches and reports
+// them to output as JSON. files holds absolute paths under root, and root anchors
+// the relative paths that appear in the events and in the exclusion lookups. A
+// file that cannot be read produces a warning on errors and is not counted as
+// scanned; the returned error covers only path resolution and failed writes.
+//
+// modeJSON also reports the matches the dictionary allowed list or the grand
+// report suppresses, until the key hits its [maxFindingsPerSignaturePerFile]
+// cap. modeQuick reports neither and returns as soon as one match survives
+// both, leaving the remaining files unread; printDetails then adds the
+// copy-ready cfcli exclude commands for that match, and without it output
+// carries a one-line hint. verbose emits a [listPathEvent] for each folder and
+// file the scan walks, in either mode; a path the exclusions name is listed and
+// then reported as an [excludedPathEvent], and below an excluded folder only
+// such paths are listed.
 func scanFilesConfigured(
 	root string,
 	files []string,
@@ -241,6 +277,12 @@ func newFinding(key, exact string, line int, relativePath string) finding {
 	}
 }
 
+// lineAt advances from cursor to offset over content and reports the 1-based
+// number of the line holding offset. LF, CRLF, and a lone CR each end one line.
+//
+// Calls have to walk content forward: cursor and line come from the previous call
+// on the same content, or from 0 and 1 at the start, and offset must not be
+// before cursor. The returned cursor is offset, ready to be passed back.
 func lineAt(content []byte, offset, cursor, line int) (int, int) {
 	for cursor < offset {
 		switch content[cursor] {
@@ -260,6 +302,9 @@ func lineAt(content []byte, offset, cursor, line int) (int, int) {
 	return cursor, line
 }
 
+// relativeParentPaths returns the ancestor folders of a slash-separated relative
+// path, outermost first, excluding both the scan root and the path itself. A path
+// directly under the root yields an empty slice.
 func relativeParentPaths(relativePath string) []string {
 	parents := make([]string, 0)
 	for parent := filepath.ToSlash(filepath.Dir(filepath.FromSlash(relativePath))); parent != "." && parent != ""; parent = filepath.ToSlash(filepath.Dir(filepath.FromSlash(parent))) {

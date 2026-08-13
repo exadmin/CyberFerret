@@ -10,8 +10,17 @@ import (
 	"strings"
 )
 
+// maxListedPathLength is the longest line [readListedPaths] accepts from a list
+// file, in bytes. A longer line fails the read instead of being truncated.
 const maxListedPathLength = 1024 * 1024
 
+// selectFiles returns the sorted absolute paths of the files to scan under
+// rootArg, which must name a directory. [enumerateGitFiles] decides which paths
+// are eligible: everything Git tracks, plus the untracked files no ignore rule
+// covers. A non-nil listArg names a file of paths relative to rootArg that
+// narrows the selection further: an entry Git does not report is skipped, while
+// an absolute entry or one escaping rootArg fails the call. Only regular files
+// survive, so a symbolic link to a directory is neither returned nor traversed.
 func selectFiles(ctx context.Context, rootArg string, listArg *string) ([]string, error) {
 	root, err := filepath.Abs(rootArg)
 	if err != nil {
@@ -67,6 +76,9 @@ func selectFiles(ctx context.Context, rootArg string, listArg *string) ([]string
 	return result, nil
 }
 
+// readListedPaths returns the non-empty lines of the file at path, each with a
+// trailing carriage return removed so a CRLF list reads like an LF one. A line
+// longer than [maxListedPathLength] fails the read.
 func readListedPaths(path string) ([]string, error) {
 	file, err := os.Open(path)
 	if err != nil {
@@ -89,6 +101,10 @@ func readListedPaths(path string) ([]string, error) {
 	return paths, nil
 }
 
+// validateRelativeGitPath rejects a listed path that cannot name a file inside
+// FOLDER_PATH: an absolute path, one that resolves to the folder itself, and one
+// that escapes it through "..". The error names the rule that was broken and
+// reaches the user, wrapped by [selectFiles].
 func validateRelativeGitPath(path string) error {
 	nativePath := filepath.FromSlash(path)
 	if filepath.IsAbs(nativePath) {
