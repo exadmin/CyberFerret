@@ -108,7 +108,7 @@ VERSION=1.1
 # All key names may be in 3 formats
 # KEY_NAME=VALUE - means the ferret will search for VALUE-string case-insensitive, the VALUE-string will be converted to RegExp pattern '\bVALUE\b'. Note: all spaces inside will be replaced with '\\s+', all special chars (&, -, +) will be escaped by '\\'
 # KEY_NAME(regexp)=VALUE - means you have finally defined RegExp pattern, and it will be used as is
-# KEY_NAME(allowed)=VALUE - means you have defined exact string - which may be found during scanned, but must be treated as allowed. Actually no matter what key name will be used - the value is a global string.
+# KEY_NAME(allowed)=VALUE - means you have defined an exact string or a value with '*' wildcards that may be found during scanning, but must be treated as allowed. Each '*' matches one or more nonwhitespace characters. Actually no matter what key name will be used - the value is a global string.
 # KEY_NAME(exclude-ext)=VALUE1,VALUE2,etc.. - list of file extentions to be ignored for the "KEY_NAME" signature
 # Notes: all key names must be unique
 
@@ -121,7 +121,7 @@ SUB-DOMAIN-2(allowed)=test2.example-domain.com
 EMAIL(regexp)=([a-zA-Z0-9._-]+@[a-zA-Z]+\\.(?:com|ru|net|org|edu|gov|mil|int|us|uk|de|jp|in|test|localhost|invalid|example|arab|cn|ua)+)
 EMAIL-1(allowed)=example@example.com
 EMAIL-2(allowed)=test@mail.org
-EMAIL-3(allowed)=admin@domain.net
+EMAIL-3(allowed)=*@example.com
 EMAIL(exclude-ext)=exe,bin,ttf,zip
 
 # Passwords or credentials
