@@ -36,7 +36,7 @@ func TestRegexpCompileErrorIncludesDictionaryPath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if exitCode != 3 || !strings.Contains(stderr.String(), absolutePath) {
+	if exitCode != exitBadExpression || !strings.Contains(stderr.String(), absolutePath) {
 		t.Fatalf("exit code = %d, stderr = %q; want dictionary path %q", exitCode, stderr.String(), absolutePath)
 	}
 }

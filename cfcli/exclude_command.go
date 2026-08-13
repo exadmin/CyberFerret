@@ -100,22 +100,22 @@ func isExcludeCommand(args []string) bool {
 	return len(args) > 0 && args[0] == "exclude"
 }
 
-func runExcludeCommand(args []string, stdout, stderr io.Writer) int {
+func runExcludeCommand(args []string, stdout, stderr io.Writer) exitStatus {
 	errorOutput := newLineOutput(stderr)
 	if len(args) != 3 {
 		_ = writeHelp(errorOutput)
-		return 1
+		return exitFailure
 	}
 	reportPath, err := updateExclusions(args[1], args[2])
 	if err != nil {
 		writeFatal(errorOutput, "%v", err)
-		return 1
+		return exitFailure
 	}
 	if err := newLineOutput(stdout).text("Exclusions file was updated: %s", reportPath); err != nil {
 		writeFatal(errorOutput, "Cannot write updated exclusions path: %v", err)
-		return 1
+		return exitFailure
 	}
-	return 0
+	return exitClean
 }
 
 type shellCommand struct {

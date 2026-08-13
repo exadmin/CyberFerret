@@ -20,8 +20,8 @@ func TestRunRejectsInvalidArgumentCounts(t *testing.T) {
 
 		exitCode := runWithDependencies(context.Background(), args, &stdout, &stderr, appDependencies{})
 
-		if exitCode != 1 {
-			t.Fatalf("run(%q) exit code = %d, want 1", args, exitCode)
+		if exitCode != exitFailure {
+			t.Fatalf("run(%q) exit code = %d, want %d", args, exitCode, exitFailure)
 		}
 		if stdout.Len() != 0 {
 			t.Fatalf("run(%q) stdout = %q, want empty", args, stdout.String())
@@ -51,7 +51,7 @@ func TestRunPrintsExpandedHelpForInsufficientArguments(t *testing.T) {
 
 		exitCode := runWithDependencies(context.Background(), args, &stdout, &stderr, appDependencies{})
 
-		if exitCode != 1 || stdout.Len() != 0 {
+		if exitCode != exitFailure || stdout.Len() != 0 {
 			t.Fatalf("run(%q) exit code = %d, stdout = %q", args, exitCode, stdout.String())
 		}
 		for _, expected := range []string{
@@ -86,8 +86,8 @@ func TestRunReportsTotalFilesScanned(t *testing.T) {
 		testAppDependencies(t, "VERSION=1.0\n", "test-password"),
 	)
 
-	if exitCode != 0 {
-		t.Fatalf("run() exit code = %d, want 0; stderr = %q", exitCode, stderr.String())
+	if exitCode != exitClean {
+		t.Fatalf("run() exit code = %d, want %d; stderr = %q", exitCode, exitClean, stderr.String())
 	}
 	want := currentDictionaryOutput() +
 		"TEXT: Dictionary version: 1.0\n" +
@@ -138,8 +138,8 @@ func TestRunReportsRuntimeErrors(t *testing.T) {
 				testAppDependencies(t, "VERSION=1.0\n", "test-password"),
 			)
 
-			if exitCode != 1 {
-				t.Fatalf("run() exit code = %d, want 1", exitCode)
+			if exitCode != exitFailure {
+				t.Fatalf("run() exit code = %d, want %d", exitCode, exitFailure)
 			}
 			wantOutput := currentDictionaryOutput() +
 				"TEXT: Dictionary version: 1.0\nTEXT: Scanning is in progress. Please wait.\n"
@@ -167,8 +167,8 @@ func TestRunReportsUnavailableGit(t *testing.T) {
 		testAppDependencies(t, "VERSION=1.0\n", "test-password"),
 	)
 
-	if exitCode != 1 {
-		t.Fatalf("run() exit code = %d, want 1", exitCode)
+	if exitCode != exitFailure {
+		t.Fatalf("run() exit code = %d, want %d", exitCode, exitFailure)
 	}
 	wantOutput := currentDictionaryOutput() +
 		"TEXT: Dictionary version: 1.0\nTEXT: Scanning is in progress. Please wait.\n"

@@ -22,8 +22,8 @@ type appDependencies struct {
 }
 
 // run performs one cfcli invocation with the live dictionary endpoint, the process environment,
-// and the wall clock. It returns the exit code documented on [runWithDependencies].
-func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
+// and the wall clock. It returns the exit status documented on [runWithDependencies].
+func run(ctx context.Context, args []string, stdout, stderr io.Writer) exitStatus {
 	return runWithDependencies(ctx, args, stdout, stderr, appDependencies{
 		refresher: cacheRefresher{
 			client:  &http.Client{},
@@ -37,14 +37,9 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	})
 }
 
-// runWithDependencies performs one cfcli invocation against the given dependencies and returns the
-// process exit code:
-//
-//   - 0: the scan found nothing, or the exclude subcommand succeeded
-//   - 1: any other failure — bad arguments, the dictionary, decryption, scanning, an exclusion
-//     update, or a write
-//   - 2: the scan reported at least one finding that no allow rule or exclusion covered
-//   - 3: a dictionary expression does not compile under Go's RE2 engine
+// runWithDependencies performs one cfcli invocation against the given dependencies and returns
+// [exitClean], [exitFailure], [exitFindings], or [exitBadExpression], each of which documents the
+// condition it reports.
 //
 // Scan output goes to stdout. The usage help, every fatal message, and the dictionary warnings go
 // to stderr; the --print=details warning is the one warning written to stdout. An "exclude" first
@@ -54,7 +49,7 @@ func runWithDependencies(
 	args []string,
 	stdout, stderr io.Writer,
 	dependencies appDependencies,
-) int {
+) exitStatus {
 	if isExcludeCommand(args) {
 		return runExcludeCommand(args, stdout, stderr)
 	}
@@ -68,35 +63,35 @@ func runWithDependencies(
 			writeFatal(errorOutput, "%v", err)
 		}
 		_ = writeHelp(errorOutput)
-		return 1
+		return exitFailure
 	}
 	if parsed.printDetails && parsed.mode != modeQuick {
 		if err := output.text(
 			"Warning: --print=details applies only to --mode=quick and will be ignored.",
 		); err != nil {
 			writeFatal(errorOutput, "Cannot write print option warning: %v", err)
-			return 1
+			return exitFailure
 		}
 	}
 
 	cache, err := dependencies.refresher.refresh(ctx, errorOutput)
 	if err != nil {
 		writeFatal(errorOutput, "Cannot prepare dictionary cache: %v", err)
-		return 1
+		return exitFailure
 	}
 	cachePath := cache.path
 	if err := output.text("%s", dictionaryStatusMessage(cache.state)); err != nil {
 		writeFatal(errorOutput, "Cannot write dictionary status: %v", err)
-		return 1
+		return exitFailure
 	}
 	if err := output.text("Dictionary path: %s", dictionaryDisplayPath(cache.path, cache.home)); err != nil {
 		writeFatal(errorOutput, "Cannot write dictionary path: %v", err)
-		return 1
+		return exitFailure
 	}
 	encrypted, err := os.ReadFile(cachePath)
 	if err != nil {
 		writeFatal(errorOutput, "Cannot read dictionary cache %q: %v", cachePath, err)
-		return 1
+		return exitFailure
 	}
 	password := ""
 	if dependencies.getenv != nil {
@@ -105,7 +100,7 @@ func runWithDependencies(
 	plaintext, err := decryptDictionary(encrypted, password)
 	if err != nil {
 		writeFatal(errorOutput, "%v", err)
-		return 1
+		return exitFailure
 	}
 
 	loaded, err := loadDictionary(plaintext, errorOutput)
@@ -117,14 +112,14 @@ func runWithDependencies(
 				dictionaryPath = absolutePath
 			}
 			writeFatal(errorOutput, "Cannot compile dictionary regexp from \"%s\": %v", dictionaryPath, compileError)
-			return 3
+			return exitBadExpression
 		}
 		writeFatal(errorOutput, "Cannot load dictionary: %v", err)
-		return 1
+		return exitFailure
 	}
 	if err := output.text("Dictionary version: %s", loaded.version); err != nil {
 		writeFatal(errorOutput, "Cannot write dictionary version: %v", err)
-		return 1
+		return exitFailure
 	}
 
 	now := dependencies.now
@@ -134,14 +129,14 @@ func runWithDependencies(
 	startedAt := now()
 	if err := output.text("Scanning is in progress. Please wait."); err != nil {
 		writeFatal(errorOutput, "Cannot write scanning progress: %v", err)
-		return 1
+		return exitFailure
 	}
 
 	exclusions := loadExclusions(parsed.root, errorOutput)
 	files, err := selectFiles(ctx, parsed.root, parsed.listPath)
 	if err != nil {
 		writeFatal(errorOutput, "%v", err)
-		return 1
+		return exitFailure
 	}
 	result, err := scanFilesConfigured(
 		parsed.root,
@@ -156,21 +151,21 @@ func runWithDependencies(
 	)
 	if err != nil {
 		writeFatal(errorOutput, "Cannot scan files: %v", err)
-		return 1
+		return exitFailure
 	}
 	if err := output.text("Total files scanned %d", result.scannedCount); err != nil {
 		writeFatal(errorOutput, "Cannot write scanned file count: %v", err)
-		return 1
+		return exitFailure
 	}
 	elapsed := now().Sub(startedAt).Seconds()
 	if err := output.text("Scanning is finished in %.3f seconds.", elapsed); err != nil {
 		writeFatal(errorOutput, "Cannot write scanning duration: %v", err)
-		return 1
+		return exitFailure
 	}
 	if result.found {
-		return 2
+		return exitFindings
 	}
-	return 0
+	return exitClean
 }
 
 func writeHelp(output *lineOutput) error {
