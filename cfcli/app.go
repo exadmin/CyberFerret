@@ -175,8 +175,40 @@ func writeHelp(output *lineOutput) error {
 			"FOLDER_PATH [PATH_TO_LIST_OF_FILES]",
 		"  cfcli exclude FOLDER_PATH JSON_OBJECT",
 		"",
-		"The exclude command adds a found event to FOLDER_PATH/.qubership/grand-report.json.",
-		"JSON_OBJECT may start with \"JSON:\" and must have type \"found\", found, and file fields.",
+		"cfcli scans a Git repository for sensitive values using the CyberFerret dictionary.",
+		"It reports non-allowed findings and can add reviewed findings to " +
+			".qubership/grand-report.json.",
+		"",
+		"Before scanning:",
+		"  Set CYBER_FERRET_PASSWORD to the dictionary decryption password.",
+		"  Git must be available on PATH.",
+		"",
+		"Examples:",
+		"  cfcli /path/to/repository",
+		"  cfcli --mode=quick /path/to/repository",
+		"  cfcli --mode=quick --print=details /path/to/repository",
+		"  cfcli --mode=json /path/to/repository /path/to/staged-files.txt",
+		"  cfcli --verbose=true --mode=json /path/to/repository",
+		"  cfcli exclude /path/to/repository 'JSON: " +
+			"{\"type\":\"found\",\"key\":\"EMAIL\",\"found\":\"ci.noreply@example.com\"," +
+			"\"line\":89,\"file\":\"docs/notifications.md\"}'",
+		"",
+		"Arguments and options:",
+		"  FOLDER_PATH              Git repository root to scan or update.",
+		"  PATH_TO_LIST_OF_FILES    Optional file with Git-relative paths to scan, one path per line.",
+		"  --mode=json              Scan all selected files and print findings as JSON. " +
+			"This is the default.",
+		"  --mode=quick             Stop after the first non-allowed finding.",
+		"  --print=details          In quick mode, print copy-ready exclude commands for the finding.",
+		"  --verbose=true           Print each folder and file before it is scanned.",
+		"  --verbose=false          Do not print per-file progress. This is the default.",
+		"  JSON_OBJECT              Found event to add to FOLDER_PATH/.qubership/grand-report.json.",
+		"                           It may start with \"JSON:\" and must have type \"found\", " +
+			"found, and file fields.",
+		"",
+		"Use exclude only when you consider the detected value acceptable for that repository file.",
+		"The exclude command does not refresh or decrypt the dictionary and does not require " +
+			"CYBER_FERRET_PASSWORD.",
 	}
 	for _, line := range lines {
 		if err := output.text("%s", line); err != nil {

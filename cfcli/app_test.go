@@ -58,8 +58,16 @@ func TestRunPrintsExpandedHelpForInsufficientArguments(t *testing.T) {
 			"TEXT: Usage:\n",
 			"TEXT:   cfcli [--mode=quick|--mode=json] [--print=details]",
 			"TEXT:   cfcli exclude FOLDER_PATH JSON_OBJECT\n",
-			"TEXT: The exclude command adds a found event",
-			"TEXT: JSON_OBJECT may start with \"JSON:\"",
+			"TEXT: cfcli scans a Git repository for sensitive values",
+			"TEXT: Before scanning:\n",
+			"TEXT:   Set CYBER_FERRET_PASSWORD to the dictionary decryption password.\n",
+			"TEXT: Examples:\n",
+			"TEXT: Arguments and options:\n",
+			"TEXT:   --mode=json",
+			"TEXT:   --print=details",
+			"TEXT:   JSON_OBJECT",
+			"TEXT: Use exclude only when you consider the detected value acceptable",
+			"TEXT: The exclude command does not refresh or decrypt the dictionary",
 		} {
 			if !strings.Contains(stderr.String(), expected) {
 				t.Fatalf("run(%q) stderr = %q, want %q", args, stderr.String(), expected)
