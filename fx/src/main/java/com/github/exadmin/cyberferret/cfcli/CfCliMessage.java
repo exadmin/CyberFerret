@@ -11,4 +11,8 @@ public record CfCliMessage(
     public boolean isSignature() {
         return key != null;
     }
+
+    public boolean isList() {
+        return "list".equals(type);
+    }
 }

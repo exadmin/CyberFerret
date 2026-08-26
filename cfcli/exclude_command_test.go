@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -25,6 +26,12 @@ func TestUpdateExclusionsAcceptsRawAndPrefixedFoundEvents(t *testing.T) {
 		{
 			name:    "JSON prefix",
 			encoded: ` JSON: {"type":"found","found":"SECRET","file":"src/file.txt"} `,
+		},
+		{
+			name: "Base64 prefix",
+			encoded: "BASE64:" + base64.RawURLEncoding.EncodeToString(
+				[]byte(`{"type":"found","found":"SECRET","file":"src/file.txt"}`),
+			),
 		},
 	}
 

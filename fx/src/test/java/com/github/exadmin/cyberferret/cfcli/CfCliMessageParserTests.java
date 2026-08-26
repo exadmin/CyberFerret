@@ -23,7 +23,10 @@ public class CfCliMessageParserTests {
 
         assertEquals("src/main", folder.folder());
         assertEquals("src/main/App.java", file.file());
+        assertTrue(folder.isList());
+        assertTrue(file.isList());
         assertEquals("src/generated", excluded.file());
+        assertFalse(excluded.isList());
         assertFalse(excluded.isSignature());
     }
 

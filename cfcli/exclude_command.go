@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -522,6 +523,15 @@ func normalizeExcludePath(rawPath, fieldName string) (string, error) {
 // cfcli itself prints so a finding can be pasted straight from the scan output.
 func parseExcludeEvent(encoded string) (excludeEvent, error) {
 	encoded = strings.TrimSpace(encoded)
+	if strings.HasPrefix(encoded, "BASE64:") {
+		decoded, err := base64.RawURLEncoding.DecodeString(strings.TrimSpace(strings.TrimPrefix(encoded, "BASE64:")))
+		if err != nil {
+			return excludeEvent{}, &excludeCommandError{
+				message: fmt.Sprintf("Cannot decode Base64 exclude event: %v.", err),
+			}
+		}
+		encoded = string(decoded)
+	}
 	if strings.HasPrefix(encoded, "JSON:") {
 		encoded = strings.TrimSpace(strings.TrimPrefix(encoded, "JSON:"))
 	}

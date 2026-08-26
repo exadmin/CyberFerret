@@ -3,9 +3,9 @@ package com.github.exadmin.cyberferret.fxui;
 import com.github.exadmin.cyberferret.AppConstants;
 import com.github.exadmin.cyberferret.async.RunnableLogger;
 import com.github.exadmin.cyberferret.cfcli.CfCliExecutable;
+import com.github.exadmin.cyberferret.cfcli.CfCliExcluder;
 import com.github.exadmin.cyberferret.cfcli.CfCliScanner;
 import com.github.exadmin.cyberferret.cfcli.CfCliTreeAssembler;
-import com.github.exadmin.cyberferret.exclude.Excluder;
 import com.github.exadmin.cyberferret.fxui.helpers.AlertBuilder;
 import com.github.exadmin.cyberferret.fxui.helpers.ChooserBuilder;
 import com.github.exadmin.cyberferret.model.FoundFileItemListener;
@@ -47,6 +47,7 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static com.github.exadmin.cyberferret.fxui.FxConstants.DEFAULT_BUTTON_WIDTH;
 import static com.github.exadmin.cyberferret.fxui.FxConstants.DEFAULT_LABEL_WIDTH;
@@ -60,6 +61,7 @@ public class SceneBuilder {
     private final FoundItemsContainer foundItemsContainer;
     private final ObjectProperty<TreeItem<FoundPathItem>> selectedItemProperty = new SimpleObjectProperty<>();
     private final AtomicBoolean scannerRunning = new AtomicBoolean(false);
+    private final AtomicBoolean exclusionUpdateRunning = new AtomicBoolean(false);
 
     public SceneBuilder(Stage primaryStage) {
         this.primaryStage = primaryStage;
@@ -168,9 +170,12 @@ public class SceneBuilder {
             HBox hBox = new HBox();
             vBoxRoot.getChildren().add(hBox);
             hBox.setSpacing(8);
+            hBox.setAlignment(Pos.CENTER_LEFT);
 
             Button btnRun = new Button("Start Scanning");
             btnRun.setPrefWidth(DEFAULT_BUTTON_WIDTH);
+            Label scannedLabel = new Label("Scanned 0");
+            AtomicLong scannedItems = new AtomicLong();
 
             btnRun.setOnAction(actionEvent -> {
                 log.debug("Start button is pressed using dir-to-scan = {}", DIR_TO_SCAN.getValue());
@@ -206,6 +211,8 @@ public class SceneBuilder {
 
                 // drop previous scan result
                 foundItemsContainer.clearAll();
+                scannedItems.set(0);
+                scannedLabel.setText("Scanned 0");
 
                 btnRun.setDisable(true);
                 CfCliTreeAssembler assembler = new CfCliTreeAssembler(
@@ -215,7 +222,13 @@ public class SceneBuilder {
                 CfCliScanner scanner = new CfCliScanner(
                         cliExecutable.command(),
                         scanRoot,
-                        assembler::accept,
+                        message -> {
+                            assembler.accept(message);
+                            if (message.isList()) {
+                                long count = scannedItems.incrementAndGet();
+                                runOnFxThread(() -> scannedLabel.setText("Scanned " + count));
+                            }
+                        },
                         message -> log.info("{}", message),
                         message -> {
                             log.error("{}", message);
@@ -243,6 +256,7 @@ public class SceneBuilder {
 
             hBox.getChildren().add(btnRun);
             hBox.getChildren().add(btnMark);
+            hBox.getChildren().add(scannedLabel);
         }
 
         return tpSettings;
@@ -518,16 +532,58 @@ public class SceneBuilder {
         @Override
         public void handle(ActionEvent event) {
             if (selectedItemProperty.getValue() == null) {
-                AlertBuilder.showInfo("No items are selected to be marked as ignored!");
-            } else {
-                FoundPathItem foundPathItem = selectedItemProperty.getValue().getValue();
-                Path resultYaml = Excluder.markToExclude(foundPathItem, Paths.get(DIR_TO_SCAN.toString()));
-                if (resultYaml == null) {
-                    AlertBuilder.showError("Can't load existed exclusion configuration, please check logs and fix errors. If can't - then delete erroneous file.");
-                } else {
-                    log.info("Item {} was successfully {} as ignored, the result is stored into {}", foundPathItem, foundPathItem.isIgnored() ? "(+)marked" : "(-)unmarked", resultYaml);
-                }
+                AlertBuilder.showInfo("Select an item before changing its exclusion state.");
+                return;
             }
+
+            String selectedDirectory = DIR_TO_SCAN.getValue();
+            if (selectedDirectory == null || selectedDirectory.isBlank()) {
+                AlertBuilder.showError("Select a repository directory before changing exclusions.");
+                return;
+            }
+            Path scanRoot;
+            try {
+                scanRoot = Paths.get(selectedDirectory).toAbsolutePath().normalize();
+            } catch (RuntimeException ex) {
+                AlertBuilder.showError("Invalid repository directory: " + selectedDirectory);
+                return;
+            }
+            if (!Files.isDirectory(scanRoot)) {
+                AlertBuilder.showError("Repository directory does not exist: " + scanRoot);
+                return;
+            }
+
+            CfCliExecutable cliExecutable = new CfCliExecutable(CF_CLI_PATH.getValue());
+            var executableError = cliExecutable.validationError();
+            if (executableError.isPresent()) {
+                AlertBuilder.showError(executableError.get());
+                return;
+            }
+            if (!exclusionUpdateRunning.compareAndSet(false, true)) {
+                AlertBuilder.showInfo("Another exclusion update is already in progress.");
+                return;
+            }
+
+            FoundPathItem foundPathItem = selectedItemProperty.getValue().getValue();
+            boolean exclude = !foundPathItem.isIgnored();
+            CfCliExcluder excluder = new CfCliExcluder(
+                    cliExecutable.command(),
+                    scanRoot,
+                    foundPathItem,
+                    exclude,
+                    message -> runOnFxThread(() -> {
+                        foundPathItem.setIgnored(exclude);
+                        foundItemsContainer.notifyItemUpdated(foundPathItem);
+                        log.info("{}", message);
+                    }),
+                    message -> {
+                        log.error("{}", message);
+                        runOnFxThread(() -> AlertBuilder.showError(message));
+                    },
+                    () -> runOnFxThread(() -> exclusionUpdateRunning.set(false)));
+            Thread exclusionThread = new Thread(excluder, "cyberferret-cfcli-exclusion");
+            exclusionThread.setDaemon(true);
+            exclusionThread.start();
         }
     }
 }
