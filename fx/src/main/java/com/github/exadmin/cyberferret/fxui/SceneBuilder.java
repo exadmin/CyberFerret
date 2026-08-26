@@ -12,9 +12,7 @@ import com.github.exadmin.cyberferret.model.FoundFileItemListener;
 import com.github.exadmin.cyberferret.model.FoundItemsContainer;
 import com.github.exadmin.cyberferret.model.FoundPathItem;
 import com.github.exadmin.cyberferret.model.ItemType;
-import com.github.exadmin.cyberferret.utils.FileUtils;
 import com.github.exadmin.cyberferret.utils.MiscUtils;
-import com.github.exadmin.cyberferret.utils.PasswordBasedEncryption;
 import javafx.application.Platform;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.ReadOnlyObjectWrapper;
@@ -47,10 +45,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.regex.Pattern;
 
 import static com.github.exadmin.cyberferret.fxui.FxConstants.DEFAULT_BUTTON_WIDTH;
 import static com.github.exadmin.cyberferret.fxui.FxConstants.DEFAULT_LABEL_WIDTH;
@@ -63,11 +59,7 @@ public class SceneBuilder {
     private final Stage primaryStage;
     private final FoundItemsContainer foundItemsContainer;
     private final ObjectProperty<TreeItem<FoundPathItem>> selectedItemProperty = new SimpleObjectProperty<>();
-    private final AtomicBoolean dictionaryLoading = new AtomicBoolean(false);
     private final AtomicBoolean scannerRunning = new AtomicBoolean(false);
-    private volatile Map<String, Pattern> signaturesMap = Map.of();
-    private volatile Map<String, String> allowedSignaturesMap = Map.of();
-    private volatile Map<String, List<String>> excludeExtMap = Map.of();
 
     public SceneBuilder(Stage primaryStage) {
         this.primaryStage = primaryStage;
@@ -87,15 +79,6 @@ public class SceneBuilder {
         scene.getStylesheets().add(getClass().getResource("/fxstyles.css").toExternalForm());
 
         return scene;
-    }
-
-    public void loadDecryptedDictionaryIfExists() {
-        Path sigsPath = Paths.get(AppConstants.DICTIONARY_FILE_PATH_DECRYPTED);
-        File sigsFile = sigsPath.toFile();
-        if (sigsFile.exists() && sigsFile.isFile()) {
-            log.info("Loading decrypted dictionary from {}", sigsFile.getAbsolutePath());
-            loadDecryptedDictionary();
-        }
     }
 
     protected Tab createAnalyzerTab(TabPane tabPane) {
@@ -162,40 +145,6 @@ public class SceneBuilder {
         return tpOnlineDictionary;
     }
 
-    protected TitledPane createOfflineDictionaryPane() {
-        TitledPane tpSettings = new TitledPane();
-        tpSettings.setCollapsible(true);
-        tpSettings.setText("Offline Dictionary");
-
-        VBox vBoxRoot = new VBox();
-        tpSettings.setContent(vBoxRoot);
-        vBoxRoot.setSpacing(8);
-
-        ChooserBuilder chooserBuilder = new ChooserBuilder(primaryStage);
-
-        // Dictionary
-        {
-            HBox hBox = chooserBuilder.buildChooserBox("Local dictionary", DICTIONARY.getFxProperty(), "Select file", ChooserBuilder.CHOOSER_TYPE.FILE);
-            vBoxRoot.getChildren().add(hBox);
-
-            // Load signatures button
-            Button btnLoadSigs = new Button("Load it");
-            hBox.getChildren().add(btnLoadSigs);
-            btnLoadSigs.setPrefWidth(DEFAULT_BUTTON_WIDTH);
-
-            btnLoadSigs.setOnAction(event -> {
-                if (DICTIONARY.getValue() != null && !DICTIONARY.getValue().isEmpty()) {
-                    Path sigsPath = Paths.get(DICTIONARY.getValue());
-                    loadSignatures(sigsPath, btnLoadSigs);
-                } else {
-                    log.warn("Signatures file is not selected. Please select it first.");
-                }
-            });
-        }
-
-        return tpSettings;
-    }
-
     protected TitledPane createRepositoryGroup() {
         TitledPane tpSettings = new TitledPane();
         tpSettings.setCollapsible(false);
@@ -224,7 +173,7 @@ public class SceneBuilder {
             btnRun.setPrefWidth(DEFAULT_BUTTON_WIDTH);
 
             btnRun.setOnAction(actionEvent -> {
-                log.debug("Start button is pressed using dictionary {}, dir-to-scan = {}", DICTIONARY.getValue(), DIR_TO_SCAN.getValue());
+                log.debug("Start button is pressed using dir-to-scan = {}", DIR_TO_SCAN.getValue());
 
                 String selectedDirectory = DIR_TO_SCAN.getValue();
                 if (selectedDirectory == null || selectedDirectory.isBlank()) {
@@ -555,122 +504,6 @@ public class SceneBuilder {
         thread.start();
 
         return tpLogs;
-    }
-
-    private HBox buildOnlineSignatureLoader(Stage primaryStage) {
-        Label lbVersion = new Label("Online dictionary");
-        Label lbPassw = new Label("Password");
-        TextField tfPassword = new PasswordField();
-        Button btnApply = new Button("Download latest dictionarry");
-
-        HBox hBox = new HBox();
-        hBox.setSpacing(8);
-
-        hBox.getChildren().add(lbVersion);
-        hBox.getChildren().add(lbPassw);
-        hBox.getChildren().add(tfPassword);
-        hBox.getChildren().add(new Separator(Orientation.VERTICAL));
-
-        hBox.getChildren().add(btnApply);
-
-        HBox.setHgrow(tfPassword, Priority.ALWAYS);
-        lbVersion.setPrefWidth(DEFAULT_LABEL_WIDTH);
-        btnApply.setPrefWidth(DEFAULT_BUTTON_WIDTH);
-
-        tfPassword.setEditable(true);
-
-        tfPassword.textProperty().addListener((bean, oldValue, newValue) -> PASSWORD.setValue(newValue));
-        tfPassword.textProperty().setValue(PASSWORD.getValue());
-
-        btnApply.setOnAction((event) -> {
-            // check password and salt are set
-            if (tfPassword.getText().isEmpty()) {
-                AlertBuilder.showWarn("You need provide password for dictionary encryption");
-            } else {
-                String password = tfPassword.getText();
-                ARunnable runnable = new RunnableCheckOnlineDictionary(false);
-                runnable.setBeforeStart(() -> runOnFxThread(() -> btnApply.setDisable(true)));
-                runnable.setAfterFinished(() -> {
-                    try {
-                        decryptOnlineDictionary(password);
-                        loadDecryptedDictionary();
-                    } finally {
-                        runOnFxThread(() -> btnApply.setDisable(false));
-                    }
-                });
-                runnable.startNowInNewThread();
-            }
-        });
-
-        return hBox;
-    }
-
-    private void decryptOnlineDictionary(String password) {
-        File fileDecrypted = new File(AppConstants.DICTIONARY_FILE_PATH_DECRYPTED);
-        if (fileDecrypted.exists()) {
-            boolean wasDeleted = fileDecrypted.delete();
-            if (wasDeleted)
-                log.info("Existed decrypted dictionary cache-file was deleted by {}", fileDecrypted);
-        }
-
-        try {
-            String encryptedBody = FileUtils.readFile(AppConstants.DICTIONARY_FILE_PATH_ENCRYPTED);
-            String decryptedBody = PasswordBasedEncryption.decrypt(encryptedBody, password);
-
-            if (!decryptedBody.isEmpty()) {
-                FileUtils.saveToFile(decryptedBody, AppConstants.DICTIONARY_FILE_PATH_DECRYPTED);
-                log.info("New decrypted dictionary cache-file was successfully created at {}", fileDecrypted);
-            }
-        } catch (Exception ex) {
-            log.error("Error while decrypting file {}. Check password and salt values!", fileDecrypted, ex);
-        }
-    }
-
-    private void loadDecryptedDictionary() {
-        Path sigsPath = Paths.get(AppConstants.DICTIONARY_FILE_PATH_DECRYPTED);
-        File sigsFile = sigsPath.toFile();
-        if (sigsFile.exists() && sigsFile.isFile()) {
-            loadSignatures(sigsPath, null);
-        }
-    }
-
-    private void loadSignatures(Path sigsPath, Button buttonToDisable) {
-        if (!dictionaryLoading.compareAndSet(false, true)) {
-            log.warn("Dictionary loading is already in progress");
-            return;
-        }
-
-        RunnableSigsLoader loader = new RunnableSigsLoader(false);
-        try {
-            loader.setInputStream(FileUtils.toFileInputStream(sigsPath));
-        } catch (RuntimeException ex) {
-            dictionaryLoading.set(false);
-            if (buttonToDisable != null) {
-                runOnFxThread(() -> buttonToDisable.setDisable(false));
-            }
-            log.error("Failed to open dictionary file {}", sigsPath, ex);
-            return;
-        }
-        loader.setBeforeStart(() -> {
-            if (buttonToDisable != null) {
-                runOnFxThread(() -> buttonToDisable.setDisable(true));
-            }
-        });
-        loader.setAfterFinished(() -> {
-            try {
-                if (loader.isReady()) {
-                    signaturesMap = loader.getSignaturesMap();
-                    allowedSignaturesMap = loader.getAllowedSignaturesMap();
-                    excludeExtMap = loader.getExcludeExtsMap();
-                }
-            } finally {
-                dictionaryLoading.set(false);
-                if (buttonToDisable != null) {
-                    runOnFxThread(() -> buttonToDisable.setDisable(false));
-                }
-            }
-        });
-        loader.startNowInNewThread();
     }
 
     private void showScannerMessage(FxCallback.FxCallbackType type, String message) {

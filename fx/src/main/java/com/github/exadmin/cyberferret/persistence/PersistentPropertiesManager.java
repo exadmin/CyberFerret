@@ -1,7 +1,6 @@
 package com.github.exadmin.cyberferret.persistence;
 
 import com.github.exadmin.cyberferret.logging.LoggerProxy;
-import com.github.exadmin.cyberferret.utils.MiscUtils;
 
 import java.io.*;
 import java.nio.file.Path;
@@ -10,21 +9,16 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
-import static com.github.exadmin.cyberferret.AppConstants.SYS_ENV_VAR_PASSWORD;
-
 public class PersistentPropertiesManager {
     private static final Map<String, AbstractPersistentProperty<?>> REG_MAP = Collections.synchronizedMap(new HashMap<>());
     public static final AbstractPersistentProperty<Number> STAGE_WIDTH = new AppDoubleProperty("stage.width", 640d, REG_MAP);
     public static final AbstractPersistentProperty<Number> STAGE_HEIGHT = new AppDoubleProperty("stage.height", 480d, REG_MAP);
     public static final AbstractPersistentProperty<Number> STAGE_POSX = new AppDoubleProperty("stage.posX", 0d, REG_MAP);
     public static final AbstractPersistentProperty<Number> STAGE_POSY = new AppDoubleProperty("stage.posY", 0d, REG_MAP);
-    public static final AbstractPersistentProperty<String> DICTIONARY = new AppStringProperty("dictionary", "", REG_MAP);
     public static final AbstractPersistentProperty<String> DIR_TO_SCAN = new AppStringProperty("dir-to-scan", "", REG_MAP);
     public static final AbstractPersistentProperty<String> CF_CLI_PATH =
             new AppStringProperty("cfcli.path", "", REG_MAP);
     public static final AbstractPersistentProperty<Boolean> STAGE_IS_MAXIMIZED = new AppBooleanProperty("stage.maximized", false, REG_MAP);
-    public static final AbstractPersistentProperty<String> PASSWORD =
-            new AppStringProperty("dictionary.password", "", new HashMap<>());
     public static final AbstractPersistentProperty<Number> PATH_NAME_COLUMN_WIDTH =
             new AppDoubleProperty("tree-table.path-name-column.width", 200d, REG_MAP);
     public static final AbstractPersistentProperty<Number> STATUS_COLUMN_WIDTH =
@@ -68,13 +62,6 @@ public class PersistentPropertiesManager {
             LOG.warn("Application context file '{}' was not found. Context will be initiated with default values.", filePath);
         } catch (IOException ex) {
             LOG.error("Error while loading application context file '{}'", filePath, ex);
-        }
-
-        if (!MiscUtils.isNotEmpty(PASSWORD.getValue())) {
-            String inMemValue = System.getenv(SYS_ENV_VAR_PASSWORD);
-            if (MiscUtils.isNotEmpty(inMemValue)) {
-                PASSWORD.setValue(inMemValue);
-            }
         }
     }
 
