@@ -1,7 +1,7 @@
 package com.github.exadmin.cyberferret.fxui;
 
 import com.github.exadmin.cyberferret.AppConstants;
-import com.github.exadmin.cyberferret.async.*;
+import com.github.exadmin.cyberferret.async.RunnableLogger;
 import com.github.exadmin.cyberferret.cfcli.CfCliExecutable;
 import com.github.exadmin.cyberferret.cfcli.CfCliScanner;
 import com.github.exadmin.cyberferret.cfcli.CfCliTreeAssembler;
@@ -219,7 +219,7 @@ public class SceneBuilder {
                         message -> log.info("{}", message),
                         message -> {
                             log.error("{}", message);
-                            runOnFxThread(() -> showScannerMessage(FxCallback.FxCallbackType.ERROR, message));
+                            runOnFxThread(() -> AlertBuilder.showError(message));
                         },
                         () -> {
                             scannerRunning.set(false);
@@ -504,14 +504,6 @@ public class SceneBuilder {
         thread.start();
 
         return tpLogs;
-    }
-
-    private void showScannerMessage(FxCallback.FxCallbackType type, String message) {
-        switch (type) {
-            case ERROR, WARNING -> AlertBuilder.showError(message);
-            case INFO -> AlertBuilder.showInfo(message);
-            default -> throw new IllegalStateException("Unsupported message type " + type);
-        }
     }
 
     private void runOnFxThread(Runnable runnable) {

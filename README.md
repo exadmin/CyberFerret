@@ -5,7 +5,7 @@ Scans locally cloned Git-repository for different pre-defined signatures (suppor
 The main difference to other popular opensource similar scanners are:
 * Ability to have centralized signatures dictionary
 * Dictionary is published in encrypted state and ecrypted during use
-* Both interfaces are supported: CLI & GUI
+* A native Go CLI and a JavaFX GUI
 * Ability to manage exclusions per exact signature and file in secured manner
 
 Other base features are supported:
@@ -19,20 +19,23 @@ Other base features are supported:
 [<img src="./docs/highlevel-diag.png">]()
 
 # Roles
-* Signatures dictionary owner - manages signatures dictionary and encrypts it with special password. It allows to publish/transfer dictionary over public network and service.
-* Team - uses CyberFerret and signatures dictionary. They also know special password but they don't care about dictionary transportation and update procedure.
+* The signatures dictionary owner manages and encrypts the dictionary for distribution through public networks and
+  services.
+* Teams use CyberFerret and know the dictionary password without having to manage dictionary distribution or updates.
 
 # Pre-requisites
 * Install [JDK 21 or newer](https://jdk.java.net/21/)
 * Install [JavaFX 21 or newer](https://gluonhq.com/products/javafx/)
-* Install Apache Maven (ver 3.9.x) from https://maven.apache.org/download.cgi
+* Install [Apache Maven 3.9](https://maven.apache.org/download.cgi)
 * Install [Git](https://git-scm.com/downloads) and ensure `git` is available on `PATH`
 * Setup M2_HOME, JAVA_HOME and PATH (add maven and java) System Variables as recommended for Java and Maven usage
 
-Note, that CyberFerret CLI calls git to understand list of files to be ignored during scan.
+The native `cfcli` command uses Git to select files for scanning. The JavaFX application delegates scanning and
+dictionary management to this command.
 
 # Scanning procedure
-CyberFerret scans tracked files and untracked files that Git does not ignore. This includes newly created source files that have not been added to Git yet.
+CyberFerret scans tracked files and untracked files that Git does not ignore. This includes newly created source files
+that have not been added to Git yet.
 
 Cyber Ferret skips files excluded by standard Git rules, including repository `.gitignore` files,
 `.git/info/exclude`, and the user's global Git excludes file. Git must be available on `PATH` to scan a Git
@@ -46,52 +49,52 @@ On Unix systems, the scanner also preserves and scans file names that contain by
 # Example
 [<img src="./docs/run-example.gif">]()
 
-# How to build from sources via command line
+## Build from the command line
 
-## Compilation & build
-WARN: to be updated!
+### JavaFX application
 
-Navigate to the CyberFerret folder where ./pom.xml presents and run:
+Run Maven from the repository root:
+
 ```shell
-mvn clean package assembly:single
+mvn -pl fx -am clean package
 ```
 
-After build you will get module-specific JARs under `fx/target` and `cli/target`.
+The application JAR is written to `fx/target/cyberferret-fx.jar`.
 
-Build only CLI:
+### Native CLI
+
+Run Go from the `cfcli` directory:
+
 ```shell
-mvn -pl cli -am clean package assembly:single
+go build -o cfcli .
 ```
 
-Build only JavaFX:
-```shell
-mvn -pl fx -am clean package assembly:single
-```
+On Windows, the output file is `cfcli.exe`. See the [cfcli reference](cfcli/README.md) for usage and runtime
+requirements.
 
-After modularization, build artifacts are:
-* JavaFX app: `.\fx\target\cyberferret-fx.jar`
-* CLI app: `.\cli\target\cyberferret-cli.jar`
+## Run the JavaFX application on Windows
 
-# How to run - Windows version
-Replace "${PATH_TO_JAVA_FX_SDK}" with correct path to JavaFx SDK
+Replace `${PATH_TO_JAVA_FX_SDK}` with the path to the JavaFX SDK:
+
 ```shell
 java --module-path "${PATH_TO_JAVA_FX_SDK}\lib" --add-modules javafx.controls,javafx.web,javafx.graphics --enable-native-access=javafx.graphics -jar .\fx\target\cyberferret-fx.jar
 ```
-or use ./fx/src/shell/run-app.cmd file
 
-# How to run - Linux/macOS version
-Replace "$path_to_javafx_sdk" with correct path to JavaFx SDK
+You can also use `fx/src/shell/run-app.cmd`.
+
+## Run the JavaFX application on Linux or macOS
+
+Replace `$PATH_TO_JAVAFX_SDK` with the path to the JavaFX SDK:
+
 ```shell
-java --module-path $path_to_javafx_sdk/lib --add-modules javafx.controls,javafx.web,javafx.graphics --enable-native-access=javafx.graphics -jar ./fx/target/cyberferret-fx.jar
+java --module-path "$PATH_TO_JAVAFX_SDK/lib" --add-modules javafx.controls,javafx.web,javafx.graphics --enable-native-access=javafx.graphics -jar ./fx/target/cyberferret-fx.jar
 ```
-or use ./fx/src/shell/run-app.sh file
 
-# How to run - in IntelliJ IDEA
-## prerequisites
-Install [JDK 21 or newer](https://jdk.java.net/21/)
-Install [JavaFX 21 or newer](https://gluonhq.com/products/javafx/)
-Create Run/Debug Configuration Profile of type "Application"
-Set VM options:
+You can also use `fx/src/shell/run-app.sh`.
+
+## Run the JavaFX application in IntelliJ IDEA
+
+Install JDK 21 and JavaFX 21 or newer. Create an Application run configuration and set these VM options:
 
 ```shell
 --module-path "...\JDKs\javafx-sdk-21\lib" --add-modules javafx.controls,javafx.web,javafx.graphics --enable-native-access=javafx.graphics
