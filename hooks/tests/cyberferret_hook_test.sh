@@ -94,7 +94,7 @@ EOF
 
 (
     cd "$CONSUMER_REPOSITORY"
-    CF_TEST_RELEASE_JSON='{"tag_name":"cfcli-v2.0.4","assets":[{"name":"cfcli-linux-amd64","browser_download_url":"https://downloads.example/cfcli-linux-amd64"}]}' \
+    CF_TEST_RELEASE_JSON='{"tag_name":"cfcli-v2.1.0","assets":[{"name":"cfcli-linux-amd64","browser_download_url":"https://downloads.example/cfcli-linux-amd64"}]}' \
     CF_TEST_CLI="$TEST_ROOT/cfcli-linux-amd64" \
     CF_TEST_MARKER="$MARKER_FILE" \
     PRE_COMMIT_HOME="$TEST_ROOT/pre-commit-cache" \
