@@ -173,6 +173,7 @@ func writeHelp(output *lineOutput) error {
 		"Usage:",
 		"  cfcli [--mode=quick|--mode=json] [--print=details] [--verbose=true|--verbose=false] " +
 			"FOLDER_PATH [PATH_TO_LIST_OF_FILES]",
+		"  cfcli exclude <add|remove> FOLDER_PATH JSON_OBJECT",
 		"  cfcli exclude FOLDER_PATH JSON_OBJECT",
 		"",
 		"cfcli scans a Git repository for sensitive values using the CyberFerret dictionary.",
@@ -183,16 +184,6 @@ func writeHelp(output *lineOutput) error {
 		"  Set CYBER_FERRET_PASSWORD to the dictionary decryption password.",
 		"  Git must be available on PATH.",
 		"",
-		"Examples:",
-		"  cfcli /path/to/repository",
-		"  cfcli --mode=quick /path/to/repository",
-		"  cfcli --mode=quick --print=details /path/to/repository",
-		"  cfcli --mode=json /path/to/repository /path/to/staged-files.txt",
-		"  cfcli --verbose=true --mode=json /path/to/repository",
-		"  cfcli exclude /path/to/repository 'JSON: " +
-			"{\"type\":\"found\",\"key\":\"EMAIL\",\"found\":\"ci.noreply@example.com\"," +
-			"\"line\":89,\"file\":\"docs/notifications.md\"}'",
-		"",
 		"Arguments and options:",
 		"  FOLDER_PATH              Git repository root to scan or update.",
 		"  PATH_TO_LIST_OF_FILES    Optional file with Git-relative paths to scan, one path per line.",
@@ -202,9 +193,12 @@ func writeHelp(output *lineOutput) error {
 		"  --print=details          In quick mode, print copy-ready exclude commands for the finding.",
 		"  --verbose=true           Print each folder and file before it is scanned.",
 		"  --verbose=false          Do not print per-file progress. This is the default.",
-		"  JSON_OBJECT              Found event to add to FOLDER_PATH/.qubership/grand-report.json.",
-		"                           It may start with \"JSON:\" and must have type \"found\", " +
-			"found, and file fields.",
+		"  add                      Ensure that the specified exclusion exists.",
+		"  remove                   Ensure that the specified exclusion does not exist.",
+		"  JSON_OBJECT              Exclusion target for FOLDER_PATH/.qubership/grand-report.json.",
+		"                           Use type \"found\" with found and file, type \"file\" with file,",
+		"                           or type \"folder\" with folder. Paths must be relative to FOLDER_PATH.",
+		"                           The legacy exclude form adds a \"found\" target and remains supported.",
 		"",
 		"Use exclude only when you consider the detected value acceptable for that repository file.",
 		"The exclude command does not refresh or decrypt the dictionary and does not require " +

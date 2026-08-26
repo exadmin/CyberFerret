@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -14,9 +15,22 @@ import (
 // excludeEvent is the part of a [finding] the exclude command acts on. The remaining finding fields
 // are ignored, so an event copied verbatim out of the scanner's JSON output is a valid argument.
 type excludeEvent struct {
-	Type  string `json:"type"`
-	Found string `json:"found"`
-	File  string `json:"file"`
+	Type   string `json:"type"`
+	Found  string `json:"found"`
+	File   string `json:"file"`
+	Folder string `json:"folder"`
+}
+
+type exclusionOperation string
+
+const (
+	exclusionAdd    exclusionOperation = "add"
+	exclusionRemove exclusionOperation = "remove"
+)
+
+type exclusionChange struct {
+	ReportPath string
+	Changed    bool
 }
 
 // strictGrandReport mirrors [grandReport] for decoding only. Its Exclusions pointer, and the
@@ -85,7 +99,7 @@ type unsupportedExcludeEventTypeError struct {
 
 func (e *unsupportedExcludeEventTypeError) Error() string {
 	return fmt.Sprintf(
-		"Cannot exclude event type %q: only \"found\" is supported. No files were changed.",
+		"Cannot exclude event type %q: supported types are \"found\", \"file\", and \"folder\". No files were changed.",
 		e.eventType,
 	)
 }
@@ -102,20 +116,66 @@ func isExcludeCommand(args []string) bool {
 
 func runExcludeCommand(args []string, stdout, stderr io.Writer) exitStatus {
 	errorOutput := newLineOutput(stderr)
-	if len(args) != 3 {
+	operation, root, encodedEvent, legacy, ok := parseExcludeInvocation(args)
+	if !ok {
 		_ = writeHelp(errorOutput)
 		return exitFailure
 	}
-	reportPath, err := updateExclusions(args[1], args[2])
+	if legacy {
+		event, err := parseExcludeEvent(encodedEvent)
+		if err != nil {
+			writeFatal(errorOutput, "%v", err)
+			return exitFailure
+		}
+		if event.Type != "found" {
+			writeFatal(
+				errorOutput,
+				"The legacy exclude form accepts only type \"found\"; use \"exclude add\" for type %q. No files were changed.",
+				event.Type,
+			)
+			return exitFailure
+		}
+	}
+	change, err := updateExclusion(root, encodedEvent, operation)
 	if err != nil {
 		writeFatal(errorOutput, "%v", err)
 		return exitFailure
 	}
-	if err := newLineOutput(stdout).text("Exclusions file was updated: %s", reportPath); err != nil {
+	message := exclusionResultMessage(operation, change.Changed, legacy)
+	if err := newLineOutput(stdout).text("%s: %s", message, change.ReportPath); err != nil {
 		writeFatal(errorOutput, "Cannot write updated exclusions path: %v", err)
 		return exitFailure
 	}
 	return exitClean
+}
+
+func parseExcludeInvocation(args []string) (exclusionOperation, string, string, bool, bool) {
+	if len(args) == 3 {
+		return exclusionAdd, args[1], args[2], true, true
+	}
+	if len(args) == 4 {
+		operation := exclusionOperation(args[1])
+		if operation == exclusionAdd || operation == exclusionRemove {
+			return operation, args[2], args[3], false, true
+		}
+	}
+	return "", "", "", false, false
+}
+
+func exclusionResultMessage(operation exclusionOperation, changed, legacy bool) string {
+	if legacy {
+		return "Exclusions file was updated"
+	}
+	if operation == exclusionAdd {
+		if changed {
+			return "Exclusion added"
+		}
+		return "Exclusion already exists"
+	}
+	if changed {
+		return "Exclusion removed"
+	}
+	return "Exclusion does not exist"
 }
 
 type shellCommand struct {
@@ -201,21 +261,26 @@ func (e *excludeCommandError) Error() string {
 // over the old one, and every rejection happens before that rename, so a failure leaves an existing
 // report byte-for-byte unchanged.
 func updateExclusions(root, encodedEvent string) (string, error) {
+	change, err := updateExclusion(root, encodedEvent, exclusionAdd)
+	return change.ReportPath, err
+}
+
+func updateExclusion(root, encodedEvent string, operation exclusionOperation) (exclusionChange, error) {
 	event, err := parseExcludeEvent(encodedEvent)
 	if err != nil {
-		return "", err
+		return exclusionChange{}, err
 	}
 	rootInfo, err := os.Stat(root)
 	if err != nil {
-		return "", &excludeCommandError{message: fmt.Sprintf("Cannot inspect FOLDER_PATH %q: %v.", root, err)}
+		return exclusionChange{}, &excludeCommandError{message: fmt.Sprintf("Cannot inspect FOLDER_PATH %q: %v.", root, err)}
 	}
 	if !rootInfo.IsDir() {
-		return "", &excludeCommandError{message: fmt.Sprintf("FOLDER_PATH %q is not a directory.", root)}
+		return exclusionChange{}, &excludeCommandError{message: fmt.Sprintf("FOLDER_PATH %q is not a directory.", root)}
 	}
 
 	reportPath, err := filepath.Abs(filepath.Join(root, ".qubership", "grand-report.json"))
 	if err != nil {
-		return "", &excludeCommandError{message: fmt.Sprintf("Cannot resolve exclusions file: %v.", err)}
+		return exclusionChange{}, &excludeCommandError{message: fmt.Sprintf("Cannot resolve exclusions file: %v.", err)}
 	}
 	var report grandReport
 	content, err := os.ReadFile(reportPath)
@@ -223,29 +288,50 @@ func updateExclusions(root, encodedEvent string) (string, error) {
 	case err == nil:
 		report, err = decodeGrandReport(content)
 		if err != nil {
-			return "", &excludeCommandError{
+			return exclusionChange{}, &excludeCommandError{
 				message: fmt.Sprintf("Cannot parse exclusions file %q: %v.", reportPath, err),
 			}
 		}
 	case os.IsNotExist(err):
 		report.Exclusions = []grandReportExclusion{}
 	default:
-		return "", &excludeCommandError{
+		return exclusionChange{}, &excludeCommandError{
 			message: fmt.Sprintf("Cannot read exclusions file %q: %v.", reportPath, err),
 		}
 	}
 
-	addition := grandReportExclusion{
-		TextHash: sha256Hex(event.Found),
-		FileHash: sha256Hex(event.File),
+	target, err := exclusionForEvent(event)
+	if err != nil {
+		return exclusionChange{}, err
 	}
+	matchCount := 0
 	filtered := report.Exclusions[:0]
 	for _, existing := range report.Exclusions {
-		if existing.TextHash != addition.TextHash || existing.FileHash != addition.FileHash {
+		if existing.TextHash == target.TextHash && existing.FileHash == target.FileHash {
+			matchCount++
+		} else {
 			filtered = append(filtered, existing)
 		}
 	}
-	report.Exclusions = append(filtered, addition)
+	changed := false
+	switch operation {
+	case exclusionAdd:
+		if matchCount == 1 {
+			return exclusionChange{ReportPath: reportPath, Changed: false}, nil
+		}
+		report.Exclusions = append(filtered, target)
+		changed = true
+	case exclusionRemove:
+		if matchCount == 0 {
+			return exclusionChange{ReportPath: reportPath, Changed: false}, nil
+		}
+		report.Exclusions = filtered
+		changed = true
+	default:
+		return exclusionChange{}, &excludeCommandError{
+			message: fmt.Sprintf("Cannot update exclusion: unsupported operation %q.", operation),
+		}
+	}
 	sort.Slice(report.Exclusions, func(i, j int) bool {
 		if report.Exclusions[i].FileHash == report.Exclusions[j].FileHash {
 			return report.Exclusions[i].TextHash < report.Exclusions[j].TextHash
@@ -255,31 +341,31 @@ func updateExclusions(root, encodedEvent string) (string, error) {
 
 	content, err = json.MarshalIndent(report, "", "  ")
 	if err != nil {
-		return "", &excludeCommandError{message: fmt.Sprintf("Cannot encode exclusions file %q: %v.", reportPath, err)}
+		return exclusionChange{}, &excludeCommandError{message: fmt.Sprintf("Cannot encode exclusions file %q: %v.", reportPath, err)}
 	}
 	content = append(content, '\n')
 
 	directory := filepath.Dir(reportPath)
 	if err := os.MkdirAll(directory, 0o755); err != nil {
-		return "", &excludeCommandError{message: fmt.Sprintf("Cannot create exclusions directory %q: %v.", directory, err)}
+		return exclusionChange{}, &excludeCommandError{message: fmt.Sprintf("Cannot create exclusions directory %q: %v.", directory, err)}
 	}
 	temporary, err := os.CreateTemp(directory, ".grand-report-*.tmp")
 	if err != nil {
-		return "", &excludeCommandError{message: fmt.Sprintf("Cannot create temporary exclusions file: %v.", err)}
+		return exclusionChange{}, &excludeCommandError{message: fmt.Sprintf("Cannot create temporary exclusions file: %v.", err)}
 	}
 	temporaryPath := temporary.Name()
 	defer os.Remove(temporaryPath)
 	if _, err := temporary.Write(content); err != nil {
 		_ = temporary.Close()
-		return "", &excludeCommandError{message: fmt.Sprintf("Cannot write temporary exclusions file: %v.", err)}
+		return exclusionChange{}, &excludeCommandError{message: fmt.Sprintf("Cannot write temporary exclusions file: %v.", err)}
 	}
 	if err := temporary.Close(); err != nil {
-		return "", &excludeCommandError{message: fmt.Sprintf("Cannot close temporary exclusions file: %v.", err)}
+		return exclusionChange{}, &excludeCommandError{message: fmt.Sprintf("Cannot close temporary exclusions file: %v.", err)}
 	}
 	if err := os.Rename(temporaryPath, reportPath); err != nil {
-		return "", &excludeCommandError{message: fmt.Sprintf("Cannot replace exclusions file %q: %v.", reportPath, err)}
+		return exclusionChange{}, &excludeCommandError{message: fmt.Sprintf("Cannot replace exclusions file %q: %v.", reportPath, err)}
 	}
-	return reportPath, nil
+	return exclusionChange{ReportPath: reportPath, Changed: changed}, nil
 }
 
 // decodeGrandReport parses a report strictly: an empty object decodes as an empty report, and
@@ -388,9 +474,52 @@ func validateJSONValue(decoder *json.Decoder) error {
 	return err
 }
 
+func exclusionForEvent(event excludeEvent) (grandReportExclusion, error) {
+	var textHash string
+	var rawPath string
+	var fieldName string
+	switch event.Type {
+	case "found":
+		textHash = sha256Hex(event.Found)
+		rawPath = event.File
+		fieldName = "file"
+	case "file":
+		textHash = fullPathExclusionHash
+		rawPath = event.File
+		fieldName = "file"
+	case "folder":
+		textHash = fullPathExclusionHash
+		rawPath = event.Folder
+		fieldName = "folder"
+	default:
+		return grandReportExclusion{}, &unsupportedExcludeEventTypeError{eventType: event.Type}
+	}
+	normalized, err := normalizeExcludePath(rawPath, fieldName)
+	if err != nil {
+		return grandReportExclusion{}, err
+	}
+	return grandReportExclusion{TextHash: textHash, FileHash: sha256Hex(normalized)}, nil
+}
+
+func normalizeExcludePath(rawPath, fieldName string) (string, error) {
+	normalizedSeparators := strings.ReplaceAll(strings.TrimSpace(rawPath), "\\", "/")
+	cleaned := path.Clean(normalizedSeparators)
+	if normalizedSeparators == "" || cleaned == "." {
+		return "", &excludeCommandError{
+			message: fmt.Sprintf("Cannot exclude event: %q must be a nonempty relative path.", fieldName),
+		}
+	}
+	if strings.HasPrefix(cleaned, "/") || cleaned == ".." || strings.HasPrefix(cleaned, "../") ||
+		(len(cleaned) >= 2 && cleaned[1] == ':') {
+		return "", &excludeCommandError{
+			message: fmt.Sprintf("Cannot exclude event: %q must stay within FOLDER_PATH.", fieldName),
+		}
+	}
+	return cleaned, nil
+}
+
 // parseExcludeEvent decodes encoded into an [excludeEvent], tolerating the "JSON:" line prefix that
-// cfcli itself prints so a finding can be pasted straight from the scan output. Only a "found"
-// event with a nonempty "found" and "file" is accepted.
+// cfcli itself prints so a finding can be pasted straight from the scan output.
 func parseExcludeEvent(encoded string) (excludeEvent, error) {
 	encoded = strings.TrimSpace(encoded)
 	if strings.HasPrefix(encoded, "JSON:") {
@@ -408,17 +537,22 @@ func parseExcludeEvent(encoded string) (excludeEvent, error) {
 			message: "Cannot exclude event: \"type\" must be a nonempty string.",
 		}
 	}
-	if event.Type != "found" {
+	if event.Type != "found" && event.Type != "file" && event.Type != "folder" {
 		return excludeEvent{}, &unsupportedExcludeEventTypeError{eventType: event.Type}
 	}
-	if event.Found == "" {
+	if event.Type == "found" && event.Found == "" {
 		return excludeEvent{}, &excludeCommandError{
 			message: "Cannot exclude event: \"found\" must be a nonempty string.",
 		}
 	}
-	if event.File == "" {
+	if (event.Type == "found" || event.Type == "file") && event.File == "" {
 		return excludeEvent{}, &excludeCommandError{
-			message: "Cannot exclude event: \"file\" must be a nonempty string.",
+			message: "Cannot exclude event: \"file\" must be a nonempty relative path.",
+		}
+	}
+	if event.Type == "folder" && event.Folder == "" {
+		return excludeEvent{}, &excludeCommandError{
+			message: "Cannot exclude event: \"folder\" must be a nonempty relative path.",
 		}
 	}
 	return event, nil

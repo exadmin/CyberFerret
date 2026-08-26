@@ -57,28 +57,87 @@ defaults to `false` and accepts only `true` or `false`. The optional list contai
 relative to `FOLDER_PATH`. Empty lines and duplicate paths are ignored. Absolute paths and paths that escape
 `FOLDER_PATH` are rejected.
 
-## Exclude a finding
+## Manage exclusions
 
-Add a `found` event to the repository's `.qubership/grand-report.json`:
+Use an explicit operation to add or remove an exclusion:
+
+```text
+cfcli exclude <add|remove> FOLDER_PATH JSON_OBJECT
+```
+
+`add` ensures that the exclusion exists. `remove` ensures that it does not exist. Both operations are idempotent:
+repeating an operation succeeds without changing the report. The repository folder must already exist.
+
+The original command remains an alias for adding a `found` exclusion:
+
+```text
+cfcli exclude FOLDER_PATH JSON_OBJECT
+```
+
+The JSON argument may start with the `JSON:` protocol prefix printed by the scanner.
+
+### Exclude a finding
+
+A `found` target excludes one exact detected value in one file. The required fields are `type`, `found`, and `file`.
+Fields such as `key` and `line` may be included when copying the complete scanner event.
 
 ```shell
-./cfcli exclude /path/to/repository \
+./cfcli exclude add /path/to/repository \
   '{"type":"found","key":"EMAIL","found":"ci.noreply@example.com","line":89,"file":"docs/notifications.md"}'
 ```
 
-The JSON argument may include the CLI protocol prefix:
+Remove the same exclusion:
 
 ```shell
-./cfcli exclude /path/to/repository \
-  'JSON: {"type":"found","key":"EMAIL","found":"ci.noreply@example.com","line":89,"file":"docs/notifications.md"}'
+./cfcli exclude remove /path/to/repository \
+  '{"type":"found","found":"ci.noreply@example.com","file":"docs/notifications.md"}'
 ```
 
-The command hashes the exact `found` and `file` values with SHA-256, preserves existing exclusions, removes a duplicate
-of the same pair, and sorts the report in the same order as the FX application. It creates `.qubership` and
-`grand-report.json` when needed. The repository folder must already exist.
+For a finding, the report stores `SHA-256(found)` in `t-hash` and `SHA-256(file)` in `f-hash`.
 
-Only `found` events are supported. Invalid events and invalid existing reports produce an error without changing the
-report. This command does not refresh or decrypt the dictionary and does not require `CYBER_FERRET_PASSWORD`.
+### Exclude a file
+
+A `file` target excludes the complete file:
+
+```shell
+./cfcli exclude add /path/to/repository \
+  '{"type":"file","file":"src/generated/App.java"}'
+```
+
+Remove the file exclusion:
+
+```shell
+./cfcli exclude remove /path/to/repository \
+  '{"type":"file","file":"src/generated/App.java"}'
+```
+
+### Exclude a folder
+
+A `folder` target excludes the complete directory subtree:
+
+```shell
+./cfcli exclude add /path/to/repository \
+  '{"type":"folder","folder":"src/generated"}'
+```
+
+Remove the folder exclusion:
+
+```shell
+./cfcli exclude remove /path/to/repository \
+  '{"type":"folder","folder":"src/generated"}'
+```
+
+File and folder targets store `00000000` in `t-hash`. Their normalized relative path is hashed into `f-hash`.
+Backslashes are converted to `/`, and redundant `.` segments are removed. Absolute paths and paths that escape
+`FOLDER_PATH` are rejected. The target itself does not need to exist.
+
+All operations preserve unrelated exclusions and sort the report by `f-hash`, then `t-hash`. Changes are written
+atomically. The command creates `.qubership/grand-report.json` when an addition requires it. Invalid targets and invalid
+existing reports produce an error without changing any file.
+
+Successful operations return exit code `0` and report whether the exclusion was added, removed, already present, or
+already absent. Failures return exit code `1`. Exclusion management does not refresh or decrypt the dictionary and does
+not require `CYBER_FERRET_PASSWORD`.
 
 Running `cfcli` without arguments or with an incomplete `exclude` command prints help for both scan and exclusion
 syntax.

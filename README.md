@@ -46,7 +46,7 @@ Checked-out Git submodules are scanned recursively. Cyber Ferret does not follow
 tracked link cannot make a scan traverse an external repository. Symbolic links to regular files remain scannable.
 On Unix systems, the scanner also preserves and scans file names that contain byte sequences that are not valid UTF-8.
 
-# Example
+## Example
 [<img src="./docs/run-example.gif">]()
 
 ## Build from the command line
@@ -71,6 +71,50 @@ go build -o cfcli .
 
 On Windows, the output file is `cfcli.exe`. See the [cfcli reference](cfcli/README.md) for usage and runtime
 requirements.
+
+## Manage exclusions with the native CLI
+
+Use `add` to ensure that an exclusion exists and `remove` to ensure that it does not exist:
+
+```text
+cfcli exclude <add|remove> FOLDER_PATH JSON_OBJECT
+```
+
+Both operations are idempotent. Repeating an operation succeeds without adding duplicates or failing when the target
+is already absent. The original `cfcli exclude FOLDER_PATH JSON_OBJECT` form remains an alias for adding a `found`
+target.
+
+Exclude or restore one exact finding in one file:
+
+```shell
+cfcli exclude add /path/to/repository \
+  '{"type":"found","found":"ci.noreply@example.com","file":"docs/notifications.md"}'
+cfcli exclude remove /path/to/repository \
+  '{"type":"found","found":"ci.noreply@example.com","file":"docs/notifications.md"}'
+```
+
+Exclude or restore a complete file:
+
+```shell
+cfcli exclude add /path/to/repository \
+  '{"type":"file","file":"src/generated/App.java"}'
+cfcli exclude remove /path/to/repository \
+  '{"type":"file","file":"src/generated/App.java"}'
+```
+
+Exclude or restore a directory subtree:
+
+```shell
+cfcli exclude add /path/to/repository \
+  '{"type":"folder","folder":"src/generated"}'
+cfcli exclude remove /path/to/repository \
+  '{"type":"folder","folder":"src/generated"}'
+```
+
+All target paths are relative to `FOLDER_PATH`. The command rejects absolute paths and paths that escape the repository.
+It updates `.qubership/grand-report.json` atomically and leaves the file unchanged after any validation or parsing
+error. See the [cfcli exclusion reference](cfcli/README.md#manage-exclusions) for hashing, normalization, output, and
+exit-code details.
 
 ## Run the JavaFX application on Windows
 

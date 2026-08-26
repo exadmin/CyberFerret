@@ -274,12 +274,159 @@ func TestRunExcludeRejectsUnsupportedType(t *testing.T) {
 		appDependencies{},
 	)
 
-	want := "TEXT: Cannot exclude event type \"allowed\": only \"found\" is supported. No files were changed.\n"
+	want := "TEXT: Cannot exclude event type \"allowed\": supported types are \"found\", \"file\", and \"folder\". No files were changed.\n"
 	if exitCode != exitFailure || stdout.Len() != 0 || stderr.String() != want {
 		t.Fatalf("exit code = %d, stdout = %q, stderr = %q; want stderr %q", exitCode, stdout.String(), stderr.String(), want)
 	}
 	if _, err := os.Stat(filepath.Join(root, ".qubership", "grand-report.json")); !os.IsNotExist(err) {
 		t.Fatalf("report was created; stat error = %v", err)
+	}
+}
+
+func TestUpdateExclusionSupportsFoundFileAndFolderTargets(t *testing.T) {
+	tests := []struct {
+		name     string
+		encoded  string
+		textHash string
+		fileHash string
+	}{
+		{
+			name:     "found",
+			encoded:  `{"type":"found","found":"SECRET","file":"src/file.txt"}`,
+			textHash: testSHA256("SECRET"),
+			fileHash: testSHA256("src/file.txt"),
+		},
+		{
+			name:     "file",
+			encoded:  `{"type":"file","file":"src\\generated/../file.txt"}`,
+			textHash: fullPathExclusionHash,
+			fileHash: testSHA256("src/file.txt"),
+		},
+		{
+			name:     "folder",
+			encoded:  `{"type":"folder","folder":"src/generated"}`,
+			textHash: fullPathExclusionHash,
+			fileHash: testSHA256("src/generated"),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			root := t.TempDir()
+
+			change, err := updateExclusion(root, test.encoded, exclusionAdd)
+
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !change.Changed {
+				t.Fatal("first add did not report a change")
+			}
+			content, err := os.ReadFile(change.ReportPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var report grandReport
+			if err := json.Unmarshal(content, &report); err != nil {
+				t.Fatal(err)
+			}
+			want := []grandReportExclusion{{TextHash: test.textHash, FileHash: test.fileHash}}
+			if !reflect.DeepEqual(report.Exclusions, want) {
+				t.Fatalf("exclusions = %#v, want %#v", report.Exclusions, want)
+			}
+		})
+	}
+}
+
+func TestUpdateExclusionAddAndRemoveAreIdempotent(t *testing.T) {
+	root := t.TempDir()
+	event := `{"type":"file","file":"src/file.txt"}`
+
+	firstAdd, err := updateExclusion(root, event, exclusionAdd)
+	if err != nil || !firstAdd.Changed {
+		t.Fatalf("first add = %#v, error = %v", firstAdd, err)
+	}
+	secondAdd, err := updateExclusion(root, event, exclusionAdd)
+	if err != nil || secondAdd.Changed {
+		t.Fatalf("second add = %#v, error = %v", secondAdd, err)
+	}
+	firstRemove, err := updateExclusion(root, event, exclusionRemove)
+	if err != nil || !firstRemove.Changed {
+		t.Fatalf("first remove = %#v, error = %v", firstRemove, err)
+	}
+	secondRemove, err := updateExclusion(root, event, exclusionRemove)
+	if err != nil || secondRemove.Changed {
+		t.Fatalf("second remove = %#v, error = %v", secondRemove, err)
+	}
+}
+
+func TestRunExcludeSupportsExplicitOperations(t *testing.T) {
+	root := t.TempDir()
+	event := `{"type":"folder","folder":"generated"}`
+
+	for _, test := range []struct {
+		operation string
+		message   string
+	}{
+		{operation: "add", message: "Exclusion added"},
+		{operation: "add", message: "Exclusion already exists"},
+		{operation: "remove", message: "Exclusion removed"},
+		{operation: "remove", message: "Exclusion does not exist"},
+	} {
+		var stdout bytes.Buffer
+		var stderr bytes.Buffer
+
+		exitCode := runExcludeCommand(
+			[]string{"exclude", test.operation, root, event},
+			&stdout,
+			&stderr,
+		)
+
+		if exitCode != exitClean || stderr.Len() != 0 || !strings.Contains(stdout.String(), test.message) {
+			t.Fatalf(
+				"operation %q: exit = %d, stdout = %q, stderr = %q",
+				test.operation,
+				exitCode,
+				stdout.String(),
+				stderr.String(),
+			)
+		}
+	}
+}
+
+func TestRunExcludeLegacyFormAcceptsOnlyFoundTargets(t *testing.T) {
+	root := t.TempDir()
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+
+	exitCode := runExcludeCommand(
+		[]string{"exclude", root, `{"type":"file","file":"src/file.txt"}`},
+		&stdout,
+		&stderr,
+	)
+
+	if exitCode != exitFailure || stdout.Len() != 0 ||
+		!strings.Contains(stderr.String(), "legacy exclude form accepts only type \"found\"") {
+		t.Fatalf("exit = %d, stdout = %q, stderr = %q", exitCode, stdout.String(), stderr.String())
+	}
+	if _, err := os.Stat(filepath.Join(root, ".qubership", "grand-report.json")); !os.IsNotExist(err) {
+		t.Fatalf("report was created; stat error = %v", err)
+	}
+}
+
+func TestUpdateExclusionRejectsPathsOutsideRoot(t *testing.T) {
+	for _, encoded := range []string{
+		`{"type":"file","file":"../outside.txt"}`,
+		`{"type":"folder","folder":"/absolute"}`,
+		`{"type":"file","file":"C:\\absolute.txt"}`,
+	} {
+		root := t.TempDir()
+
+		_, err := updateExclusion(root, encoded, exclusionAdd)
+
+		if err == nil || !strings.Contains(err.Error(), "No files were changed.") {
+			t.Fatalf("event %s: error = %v, want unchanged-file error", encoded, err)
+		}
 	}
 }
 
