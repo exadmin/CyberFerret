@@ -1,13 +1,10 @@
 package com.github.exadmin.cyberferret;
 
 import com.github.exadmin.cyberferret.fxui.SceneBuilder;
-import com.github.exadmin.cyberferret.logging.LoggerProxy;
 import com.github.exadmin.cyberferret.persistence.PersistentPropertiesManager;
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.nio.file.Paths;
 
@@ -15,7 +12,6 @@ import static com.github.exadmin.cyberferret.persistence.PersistentPropertiesMan
 import static com.github.exadmin.cyberferret.utils.MiscUtils.loadApplicationVersion;
 
 public class CyberFerretApp extends Application {
-    private static final Logger log = LoggerFactory.getLogger(CyberFerretApp.class);
     private static final String APPLICATION_PERSISTENT_CONTEXT_FILENAME = "app.properties";
 
 
@@ -49,7 +45,6 @@ public class CyberFerretApp extends Application {
     }
 
     public static void main(String[] args) {
-        LoggerProxy.injectLoggerFactory(LoggerFactory.getILoggerFactory());
         launch();
     }
 

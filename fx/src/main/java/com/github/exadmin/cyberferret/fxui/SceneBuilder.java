@@ -22,6 +22,7 @@ import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.Button;
@@ -60,6 +61,7 @@ public class SceneBuilder {
     private final Stage primaryStage;
     private final FoundItemsContainer foundItemsContainer;
     private final ObjectProperty<TreeItem<FoundPathItem>> selectedItemProperty = new SimpleObjectProperty<>();
+    private final Map<Button, Boolean> buttonDisableStates = new HashMap<>();
     private final AtomicBoolean scannerRunning = new AtomicBoolean(false);
     private final AtomicBoolean exclusionUpdateRunning = new AtomicBoolean(false);
 
@@ -214,7 +216,7 @@ public class SceneBuilder {
                 scannedItems.set(0);
                 scannedLabel.setText("Scanned 0");
 
-                btnRun.setDisable(true);
+                setButtonsDisabledForScanning(true);
                 CfCliTreeAssembler assembler = new CfCliTreeAssembler(
                         scanRoot,
                         foundItemsContainer,
@@ -236,7 +238,7 @@ public class SceneBuilder {
                         },
                         () -> {
                             scannerRunning.set(false);
-                            runOnFxThread(() -> btnRun.setDisable(false));
+                            runOnFxThread(() -> setButtonsDisabledForScanning(false));
                         });
                 Thread scannerThread = new Thread(scanner, "cyberferret-go-cli-scanner");
                 scannerThread.setDaemon(true);
@@ -255,11 +257,27 @@ public class SceneBuilder {
             });
 
             hBox.getChildren().add(btnRun);
-            hBox.getChildren().add(btnMark);
             hBox.getChildren().add(scannedLabel);
+            hBox.getChildren().add(btnMark);
         }
 
         return tpSettings;
+    }
+
+    private void setButtonsDisabledForScanning(boolean disabled) {
+        if (disabled) {
+            buttonDisableStates.clear();
+            for (Node node : primaryStage.getScene().getRoot().lookupAll(".button")) {
+                if (node instanceof Button button) {
+                    buttonDisableStates.put(button, button.isDisable());
+                    button.setDisable(true);
+                }
+            }
+            return;
+        }
+
+        buttonDisableStates.forEach(Button::setDisable);
+        buttonDisableStates.clear();
     }
 
     private TitledPane createExplorerGroup(TabPane tabPane) {

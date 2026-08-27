@@ -1,6 +1,7 @@
 package com.github.exadmin.cyberferret.persistence;
 
-import com.github.exadmin.cyberferret.logging.LoggerProxy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.nio.file.Path;
@@ -30,7 +31,7 @@ public class PersistentPropertiesManager {
     public static final AbstractPersistentProperty<Number> FOUND_TEXT_COLUMN_WIDTH =
             new AppDoubleProperty("tree-table.found-text-column.width", 80d, REG_MAP);
 
-    private static final LoggerProxy LOG = new LoggerProxy(PersistentPropertiesManager.class);
+    private static final Logger LOG = LoggerFactory.getLogger(PersistentPropertiesManager.class);
     private final Path filePath;
 
     public PersistentPropertiesManager(Path persistenFilePath) {

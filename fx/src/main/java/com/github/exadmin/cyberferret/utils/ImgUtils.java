@@ -5,7 +5,8 @@ import com.drew.imaging.ImageProcessingException;
 import com.drew.metadata.Directory;
 import com.drew.metadata.Metadata;
 import com.drew.metadata.Tag;
-import com.github.exadmin.cyberferret.logging.LoggerProxy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -16,7 +17,7 @@ import java.util.Locale;
  * Extracts EXIF, IPTC, XMP, and other metadata that can be searched with regex patterns.
  */
 public class ImgUtils {
-    private static final LoggerProxy LOG = new LoggerProxy(ImgUtils.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ImgUtils.class);
 
     /**
      * Extracts all metadata from an image file and returns it as formatted text.
