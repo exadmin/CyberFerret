@@ -74,54 +74,36 @@ requirements.
 
 ## Release new versions
 
-Release the CLI and JavaFX application independently. CLI tags use the `cfcli-v<version>` format, and JavaFX tags use
-the `fx-v<version>` format. A release tag must not already exist.
+One `v<version>` tag releases both the native CLI and the JavaFX application. The version must match the `<revision>`
+value in the root `pom.xml`, and the tag must not already exist.
 
-### Release the native CLI
+1. Set the release version in the root `pom.xml`:
 
-1. Check out the commit to release and verify the CLI:
+   ```xml
+   <revision>2.2.0</revision>
+   ```
+
+2. Verify both applications from the repository root:
 
    ```shell
    cd cfcli
    go test -count=1 ./...
    go vet ./...
    cd ..
-   ```
-
-2. Create and push a tag such as `cfcli-v1.2.0`:
-
-   ```shell
-   git tag cfcli-v1.2.0
-   git push origin cfcli-v1.2.0
-   ```
-
-The `Release CF CLI` workflow builds binaries for Windows, Linux, and macOS, then publishes them in a GitHub Release.
-You can also run the workflow from the Actions tab and provide the tag that it should create.
-
-### Release the JavaFX application
-
-1. Set the release version in the root `pom.xml`. The `<revision>` value must match the tag without the `fx-v` prefix:
-
-   ```xml
-   <revision>2.2.0</revision>
-   ```
-
-2. Commit and push the version change, then verify the build from the repository root:
-
-   ```shell
    mvn --batch-mode --no-transfer-progress clean package
    ```
 
-3. Create and push the matching tag:
+3. Commit and push the version change. Create the matching tag from the commit that you want to release:
 
    ```shell
-   git tag fx-v2.2.0
-   git push origin fx-v2.2.0
+   git tag v2.2.0
+   git push origin v2.2.0
    ```
 
-The `Release CyberFerret FX` workflow builds platform-specific archives for Windows, Linux, and macOS. It publishes
-the archives in a GitHub Release. Creating that release also starts the `Publish package to GitHub Packages` workflow.
-You can run the release workflow manually from the Actions tab; the supplied tag must still match `<revision>`.
+The `Release CyberFerret` workflow publishes one GitHub Release containing CLI binaries and platform-specific JavaFX
+archives for Windows, Linux, and macOS. The same workflow publishes the Maven packages to GitHub Packages. You can run
+the release workflow manually from the Actions tab; the supplied tag must still match `<revision>`. The
+`Publish package to GitHub Packages` workflow remains available for manually retrying a failed package publication.
 
 ## Manage exclusions with the native CLI
 

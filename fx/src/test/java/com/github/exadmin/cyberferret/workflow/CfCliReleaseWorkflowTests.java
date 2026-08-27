@@ -16,30 +16,33 @@ class CfCliReleaseWorkflowTests {
     private static final Path WORKFLOW = repositoryRoot()
             .resolve(".github")
             .resolve("workflows")
-            .resolve("cfcli-release.yml");
+            .resolve("release.yml");
 
     @Test
-    void definesSecureCfCliReleaseContract() throws IOException {
-        assertTrue(Files.exists(WORKFLOW), "CF CLI release workflow must exist");
+    void definesSecureCombinedReleaseContract() throws IOException {
+        assertTrue(Files.exists(WORKFLOW), "Combined release workflow must exist");
 
         String workflow = Files.readString(WORKFLOW);
 
-        assertContains(workflow, "cfcli-v*");
+        assertContains(workflow, "\"v*\"");
         assertContains(workflow, "workflow_dispatch:");
         assertContains(workflow, "tag:");
         assertContains(workflow, "github.sha");
-        assertContains(workflow, "--target");
         assertContains(workflow, "permissions: {}");
         assertContains(workflow, "contents: write");
         assertContains(workflow, "persist-credentials: false");
         assertContains(workflow, "cancel-in-progress: false");
         assertContains(workflow, "timeout-minutes:");
-        assertContains(workflow, "cfcli-windows-amd64.exe");
-        assertContains(workflow, "cfcli-windows-arm64.exe");
-        assertContains(workflow, "cfcli-linux-amd64");
-        assertContains(workflow, "cfcli-linux-arm64");
-        assertContains(workflow, "cfcli-darwin-amd64");
-        assertContains(workflow, "cfcli-darwin-arm64");
+        assertContains(workflow, "build-cli:");
+        assertContains(workflow, "build-fx:");
+        assertContains(workflow, "publish-maven:");
+        assertContains(workflow, "build windows amd64 \".exe\"");
+        assertContains(workflow, "build windows arm64 \".exe\"");
+        assertContains(workflow, "build linux amd64 \"\"");
+        assertContains(workflow, "build linux arm64 \"\"");
+        assertContains(workflow, "build darwin amd64 \"\"");
+        assertContains(workflow, "build darwin arm64 \"\"");
+        assertContains(workflow, "cyberferret-fx-");
         assertContains(workflow, "mkdir --parents dist");
         assertContains(workflow, "CGO_ENABLED: \"0\"");
         assertContains(workflow, "-trimpath");
@@ -62,7 +65,6 @@ class CfCliReleaseWorkflowTests {
                 Pattern.compile("uses: [^\\s]+@v\\d").matcher(workflow).find(),
                 "Actions must not use floating version tags"
         );
-        assertFalse(workflow.contains("Release-"), "Release tags must not add a Release- prefix");
     }
 
     private static void assertContains(String workflow, String expected) {

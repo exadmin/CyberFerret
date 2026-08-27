@@ -1,14 +1,14 @@
-name: Release CyberFerret FX
-run-name: Release CyberFerret FX ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+name: Release CyberFerret
+run-name: Release CyberFerret ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
 
 on:
   push:
     tags:
-      - "fx-v*"
+      - "v*"
   workflow_dispatch:
     inputs:
       tag:
-        description: Tag to create in fx-v* format
+        description: Tag to create in vX.X.X format
         required: true
         type: string
 
@@ -39,8 +39,8 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [[ ! "$RELEASE_TAG" =~ ^fx-v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
-            echo "Invalid release tag '$RELEASE_TAG': expected fx-v<version> format." >&2
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid release tag '$RELEASE_TAG': expected vX.X.X format." >&2
             exit 1
           fi
 
@@ -59,8 +59,90 @@ jobs:
 
           echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
 
-  build:
-    name: Build ${{ matrix.platform }}
+  build-cli:
+    name: Build CF CLI
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      UPX_VERSION: "5.1.1"
+      UPX_SHA256: "1ff660454227861e00772f743f66b900072116b9dc24f6ee28b97cce88a7828a"
+    steps:
+      - name: Check out the release tag
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c  # v6.4.0
+        with:
+          go-version-file: cfcli/go.mod
+          cache: true
+
+      - name: Test CF CLI
+        working-directory: cfcli
+        run: go test -count=1 ./...
+
+      - name: Vet CF CLI
+        working-directory: cfcli
+        run: go vet ./...
+
+      - name: Prepare release directory
+        run: mkdir --parents dist
+
+      - name: Build release binaries
+        working-directory: cfcli
+        env:
+          CGO_ENABLED: "0"
+        shell: bash
+        run: |
+          set -euo pipefail
+          build() {
+            local goos="$1"
+            local goarch="$2"
+            local extension="$3"
+            GOOS="$goos" GOARCH="$goarch" go build \
+              -trimpath -ldflags="-s -w -buildid=" \
+              -o "../dist/cfcli-${goos}-${goarch}${extension}" .
+          }
+          build linux amd64 ""
+          build linux arm64 ""
+          build darwin amd64 ""
+          build darwin arm64 ""
+          build windows amd64 ".exe"
+          build windows arm64 ".exe"
+
+      - name: Install UPX
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="upx-${UPX_VERSION}-amd64_linux.tar.xz"
+          url="https://github.com/upx/upx/releases/download/v${UPX_VERSION}/${archive}"
+          curl --fail --location --silent --show-error --output "$RUNNER_TEMP/$archive" "$url"
+          echo "$UPX_SHA256  $RUNNER_TEMP/$archive" | sha256sum --check --strict
+          tar --extract --xz --file "$RUNNER_TEMP/$archive" --directory "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/upx-${UPX_VERSION}-amd64_linux" >> "$GITHUB_PATH"
+
+      - name: Compress and validate binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          upx -9 dist/cfcli-windows-amd64.exe dist/cfcli-linux-amd64
+          upx -t dist/cfcli-windows-amd64.exe dist/cfcli-linux-amd64
+          chmod 0755 dist/cfcli-linux-amd64
+
+      - name: Upload CF CLI binaries
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: release-cli
+          path: dist/cfcli-*
+          if-no-files-found: error
+
+  build-fx:
+    name: Build CyberFerret FX for ${{ matrix.platform }}
     needs: prepare
     strategy:
       fail-fast: true
@@ -102,7 +184,7 @@ jobs:
           project_version="$(mvn --batch-mode --quiet help:evaluate \
             -Dexpression=revision \
             -DforceStdout)"
-          tag_version="${RELEASE_TAG#fx-v}"
+          tag_version="${RELEASE_TAG#v}"
 
           if [[ "$project_version" != "$tag_version" ]]; then
             echo "Release tag version '$tag_version' does not match pom.xml version '$project_version'." >&2
@@ -120,7 +202,7 @@ jobs:
           RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
         shell: pwsh
         run: |
-          $version = $env:RELEASE_TAG -replace '^fx-v', ''
+          $version = $env:RELEASE_TAG -replace '^v', ''
           $bundleName = "cyberferret-fx-$version-$env:PLATFORM"
           $bundlePath = Join-Path "dist" $bundleName
 
@@ -137,28 +219,61 @@ jobs:
             tar -czf "dist/$bundleName.tar.gz" -C "dist" $bundleName
           }
 
-      - name: Upload distribution
+      - name: Upload CyberFerret FX distribution
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
-          name: cyberferret-fx-${{ matrix.platform }}
+          name: release-fx-${{ matrix.platform }}
           path: dist/cyberferret-fx-*.${{ matrix.archive }}
           if-no-files-found: error
+
+  publish-maven:
+    name: Publish Maven packages
+    needs:
+      - prepare
+      - build-cli
+      - build-fx
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Check out the release tag
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+          persist-credentials: false
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95  # v5.6.0
+        with:
+          java-version: "21"
+          distribution: temurin
+          cache: maven
+
+      - name: Publish Maven packages
+        run: mvn --batch-mode --no-transfer-progress deploy -DskipTests
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ github.token }}
 
   release:
     name: Publish GitHub release
     needs:
       - prepare
-      - build
+      - build-cli
+      - build-fx
+      - publish-maven
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       actions: read
       contents: write
     steps:
-      - name: Download distributions
+      - name: Download release artifacts
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
         with:
-          pattern: cyberferret-fx-*
+          pattern: release-*
           path: dist
           merge-multiple: true
 

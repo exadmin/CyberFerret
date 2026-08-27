@@ -1,20 +1,17 @@
 name: Publish package to GitHub Packages
 
 on:
-  release:
-    types: [created]
   workflow_dispatch:
 
 permissions: {}
 
 concurrency:
-  group: maven-publish-${{ github.event_name == 'release' && github.event.release.tag_name || github.ref }}
+  group: maven-publish-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   publish:
     name: Publish Maven packages
-    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'fx-v') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
