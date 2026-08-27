@@ -72,6 +72,57 @@ go build -o cfcli .
 On Windows, the output file is `cfcli.exe`. See the [cfcli reference](cfcli/README.md) for usage and runtime
 requirements.
 
+## Release new versions
+
+Release the CLI and JavaFX application independently. CLI tags use the `cfcli-v<version>` format, and JavaFX tags use
+the `fx-v<version>` format. A release tag must not already exist.
+
+### Release the native CLI
+
+1. Check out the commit to release and verify the CLI:
+
+   ```shell
+   cd cfcli
+   go test -count=1 ./...
+   go vet ./...
+   cd ..
+   ```
+
+2. Create and push a tag such as `cfcli-v1.2.0`:
+
+   ```shell
+   git tag cfcli-v1.2.0
+   git push origin cfcli-v1.2.0
+   ```
+
+The `Release CF CLI` workflow builds binaries for Windows, Linux, and macOS, then publishes them in a GitHub Release.
+You can also run the workflow from the Actions tab and provide the tag that it should create.
+
+### Release the JavaFX application
+
+1. Set the release version in the root `pom.xml`. The `<revision>` value must match the tag without the `fx-v` prefix:
+
+   ```xml
+   <revision>2.2.0</revision>
+   ```
+
+2. Commit and push the version change, then verify the build from the repository root:
+
+   ```shell
+   mvn --batch-mode --no-transfer-progress clean package
+   ```
+
+3. Create and push the matching tag:
+
+   ```shell
+   git tag fx-v2.2.0
+   git push origin fx-v2.2.0
+   ```
+
+The `Release CyberFerret FX` workflow builds platform-specific archives for Windows, Linux, and macOS. It publishes
+the archives in a GitHub Release. Creating that release also starts the `Publish package to GitHub Packages` workflow.
+You can run the release workflow manually from the Actions tab; the supplied tag must still match `<revision>`.
+
 ## Manage exclusions with the native CLI
 
 Use `add` to ensure that an exclusion exists and `remove` to ensure that it does not exist:
