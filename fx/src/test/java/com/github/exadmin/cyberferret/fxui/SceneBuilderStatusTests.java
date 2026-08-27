@@ -18,14 +18,21 @@ class SceneBuilderStatusTests {
     void mapsTreeItemsToDisplayedStatuses() {
         FoundPathItem folder = item("folder", ItemType.DIRECTORY);
         FoundPathItem file = item("file.txt", ItemType.FILE);
+        FoundPathItem excludedFolder = item("excluded-folder", ItemType.DIRECTORY);
+        excludedFolder.setIgnored(true);
+        FoundPathItem excludedFile = item("excluded-file.txt", ItemType.FILE);
+        excludedFile.setIgnored(true);
         FoundPathItem allowed = item("allowed", ItemType.SIGNATURE);
         allowed.setAllowedValue(true);
         FoundPathItem excluded = item("excluded", ItemType.SIGNATURE);
         excluded.setIgnored(true);
+        excluded.setAllowedValue(true);
         FoundPathItem warning = item("warning", ItemType.SIGNATURE);
 
         assertEquals("Folder", SceneBuilder.statusFor(folder));
         assertEquals("File", SceneBuilder.statusFor(file));
+        assertEquals("Excluded", SceneBuilder.statusFor(excludedFolder));
+        assertEquals("Excluded", SceneBuilder.statusFor(excludedFile));
         assertEquals("Allowed", SceneBuilder.statusFor(allowed));
         assertEquals("Excluded", SceneBuilder.statusFor(excluded));
         assertEquals("Warning", SceneBuilder.statusFor(warning));

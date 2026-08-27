@@ -506,12 +506,15 @@ public class SceneBuilder {
     }
 
     static String statusFor(FoundPathItem item) {
+        if (item.isIgnored()) {
+            return "Excluded";
+        }
+
         return switch (item.getType()) {
             case DIRECTORY -> "Folder";
             case FILE -> "File";
             case SIGNATURE -> {
                 if (item.isAllowedValue()) yield "Allowed";
-                if (item.isIgnored()) yield "Excluded";
                 yield "Warning";
             }
         };
