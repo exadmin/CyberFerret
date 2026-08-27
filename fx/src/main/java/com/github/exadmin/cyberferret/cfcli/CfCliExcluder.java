@@ -1,7 +1,6 @@
 package com.github.exadmin.cyberferret.cfcli;
 
 import com.github.exadmin.cyberferret.model.FoundPathItem;
-import com.github.exadmin.cyberferret.model.ItemType;
 
 import java.io.File;
 import java.io.IOException;

@@ -2,8 +2,8 @@ package com.github.exadmin.cyberferret.fxui;
 
 import com.github.exadmin.cyberferret.AppConstants;
 import com.github.exadmin.cyberferret.async.RunnableLogger;
-import com.github.exadmin.cyberferret.cfcli.CfCliExecutable;
 import com.github.exadmin.cyberferret.cfcli.CfCliExcluder;
+import com.github.exadmin.cyberferret.cfcli.CfCliExecutable;
 import com.github.exadmin.cyberferret.cfcli.CfCliScanner;
 import com.github.exadmin.cyberferret.cfcli.CfCliTreeAssembler;
 import com.github.exadmin.cyberferret.fxui.helpers.AlertBuilder;
@@ -29,7 +29,6 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextArea;
-import javafx.scene.control.TextField;
 import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.BorderPane;
