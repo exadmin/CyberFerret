@@ -286,6 +286,7 @@ jobs:
           set -euo pipefail
           gh release create "$RELEASE_TAG" \
             dist/* \
+            --repo "$GITHUB_REPOSITORY" \
             --verify-tag \
             --generate-notes \
             --title "$RELEASE_TAG"

@@ -49,6 +49,7 @@ class CfCliReleaseWorkflowTests {
         assertContains(workflow, "-s -w -buildid=");
         assertContains(workflow, "upx -9");
         assertContains(workflow, "upx -t");
+        assertContains(workflow, "--repo \"$GITHUB_REPOSITORY\"");
         assertContains(workflow, "--verify-tag");
         assertContains(workflow, "--generate-notes");
         List<String> actionReferences = workflow.lines()
