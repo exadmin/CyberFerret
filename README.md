@@ -101,9 +101,8 @@ value in the root `pom.xml`, and the tag must not already exist.
    ```
 
 The `Release CyberFerret` workflow publishes one GitHub Release containing CLI binaries and platform-specific JavaFX
-archives for Windows, Linux, and macOS. The same workflow publishes the Maven packages to GitHub Packages. You can run
-the release workflow manually from the Actions tab; the supplied tag must still match `<revision>`. The
-`Publish package to GitHub Packages` workflow remains available for manually retrying a failed package publication.
+archives for Windows, Linux, and macOS. You can run the workflow manually from the Actions tab; the supplied tag must
+still match `<revision>`.
 
 ## Manage exclusions with the native CLI
 

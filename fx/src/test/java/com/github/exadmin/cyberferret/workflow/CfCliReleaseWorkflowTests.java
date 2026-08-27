@@ -35,7 +35,6 @@ class CfCliReleaseWorkflowTests {
         assertContains(workflow, "timeout-minutes:");
         assertContains(workflow, "build-cli:");
         assertContains(workflow, "build-fx:");
-        assertContains(workflow, "publish-maven:");
         assertContains(workflow, "build windows amd64 \".exe\"");
         assertContains(workflow, "build windows arm64 \".exe\"");
         assertContains(workflow, "build linux amd64 \"\"");

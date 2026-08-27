@@ -226,44 +226,12 @@ jobs:
           path: dist/cyberferret-fx-*.${{ matrix.archive }}
           if-no-files-found: error
 
-  publish-maven:
-    name: Publish Maven packages
-    needs:
-      - prepare
-      - build-cli
-      - build-fx
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - name: Check out the release tag
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
-        with:
-          ref: ${{ needs.prepare.outputs.tag }}
-          persist-credentials: false
-
-      - name: Set up JDK 21
-        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95  # v5.6.0
-        with:
-          java-version: "21"
-          distribution: temurin
-          cache: maven
-
-      - name: Publish Maven packages
-        run: mvn --batch-mode --no-transfer-progress deploy -DskipTests
-        env:
-          GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ github.token }}
-
   release:
     name: Publish GitHub release
     needs:
       - prepare
       - build-cli
       - build-fx
-      - publish-maven
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
