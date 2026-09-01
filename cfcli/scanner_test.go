@@ -142,7 +142,7 @@ func TestScanFilesHonorsExcludedExtensionsCaseInsensitively(t *testing.T) {
 	}
 }
 
-func TestScanFilesHonorsAllowedWildcard(t *testing.T) {
+func TestScanFilesStopsSignatureAfterAllowedWildcard(t *testing.T) {
 	root := t.TempDir()
 	allowedEmail := "user+tag@" + "example.com"
 	reportedEmail := "bad@" + "other.com"
@@ -170,12 +170,12 @@ func TestScanFilesHonorsAllowedWildcard(t *testing.T) {
 		newLineOutput(&bytes.Buffer{}),
 	)
 
-	if err != nil || !result.found || result.scannedCount != 1 {
-		t.Fatalf("scan result = %#v, error = %v; want one finding in one file", result, err)
+	if err != nil || result.found || result.scannedCount != 1 {
+		t.Fatalf("scan result = %#v, error = %v; want no finding in one scanned file", result, err)
 	}
-	if !strings.Contains(stdout.String(), `"type":"allowed","key":"EMAIL","found":"`+allowedEmail+`"`) ||
-		!strings.Contains(stdout.String(), `"type":"found","key":"EMAIL","found":"`+reportedEmail+`"`) {
-		t.Fatalf("stdout = %q", stdout.String())
+	want := `JSON: {"type":"allowed","key":"EMAIL","found":"` + allowedEmail + `","line":1,"file":"emails.txt"}` + "\n"
+	if stdout.String() != want {
+		t.Fatalf("stdout = %q, want %q", stdout.String(), want)
 	}
 }
 
@@ -450,17 +450,17 @@ func TestScanFilesWithExclusionsReportsAllowedExcludedMatch(t *testing.T) {
 	}
 }
 
-func TestScanFilesLimitsOnlyFoundMatchesPerSignatureAndFile(t *testing.T) {
+func TestScanFilesStopsSignatureAfterExcludedMatch(t *testing.T) {
 	root := t.TempDir()
-	content := "ALLOW EXCLUDE SECRET SECRET SECRET SECRET SECRET SECRET TOKEN"
+	content := "EXCLUDE SECRET TOKEN"
 	file := writeTestFile(t, root, "repeated.txt", content)
 	exclusions := exclusionSet{textHashesByFileHash: map[string]map[string]struct{}{
 		testSHA256("repeated.txt"): {testSHA256("EXCLUDE"): {}},
 	}}
 	loaded := dictionary{
-		allowed: map[string]struct{}{"allow": {}},
+		allowed: map[string]struct{}{},
 		signatures: []signature{
-			{key: "SECRET", expression: regexp.MustCompile(`ALLOW|EXCLUDE|SECRET`)},
+			{key: "SECRET", expression: regexp.MustCompile(`EXCLUDE|SECRET`)},
 			{key: "TOKEN", expression: regexp.MustCompile(`TOKEN`)},
 		},
 	}
@@ -480,17 +480,46 @@ func TestScanFilesLimitsOnlyFoundMatchesPerSignatureAndFile(t *testing.T) {
 		t.Fatalf("scan result = %#v, error = %v; want findings in one scanned file", result, err)
 	}
 	output := stdout.String()
-	if got := strings.Count(output, `"type":"found","key":"SECRET"`); got != 5 {
-		t.Fatalf("SECRET found event count = %d, want 5; output = %q", got, output)
-	}
-	if !strings.Contains(output, `"type":"allowed","key":"SECRET","found":"ALLOW"`) {
-		t.Fatalf("output = %q, want allowed event", output)
+	if strings.Contains(output, `"type":"found","key":"SECRET"`) {
+		t.Fatalf("output = %q, want no SECRET finding after excluded match", output)
 	}
 	if !strings.Contains(output, `"type":"excluded","key":"SECRET","found":"EXCLUDE"`) {
 		t.Fatalf("output = %q, want excluded event", output)
 	}
 	if !strings.Contains(output, `"type":"found","key":"TOKEN","found":"TOKEN"`) {
-		t.Fatalf("output = %q, want TOKEN finding after SECRET reaches its limit", output)
+		t.Fatalf("output = %q, want TOKEN finding after excluded SECRET match", output)
+	}
+}
+
+func TestScanFilesLimitsFoundMatchesPerSignatureAndFile(t *testing.T) {
+	root := t.TempDir()
+	file := writeTestFile(t, root, "repeated.txt", "SECRET SECRET SECRET SECRET SECRET SECRET TOKEN")
+	loaded := dictionary{
+		allowed: map[string]struct{}{},
+		signatures: []signature{
+			{key: "SECRET", expression: regexp.MustCompile(`SECRET`)},
+			{key: "TOKEN", expression: regexp.MustCompile(`TOKEN`)},
+		},
+	}
+	var stdout bytes.Buffer
+
+	result, err := scanFiles(
+		root,
+		[]string{file},
+		loaded,
+		modeJSON,
+		newLineOutput(&stdout),
+		newLineOutput(&bytes.Buffer{}),
+	)
+
+	if err != nil || !result.found || result.scannedCount != 1 {
+		t.Fatalf("scan result = %#v, error = %v; want findings in one scanned file", result, err)
+	}
+	if got := strings.Count(stdout.String(), `"type":"found","key":"SECRET"`); got != 5 {
+		t.Fatalf("SECRET found event count = %d, want 5; output = %q", got, stdout.String())
+	}
+	if !strings.Contains(stdout.String(), `"type":"found","key":"TOKEN","found":"TOKEN"`) {
+		t.Fatalf("output = %q, want TOKEN finding after SECRET reaches its limit", stdout.String())
 	}
 }
 

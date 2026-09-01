@@ -8,9 +8,9 @@ import (
 )
 
 // maxFindingsPerSignaturePerFile caps the found events one file may report for
-// one signature key. Signatures that share a key share the cap, and allowed and
-// excluded matches do not count against it; reaching the cap ends the file's
-// reporting for that key altogether.
+// one signature key. Signatures that share a key share the cap. An allowed or
+// excluded match stops the current signature's scan of the file without
+// counting against the cap.
 const maxFindingsPerSignaturePerFile = 5
 
 // finding is the JSON event carrying one signature match.
@@ -81,10 +81,10 @@ func scanFilesWithExclusions(
 // file that cannot be read produces a warning on errors and is not counted as
 // scanned; the returned error covers only path resolution and failed writes.
 //
-// modeJSON also reports the matches the dictionary allowed list or the grand
-// report suppresses, until the key hits its [maxFindingsPerSignaturePerFile]
-// cap. modeQuick reports neither and returns as soon as one match survives
-// both, leaving the remaining files unread; printDetails then adds the
+// modeJSON also reports a match the dictionary allowed list or the grand report
+// suppresses, then stops scanning that signature in the current file. modeQuick
+// reports neither and also stops that signature. It returns as soon as one
+// match survives both, leaving the remaining files unread; printDetails then adds the
 // copy-ready cfcli exclude commands for that match, and without it output
 // carries a one-line hint. verbose emits a [listPathEvent] for each folder and
 // file the scan walks, in either mode; a path the exclusions name is listed and
@@ -210,7 +210,7 @@ func scanFilesConfigured(
 							return scanResult{}, fmt.Errorf("write excluded finding: %w", err)
 						}
 					}
-					continue
+					break
 				}
 				if loaded.isAllowed(exact) {
 					if mode == modeJSON {
@@ -224,7 +224,7 @@ func scanFilesConfigured(
 							return scanResult{}, fmt.Errorf("write allowed finding: %w", err)
 						}
 					}
-					continue
+					break
 				}
 				foundAny = true
 				findingCounts[currentSignature.key]++

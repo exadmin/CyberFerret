@@ -10,8 +10,9 @@ import (
 )
 
 // A scan invocation with no positional argument, or with more than two, exits 1 with the usage
-// text on stderr and nothing on stdout. The zero-value dependencies are part of the rule: the
-// argument count has to be rejected before anything calls the nil homeDir behind the refresher.
+// text on stderr and only the application version on stdout. The zero-value dependencies are part
+// of the rule: the argument count has to be rejected before anything calls the nil homeDir behind
+// the refresher.
 func TestRunRejectsInvalidArgumentCounts(t *testing.T) {
 	tests := [][]string{{}, {"root", "list", "extra"}}
 	for _, args := range tests {
@@ -23,8 +24,8 @@ func TestRunRejectsInvalidArgumentCounts(t *testing.T) {
 		if exitCode != exitFailure {
 			t.Fatalf("run(%q) exit code = %d, want %d", args, exitCode, exitFailure)
 		}
-		if stdout.Len() != 0 {
-			t.Fatalf("run(%q) stdout = %q, want empty", args, stdout.String())
+		if stdout.String() != currentAppVersionOutput() {
+			t.Fatalf("run(%q) stdout = %q, want application version", args, stdout.String())
 		}
 		if !strings.Contains(
 			stderr.String(),
@@ -51,7 +52,7 @@ func TestRunPrintsExpandedHelpForInsufficientArguments(t *testing.T) {
 
 		exitCode := runWithDependencies(context.Background(), args, &stdout, &stderr, appDependencies{})
 
-		if exitCode != exitFailure || stdout.Len() != 0 {
+		if exitCode != exitFailure || stdout.String() != currentAppVersionOutput() {
 			t.Fatalf("run(%q) exit code = %d, stdout = %q", args, exitCode, stdout.String())
 		}
 		for _, expected := range []string{
@@ -99,7 +100,7 @@ func TestRunReportsTotalFilesScanned(t *testing.T) {
 	if exitCode != exitClean {
 		t.Fatalf("run() exit code = %d, want %d; stderr = %q", exitCode, exitClean, stderr.String())
 	}
-	want := currentDictionaryOutput() +
+	want := currentAppVersionOutput() + currentDictionaryOutput() +
 		"TEXT: Dictionary version: 1.0\n" +
 		"TEXT: Scanning is in progress. Please wait.\n" +
 		"TEXT: Total files scanned 2\n" +
@@ -151,7 +152,7 @@ func TestRunReportsRuntimeErrors(t *testing.T) {
 			if exitCode != exitFailure {
 				t.Fatalf("run() exit code = %d, want %d", exitCode, exitFailure)
 			}
-			wantOutput := currentDictionaryOutput() +
+			wantOutput := currentAppVersionOutput() + currentDictionaryOutput() +
 				"TEXT: Dictionary version: 1.0\nTEXT: Scanning is in progress. Please wait.\n"
 			if stdout.String() != wantOutput {
 				t.Fatalf("run() stdout = %q, want version and progress", stdout.String())
@@ -180,7 +181,7 @@ func TestRunReportsUnavailableGit(t *testing.T) {
 	if exitCode != exitFailure {
 		t.Fatalf("run() exit code = %d, want %d", exitCode, exitFailure)
 	}
-	wantOutput := currentDictionaryOutput() +
+	wantOutput := currentAppVersionOutput() + currentDictionaryOutput() +
 		"TEXT: Dictionary version: 1.0\nTEXT: Scanning is in progress. Please wait.\n"
 	if stdout.String() != wantOutput {
 		t.Fatalf("run() stdout = %q, want version and progress", stdout.String())
@@ -223,4 +224,8 @@ func TestDictionaryDisplayPath(t *testing.T) {
 func currentDictionaryOutput() string {
 	return "TEXT: Dictionary is up to date.\n" +
 		"TEXT: Dictionary path: ~/.qubership/" + cacheFileName + "\n"
+}
+
+func currentAppVersionOutput() string {
+	return "TEXT: CyberFerret CLI, version " + appVersion + "\n"
 }

@@ -50,6 +50,9 @@ func runWithDependencies(
 	stdout, stderr io.Writer,
 	dependencies appDependencies,
 ) exitStatus {
+	if err := writeAppVersion(stdout); err != nil {
+		return exitFailure
+	}
 	if isExcludeCommand(args) {
 		return runExcludeCommand(args, stdout, stderr)
 	}
