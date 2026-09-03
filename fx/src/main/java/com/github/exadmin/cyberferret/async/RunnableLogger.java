@@ -22,6 +22,9 @@ public class RunnableLogger implements Runnable {
         this.stop = stop;
     }
 
+    /**
+     * Drains log messages and schedules text-area updates no more than once per configured interval.
+     */
     @Override
     public void run() {
         StringBuilder buf = new StringBuilder();
@@ -47,14 +50,14 @@ public class RunnableLogger implements Runnable {
                 buf.append(text).append("\n");
             }
 
-            // if it's time to call JavaFX thread
-            long curTime = System.currentTimeMillis();
-
-            if (curTime - lastTimestamp < MILLIS_MUST_PASSED) {
-                sleep();
-            }
-
             if (!buf.isEmpty()) {
+                long curTime = System.currentTimeMillis();
+                long remainingDelay = remainingDelayMillis(lastTimestamp, curTime);
+                if (remainingDelay > 0) {
+                    sleep(remainingDelay);
+                    curTime = System.currentTimeMillis();
+                }
+
                 String text = buf.toString();
                 buf.setLength(0);
 
@@ -80,11 +83,35 @@ public class RunnableLogger implements Runnable {
         }
     }
 
+    /**
+     * Pauses polling briefly when no log message is available.
+     */
     private void sleep() {
+        sleep(100);
+    }
+
+    /**
+     * Pauses the logger thread for the requested interval.
+     *
+     * @param millis number of milliseconds to wait
+     */
+    private void sleep(long millis) {
         try {
-            Thread.sleep(100);
+            Thread.sleep(millis);
         } catch (Exception ex) {
             ex.printStackTrace();
         }
+    }
+
+    /**
+     * Calculates how long the logger must wait before scheduling its next UI update.
+     *
+     * @param lastUpdateTimestamp timestamp of the previous update, in milliseconds
+     * @param currentTimestamp current timestamp, in milliseconds
+     * @return remaining delay in milliseconds, or zero when the interval has elapsed
+     */
+    static long remainingDelayMillis(long lastUpdateTimestamp, long currentTimestamp) {
+        long elapsed = currentTimestamp - lastUpdateTimestamp;
+        return Math.max(0, MILLIS_MUST_PASSED - elapsed);
     }
 }
