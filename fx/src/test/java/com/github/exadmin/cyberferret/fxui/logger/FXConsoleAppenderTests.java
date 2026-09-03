@@ -8,6 +8,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 class FXConsoleAppenderTests {
     @Test
@@ -29,5 +31,18 @@ class FXConsoleAppenderTests {
         assertEquals(10_000, messages.size());
         assertEquals("message-1", messages.getFirst());
         assertEquals("message-10000", messages.getLast());
+    }
+
+    @Test
+    void releasesRegistrationAndMessagesWhenStopped() {
+        FXConsoleAppender appender = FXConsoleAppender.createAppender("test", null);
+        appender.append(Log4jLogEvent.newBuilder()
+                .setMessage(new SimpleMessage("pending message"))
+                .build());
+
+        appender.stop();
+
+        assertFalse(FXConsoleAppender.MY_INSTANCES.contains(appender));
+        assertNull(appender.popNext());
     }
 }

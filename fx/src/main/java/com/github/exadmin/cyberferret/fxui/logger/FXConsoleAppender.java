@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Plugin(
@@ -50,6 +51,23 @@ public class FXConsoleAppender extends AbstractAppender {
         String message = event.getMessage().getFormattedMessage();
         while (!queue.offer(message)) {
             queue.poll();
+        }
+    }
+
+    /**
+     * Stops this appender and releases its global registration and pending messages.
+     *
+     * @param timeout maximum time to wait for shutdown
+     * @param timeUnit unit of the shutdown timeout
+     * @return {@code true} when the appender stops successfully
+     */
+    @Override
+    public boolean stop(long timeout, TimeUnit timeUnit) {
+        try {
+            return super.stop(timeout, timeUnit);
+        } finally {
+            MY_INSTANCES.remove(this);
+            queue.clear();
         }
     }
 
