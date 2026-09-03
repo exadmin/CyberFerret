@@ -523,6 +523,35 @@ func TestScanFilesLimitsFoundMatchesPerSignatureAndFile(t *testing.T) {
 	}
 }
 
+func TestScanFilesQuickModeDoesNotAllocateEveryMatch(t *testing.T) {
+	root := t.TempDir()
+	file := writeTestFile(t, root, "broad.txt", strings.Repeat("A", 100_000))
+	loaded := dictionary{
+		allowed:    map[string]struct{}{},
+		signatures: []signature{{key: "BROAD", expression: regexp.MustCompile(`A`)}},
+	}
+	var scanErr error
+
+	allocations := testing.AllocsPerRun(1, func() {
+		var stdout bytes.Buffer
+		_, scanErr = scanFiles(
+			root,
+			[]string{file},
+			loaded,
+			modeQuick,
+			newLineOutput(&stdout),
+			newLineOutput(&bytes.Buffer{}),
+		)
+	})
+
+	if scanErr != nil {
+		t.Fatal(scanErr)
+	}
+	if allocations >= 1_000 {
+		t.Fatalf("quick scan allocations = %.0f, want fewer than 1000", allocations)
+	}
+}
+
 func TestScanFilesSharesFindingLimitAcrossSignaturesWithSameKey(t *testing.T) {
 	root := t.TempDir()
 	file := writeTestFile(t, root, "repeated.txt", "A A A A A A B B B B B B")

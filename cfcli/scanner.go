@@ -193,9 +193,13 @@ func scanFilesConfigured(
 			if findingCounts[currentSignature.key] >= maxFindingsPerSignaturePerFile {
 				continue
 			}
+			matchLimit := maxFindingsPerSignaturePerFile - findingCounts[currentSignature.key]
+			if mode == modeQuick {
+				matchLimit = 1
+			}
 			lineCursor := 0
 			line := 1
-			for _, match := range currentSignature.expression.FindAllIndex(content, -1) {
+			for _, match := range currentSignature.expression.FindAllIndex(content, matchLimit) {
 				lineCursor, line = lineAt(content, match[0], lineCursor, line)
 				exact := string(content[match[0]:match[1]])
 				if exclusions.excludesMatch(relativePath, exact) {
