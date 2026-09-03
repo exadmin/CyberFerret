@@ -287,11 +287,23 @@ func parseUnicodePropertyEscape(value string, markerIndex int) (rune, int, error
 
 // literalExpression turns a literal dictionary value into a regular expression: punctuation is
 // quoted so it keeps no regexp meaning, each single space becomes \s+ so any whitespace matches,
-// and word boundaries at both ends keep the phrase from matching inside a longer word.
+// and each ASCII word-character edge gets a word boundary.
 func literalExpression(value string) string {
 	parts := strings.Split(value, " ")
 	for index := range parts {
 		parts[index] = regexp.QuoteMeta(parts[index])
 	}
-	return `\b` + strings.Join(parts, `\s+`) + `\b`
+	expression := strings.Join(parts, `\s+`)
+	if value != "" && isRegexpWordByte(value[0]) {
+		expression = `\b` + expression
+	}
+	if value != "" && isRegexpWordByte(value[len(value)-1]) {
+		expression += `\b`
+	}
+	return expression
+}
+
+func isRegexpWordByte(value byte) bool {
+	return value == '_' || value >= '0' && value <= '9' || value >= 'A' && value <= 'Z' ||
+		value >= 'a' && value <= 'z'
 }

@@ -186,3 +186,29 @@ func TestLiteralExpressionEscapesEveryLiteralSpace(t *testing.T) {
 		t.Fatalf("expression %q does not match flexible whitespace and literal plus", expression)
 	}
 }
+
+func TestLiteralExpressionAppliesBoundariesOnlyToWordEdges(t *testing.T) {
+	tests := []struct {
+		literal  string
+		matching string
+		rejected string
+	}{
+		{literal: ".env", matching: "config/.env file"},
+		{literal: "C++", matching: "use C++ now"},
+		{literal: "TOKEN", matching: "use TOKEN now", rejected: "MYTOKENIZED"},
+	}
+	for _, test := range tests {
+		t.Run(test.literal, func(t *testing.T) {
+			compiled, err := regexp.Compile("(?is)" + literalExpression(test.literal))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !compiled.MatchString(test.matching) {
+				t.Fatalf("literal %q does not match %q", test.literal, test.matching)
+			}
+			if test.rejected != "" && compiled.MatchString(test.rejected) {
+				t.Fatalf("literal %q unexpectedly matches %q", test.literal, test.rejected)
+			}
+		})
+	}
+}
