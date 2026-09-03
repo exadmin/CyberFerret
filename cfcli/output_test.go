@@ -19,6 +19,19 @@ func TestLineOutputWritesAndFlushesText(t *testing.T) {
 	}
 }
 
+func TestLineOutputEscapesTextLineBreaks(t *testing.T) {
+	var destination bytes.Buffer
+	output := newLineOutput(&destination)
+
+	if err := output.text("first\r%s", "second\nthird"); err != nil {
+		t.Fatal(err)
+	}
+
+	if got, want := destination.String(), `TEXT: first\rsecond\nthird`+"\n"; got != want {
+		t.Fatalf("output = %q, want %q", got, want)
+	}
+}
+
 // An encoded value occupies a single flushed line, so a reader that splits the
 // output on newlines gets whole JSON documents.
 func TestLineOutputWritesAndFlushesJSON(t *testing.T) {

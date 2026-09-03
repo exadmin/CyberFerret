@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 )
 
@@ -21,12 +22,16 @@ func newLineOutput(writer io.Writer) *lineOutput {
 }
 
 // text writes one TEXT: line. format is a [fmt.Printf] format string, so data
-// such as a file path or a matched value goes in an argument.
+// such as a file path or a matched value goes in an argument. Carriage returns
+// and line feeds are escaped to preserve the line-oriented protocol.
 func (o *lineOutput) text(format string, args ...any) error {
+	message := fmt.Sprintf(format, args...)
+	message = strings.NewReplacer("\r", `\r`, "\n", `\n`).Replace(message)
+
 	o.mu.Lock()
 	defer o.mu.Unlock()
 
-	if _, err := fmt.Fprintf(o.writer, "TEXT: "+format+"\n", args...); err != nil {
+	if _, err := fmt.Fprintf(o.writer, "TEXT: %s\n", message); err != nil {
 		return err
 	}
 	return o.writer.Flush()
