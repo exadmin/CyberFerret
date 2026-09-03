@@ -11,7 +11,7 @@ import org.apache.logging.log4j.core.config.plugins.PluginFactory;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -21,8 +21,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
         elementType = Appender.ELEMENT_TYPE)
 public class FXConsoleAppender extends AbstractAppender {
     public static final List<FXConsoleAppender> MY_INSTANCES = new CopyOnWriteArrayList<>();
+    private static final int MAX_QUEUE_SIZE = 10_000;
 
-    private final Queue<String> queue = new ConcurrentLinkedQueue<>();
+    private final Queue<String> queue = new ArrayBlockingQueue<>(MAX_QUEUE_SIZE);
     private final AtomicBoolean isServed = new AtomicBoolean(false); // must have true - in case there is a consumer which will "eat" events.
 
     public FXConsoleAppender(String name, Filter filter, Layout<? extends Serializable> layout, boolean ignoreExceptions, Property[] properties) {
@@ -38,9 +39,18 @@ public class FXConsoleAppender extends AbstractAppender {
         return newInstance;
     }
 
+    /**
+     * Adds the newest formatted message without blocking the logging thread.
+     * The oldest queued message is discarded when the queue reaches its capacity.
+     *
+     * @param event log event to enqueue
+     */
     @Override
     public void append(LogEvent event) {
-        queue.add(event.getMessage().getFormattedMessage());
+        String message = event.getMessage().getFormattedMessage();
+        while (!queue.offer(message)) {
+            queue.poll();
+        }
     }
 
     public String popNext() {
