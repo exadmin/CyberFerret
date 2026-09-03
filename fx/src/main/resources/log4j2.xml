@@ -13,9 +13,23 @@
             <PatternLayout pattern="%d{HH:mm:ss} %-5level: %msg%n"/>
         </Console>
 
-        <File name="File" fileName="./logs.log" append="true">
+        <RollingFile name="File"
+                     fileName="${sys:user.home}/.qubership/logs/cyberferret.log"
+                     filePattern="${sys:user.home}/.qubership/logs/cyberferret-%d{yyyy-MM-dd}-%i.log.gz"
+                     append="true">
             <PatternLayout pattern="%d{HH:mm:ss} %-5level: %msg%n"/>
-        </File>
+            <Policies>
+                <TimeBasedTriggeringPolicy/>
+                <SizeBasedTriggeringPolicy size="10 MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="10">
+                <Delete basePath="${sys:user.home}/.qubership/logs" maxDepth="1">
+                    <IfFileName glob="cyberferret-*.log.gz">
+                        <IfAccumulatedFileCount exceeds="10"/>
+                    </IfFileName>
+                </Delete>
+            </DefaultRolloverStrategy>
+        </RollingFile>
 
         <FXConsoleAppender name="FXConsoleAppender">
             <PatternLayout pattern="%d{HH:mm:ss} %-5level: %msg%n"/>
