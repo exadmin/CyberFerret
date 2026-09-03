@@ -316,6 +316,12 @@ func TestUpdateExclusionSupportsFoundFileAndFolderTargets(t *testing.T) {
 			textHash: fullPathExclusionHash,
 			fileHash: testSHA256("src/generated"),
 		},
+		{
+			name:     "path with edge spaces",
+			encoded:  `{"type":"file","file":" src/file.txt "}`,
+			textHash: fullPathExclusionHash,
+			fileHash: testSHA256(" src/file.txt "),
+		},
 	}
 
 	for _, test := range tests {

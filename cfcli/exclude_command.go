@@ -503,7 +503,7 @@ func exclusionForEvent(event excludeEvent) (grandReportExclusion, error) {
 }
 
 func normalizeExcludePath(rawPath, fieldName string) (string, error) {
-	normalizedSeparators := strings.ReplaceAll(strings.TrimSpace(rawPath), "\\", "/")
+	normalizedSeparators := strings.ReplaceAll(rawPath, "\\", "/")
 	cleaned := path.Clean(normalizedSeparators)
 	if normalizedSeparators == "" || cleaned == "." {
 		return "", &excludeCommandError{
