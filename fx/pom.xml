@@ -86,7 +86,7 @@
                     </descriptorRefs>
                     <archive>
                         <manifest>
-                            <mainClass>com.github.exadmin.cyberferret.CyberFerretApp</mainClass>
+                            <mainClass>com.github.exadmin.cyberferret.Launcher</mainClass>
                         </manifest>
                     </archive>
                     <finalName>${project.artifactId}</finalName>
