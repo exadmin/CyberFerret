@@ -9,11 +9,14 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.PipedInputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -95,6 +98,33 @@ class CfCliExcluderTests {
         assertEquals(1, completions.get());
     }
 
+    @Test
+    void terminatesTimedOutProcessAndCompletes() {
+        HangingProcess process = new HangingProcess();
+        List<String> successes = new ArrayList<>();
+        List<String> errors = new ArrayList<>();
+        AtomicInteger completions = new AtomicInteger();
+        CfCliExcluder excluder = new CfCliExcluder(
+                "cfcli",
+                root,
+                item("src/file.txt", ItemType.FILE),
+                true,
+                successes::add,
+                errors::add,
+                completions::incrementAndGet,
+                ignored -> process,
+                Duration.ofMillis(10));
+
+        excluder.run();
+
+        assertTrue(process.forciblyDestroyed);
+        assertEquals(10, process.waitTimeout);
+        assertEquals(TimeUnit.MILLISECONDS, process.waitUnit);
+        assertTrue(successes.isEmpty());
+        assertTrue(errors.getFirst().contains("timed out"));
+        assertEquals(1, completions.get());
+    }
+
     private CfCliExcluder excluder(FoundPathItem item, boolean exclude) {
         return new CfCliExcluder(
                 "custom-cfcli",
@@ -155,6 +185,65 @@ class CfCliExcluderTests {
 
         @Override
         public void destroy() {
+        }
+    }
+
+    private static final class HangingProcess extends Process {
+        private final PipedInputStream output = new PipedInputStream();
+        private boolean forciblyDestroyed;
+        private long waitTimeout;
+        private TimeUnit waitUnit;
+
+        @Override
+        public OutputStream getOutputStream() {
+            return OutputStream.nullOutputStream();
+        }
+
+        @Override
+        public InputStream getInputStream() {
+            return output;
+        }
+
+        @Override
+        public InputStream getErrorStream() {
+            return InputStream.nullInputStream();
+        }
+
+        @Override
+        public int waitFor() throws InterruptedException {
+            throw new InterruptedException("Timed wait required");
+        }
+
+        @Override
+        public boolean waitFor(long timeout, TimeUnit unit) {
+            waitTimeout = timeout;
+            waitUnit = unit;
+            return false;
+        }
+
+        @Override
+        public int exitValue() {
+            throw new IllegalThreadStateException("Process is still running");
+        }
+
+        @Override
+        public void destroy() {
+            destroyForcibly();
+        }
+
+        @Override
+        public Process destroyForcibly() {
+            forciblyDestroyed = true;
+            try {
+                output.close();
+            } catch (Exception ignored) {
+            }
+            return this;
+        }
+
+        @Override
+        public boolean isAlive() {
+            return !forciblyDestroyed;
         }
     }
 }
