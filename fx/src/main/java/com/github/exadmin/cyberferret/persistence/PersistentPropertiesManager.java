@@ -17,8 +17,8 @@ import java.util.Properties;
  * application runs. It loads registered properties from the path passed to the constructor and writes their latest
  * values to the same path when {@link #saveProperties()} is called.</p>
  *
- * <p>{@link com.github.exadmin.cyberferret.CyberFerretApp} configures this manager with {@code app.properties}, so the
- * application stores its settings in that file in the process working directory.</p>
+ * <p>{@link com.github.exadmin.cyberferret.CyberFerretApp} stores application settings in
+ * {@code .qubership/cyberferret.properties} under the user's home directory.</p>
  */
 public class PersistentPropertiesManager {
     private static final Map<String, AbstractPersistentProperty<?>> REG_MAP = Collections.synchronizedMap(new HashMap<>());

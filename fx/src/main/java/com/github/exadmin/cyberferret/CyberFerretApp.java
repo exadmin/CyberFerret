@@ -6,18 +6,24 @@ import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 
-import java.nio.file.Paths;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import static com.github.exadmin.cyberferret.persistence.PersistentPropertiesManager.*;
 import static com.github.exadmin.cyberferret.utils.MiscUtils.loadApplicationVersion;
 
 public class CyberFerretApp extends Application {
-    private static final String APPLICATION_PERSISTENT_CONTEXT_FILENAME = "app.properties";
+    private static final String APPLICATION_SETTINGS_DIRECTORY = ".qubership";
+    private static final String APPLICATION_PERSISTENT_CONTEXT_FILENAME = "cyberferret.properties";
 
 
     @Override
     public void start(Stage stage) {
-        PersistentPropertiesManager appProperties = new PersistentPropertiesManager(Paths.get("", APPLICATION_PERSISTENT_CONTEXT_FILENAME));
+        Path userHome = Path.of(System.getProperty("user.home"));
+        PersistentPropertiesManager appProperties =
+                new PersistentPropertiesManager(applicationPropertiesPath(userHome));
 
         // add listeners
         stage.widthProperty().addListener((value, oldValue, newValue) -> STAGE_WIDTH.parseValue(newValue));
@@ -42,6 +48,17 @@ public class CyberFerretApp extends Application {
 
         String appVer = loadApplicationVersion();
         stage.setTitle("Cyber Ferret (version " + appVer + ")");
+    }
+
+    static Path applicationPropertiesPath(Path userHome) {
+        Path settingsDirectory = userHome.resolve(APPLICATION_SETTINGS_DIRECTORY);
+        try {
+            Files.createDirectories(settingsDirectory);
+        } catch (IOException ex) {
+            throw new UncheckedIOException(
+                    "Cannot create application settings directory '" + settingsDirectory.toAbsolutePath() + "'", ex);
+        }
+        return settingsDirectory.resolve(APPLICATION_PERSISTENT_CONTEXT_FILENAME);
     }
 
     public static void main(String[] args) {
