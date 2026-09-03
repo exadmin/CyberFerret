@@ -7,7 +7,9 @@ import org.junit.jupiter.api.Test;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SceneBuilderStatusTests {
     @Test
@@ -61,6 +63,15 @@ class SceneBuilderStatusTests {
 
         assertSame(contextMenuItem, SceneBuilder.exclusionTarget(contextMenuItem, selectedItem));
         assertSame(selectedItem, SceneBuilder.exclusionTarget(null, selectedItem));
+    }
+
+    @Test
+    void matchesConfiguredDirectoryToScanResultsRoot() {
+        Path scanResultsRoot = Path.of("repository").toAbsolutePath().normalize();
+
+        assertTrue(SceneBuilder.matchesScanResultsRoot(scanResultsRoot, scanResultsRoot.toString()));
+        assertFalse(SceneBuilder.matchesScanResultsRoot(scanResultsRoot, Path.of("other").toString()));
+        assertFalse(SceneBuilder.matchesScanResultsRoot(scanResultsRoot, "\0"));
     }
 
     private static FoundPathItem item(String path, ItemType type) {

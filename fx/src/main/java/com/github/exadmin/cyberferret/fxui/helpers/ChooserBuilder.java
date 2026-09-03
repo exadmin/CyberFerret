@@ -18,6 +18,9 @@ import java.io.File;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 public class ChooserBuilder {
 
@@ -31,7 +34,39 @@ public class ChooserBuilder {
         this.primaryStage = primaryStage;
     }
 
+    /**
+     * Builds a chooser row that always allows the native chooser to open.
+     *
+     * @param labelText label displayed beside the chooser field
+     * @param bindProperty property bound to the selected path
+     * @param btnText chooser button text
+     * @param type kind of filesystem entry to select
+     * @return configured chooser row
+     */
     public HBox buildChooserBox(String labelText, Property<String> bindProperty, String btnText, CHOOSER_TYPE type) {
+        return buildChooserBox(labelText, bindProperty, btnText, type, () -> true, ignored -> {
+        });
+    }
+
+    /**
+     * Builds a chooser row with hooks for opening confirmation and completed selection handling.
+     * The selection callback runs only after an existing entry is selected.
+     *
+     * @param labelText label displayed beside the chooser field
+     * @param bindProperty property bound to the selected path
+     * @param btnText chooser button text
+     * @param type kind of filesystem entry to select
+     * @param beforeOpen callback that must approve opening the native chooser
+     * @param onSelection callback invoked after the bound path changes through the chooser
+     * @return configured chooser row
+     */
+    public HBox buildChooserBox(
+            String labelText,
+            Property<String> bindProperty,
+            String btnText,
+            CHOOSER_TYPE type,
+            BooleanSupplier beforeOpen,
+            Consumer<File> onSelection) {
         HBox hBox = new HBox();
         hBox.setSpacing(8);
         {
@@ -76,30 +111,44 @@ public class ChooserBuilder {
             bindProperty.setValue(bindProperty.getValue().trim());
 
             btnOpen.setOnAction(e -> {
-                File file = null;
-                if (type == CHOOSER_TYPE.FILE || type == CHOOSER_TYPE.EXECUTABLE) {
-                    FileChooser fileChooser = new FileChooser();
-                    fileChooser.setInitialDirectory(verifiedInitDirectory.getValue());
-                    if (type == CHOOSER_TYPE.EXECUTABLE) {
-                        fileChooser.getExtensionFilters().add(
-                                new FileChooser.ExtensionFilter("Executable files (*.exe)", "*.exe"));
+                File file = chooseAfterConfirmation(beforeOpen, () -> {
+                    if (type == CHOOSER_TYPE.FILE || type == CHOOSER_TYPE.EXECUTABLE) {
+                        FileChooser fileChooser = new FileChooser();
+                        fileChooser.setInitialDirectory(verifiedInitDirectory.getValue());
+                        if (type == CHOOSER_TYPE.EXECUTABLE) {
+                            fileChooser.getExtensionFilters().add(
+                                    new FileChooser.ExtensionFilter("Executable files (*.exe)", "*.exe"));
+                        }
+                        return fileChooser.showOpenDialog(primaryStage);
                     }
-                    file = fileChooser.showOpenDialog(primaryStage);
-                }
 
-                if (type == CHOOSER_TYPE.DIRECTORY) {
-                    DirectoryChooser directoryChooser = new DirectoryChooser();
-                    directoryChooser.setInitialDirectory(verifiedInitDirectory.getValue());
-                    file = directoryChooser.showDialog(primaryStage);
-                }
+                    if (type == CHOOSER_TYPE.DIRECTORY) {
+                        DirectoryChooser directoryChooser = new DirectoryChooser();
+                        directoryChooser.setInitialDirectory(verifiedInitDirectory.getValue());
+                        return directoryChooser.showDialog(primaryStage);
+                    }
+                    return null;
+                });
 
                 if (file != null && file.exists()) {
                     bindProperty.setValue(file.toString());
+                    onSelection.accept(file);
                 }
             });
         }
 
         return hBox;
+    }
+
+    /**
+     * Opens a chooser only when its confirmation callback approves the operation.
+     *
+     * @param beforeOpen callback that approves opening the chooser
+     * @param chooser native chooser operation
+     * @return selected file, or {@code null} when opening is declined or selection is canceled
+     */
+    static File chooseAfterConfirmation(BooleanSupplier beforeOpen, Supplier<File> chooser) {
+        return beforeOpen.getAsBoolean() ? chooser.get() : null;
     }
 
     static File initialDirectory(String configuredPath) {

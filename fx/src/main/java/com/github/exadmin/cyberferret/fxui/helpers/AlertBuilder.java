@@ -2,6 +2,7 @@ package com.github.exadmin.cyberferret.fxui.helpers;
 
 import javafx.application.Platform;
 import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,5 +46,19 @@ public class AlertBuilder {
             log.warn(text);
             alert.showAndWait();
         });
+    }
+
+    /**
+     * Shows a synchronous warning confirmation on the JavaFX application thread.
+     * Closing the dialog or selecting No declines the operation.
+     *
+     * @param text confirmation question displayed in the alert header
+     * @return {@code true} only when the user selects Yes
+     */
+    public static boolean showConfirmation(String text) {
+        Alert alert = new Alert(Alert.AlertType.WARNING, "", ButtonType.YES, ButtonType.NO);
+        alert.setTitle("Warning");
+        alert.setHeaderText(text);
+        return alert.showAndWait().filter(ButtonType.YES::equals).isPresent();
     }
 }

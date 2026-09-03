@@ -63,6 +63,7 @@ public class SceneBuilder {
     private final Map<Button, Boolean> buttonDisableStates = new HashMap<>();
     private final AtomicBoolean scannerRunning = new AtomicBoolean(false);
     private final AtomicBoolean exclusionUpdateRunning = new AtomicBoolean(false);
+    private Path scanResultsRoot;
 
     public SceneBuilder(Stage primaryStage) {
         this.primaryStage = primaryStage;
@@ -148,6 +149,12 @@ public class SceneBuilder {
         return tpOnlineDictionary;
     }
 
+    /**
+     * Builds repository selection, scanning, and exclusion controls.
+     * Changing a directory associated with scan results requires confirmation and clears stale results.
+     *
+     * @return repository settings pane
+     */
     protected TitledPane createRepositoryGroup() {
         TitledPane tpSettings = new TitledPane();
         tpSettings.setCollapsible(false);
@@ -159,10 +166,28 @@ public class SceneBuilder {
         vBoxRoot.setSpacing(8);
 
         ChooserBuilder chooserBuilder = new ChooserBuilder(primaryStage);
+        Label scannedLabel = new Label("Scanned 0");
+        AtomicLong scannedItems = new AtomicLong();
 
         // Folder to scan
         {
-            HBox hBox = chooserBuilder.buildChooserBox("Git repository to scan", DIR_TO_SCAN.getFxProperty(), "Select ...", ChooserBuilder.CHOOSER_TYPE.DIRECTORY);
+            HBox hBox = chooserBuilder.buildChooserBox(
+                    "Git repository to scan",
+                    DIR_TO_SCAN.getFxProperty(),
+                    "Select ...",
+                    ChooserBuilder.CHOOSER_TYPE.DIRECTORY,
+                    () -> scanResultsRoot == null || AlertBuilder.showConfirmation(
+                            "Changing the scan directory will clear the scan results. Continue?"),
+                    selectedDirectory -> {
+                        Path selectedRoot = selectedDirectory.toPath().toAbsolutePath().normalize();
+                        if (scanResultsRoot != null && !scanResultsRoot.equals(selectedRoot)) {
+                            foundItemsContainer.clearAll();
+                            selectedItemProperty.set(null);
+                            scanResultsRoot = null;
+                            scannedItems.set(0);
+                            scannedLabel.setText("Scanned 0");
+                        }
+                    });
             vBoxRoot.getChildren().add(hBox);
         }
 
@@ -175,8 +200,6 @@ public class SceneBuilder {
 
             Button btnRun = new Button("Start Scanning");
             btnRun.setPrefWidth(DEFAULT_BUTTON_WIDTH);
-            Label scannedLabel = new Label("Scanned 0");
-            AtomicLong scannedItems = new AtomicLong();
 
             btnRun.setOnAction(actionEvent -> {
                 log.debug("Start button is pressed using dir-to-scan = {}", DIR_TO_SCAN.getValue());
@@ -212,6 +235,7 @@ public class SceneBuilder {
 
                 // drop previous scan result
                 foundItemsContainer.clearAll();
+                scanResultsRoot = scanRoot;
                 scannedItems.set(0);
                 scannedLabel.setText("Scanned 0");
 
@@ -547,6 +571,24 @@ public class SceneBuilder {
         return contextMenuItem == null ? selectedItem : contextMenuItem;
     }
 
+    /**
+     * Checks whether configured directory still identifies the scan results root.
+     * Invalid or missing configured paths never match existing results.
+     *
+     * @param scanResultsRoot normalized root associated with displayed results
+     * @param configuredDirectory current directory value from the settings field
+     * @return {@code true} when both paths identify the same normalized location
+     */
+    static boolean matchesScanResultsRoot(Path scanResultsRoot, String configuredDirectory) {
+        if (scanResultsRoot == null || configuredDirectory == null || configuredDirectory.isBlank()) return false;
+        try {
+            Path configuredRoot = Paths.get(configuredDirectory).toAbsolutePath().normalize();
+            return scanResultsRoot.equals(configuredRoot);
+        } catch (RuntimeException ex) {
+            return false;
+        }
+    }
+
 
     private TitledPane createLogsPane() {
         TitledPane tpLogs = new TitledPane();
@@ -617,6 +659,12 @@ public class SceneBuilder {
             }
             if (!Files.isDirectory(scanRoot)) {
                 AlertBuilder.showError("Repository directory does not exist: " + scanRoot);
+                return;
+            }
+            if (!matchesScanResultsRoot(scanResultsRoot, selectedDirectory)
+                    || !foundItemsContainer.getFoundItemsCopy().contains(foundPathItem)) {
+                AlertBuilder.showInfo(
+                        "The scan directory has changed. Run the scan again before changing exclusions.");
                 return;
             }
 
