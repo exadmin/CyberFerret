@@ -3,6 +3,7 @@ package com.github.exadmin.cyberferret;
 import com.github.exadmin.cyberferret.fxui.SceneBuilder;
 import com.github.exadmin.cyberferret.persistence.PersistentPropertiesManager;
 import javafx.application.Application;
+import javafx.beans.value.ChangeListener;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 
@@ -10,6 +11,8 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
 
 import static com.github.exadmin.cyberferret.persistence.PersistentPropertiesManager.*;
 import static com.github.exadmin.cyberferret.utils.MiscUtils.loadApplicationVersion;
@@ -26,10 +29,10 @@ public class CyberFerretApp extends Application {
                 new PersistentPropertiesManager(applicationPropertiesPath(userHome));
 
         // add listeners
-        stage.widthProperty().addListener((value, oldValue, newValue) -> STAGE_WIDTH.parseValue(newValue));
-        stage.heightProperty().addListener((value, oldValue, newValue) -> STAGE_HEIGHT.parseValue(newValue));
-        stage.xProperty().addListener((value, oldValue, newValue) -> STAGE_POSX.parseValue(newValue));
-        stage.yProperty().addListener((value, oldValue, newValue) -> STAGE_POSY.parseValue(newValue));
+        stage.widthProperty().addListener(normalStageGeometryListener(stage::isMaximized, STAGE_WIDTH::parseValue));
+        stage.heightProperty().addListener(normalStageGeometryListener(stage::isMaximized, STAGE_HEIGHT::parseValue));
+        stage.xProperty().addListener(normalStageGeometryListener(stage::isMaximized, STAGE_POSX::parseValue));
+        stage.yProperty().addListener(normalStageGeometryListener(stage::isMaximized, STAGE_POSY::parseValue));
         stage.maximizedProperty().addListener((value, oldValue, newValue) -> STAGE_IS_MAXIMIZED.parseValue(newValue));
 
 
@@ -59,6 +62,22 @@ public class CyberFerretApp extends Application {
                     "Cannot create application settings directory '" + settingsDirectory.toAbsolutePath() + "'", ex);
         }
         return settingsDirectory.resolve(APPLICATION_PERSISTENT_CONTEXT_FILENAME);
+    }
+
+    /**
+     * Creates a listener that persists stage geometry changes only while the stage is not maximized.
+     *
+     * @param maximized supplies the current maximized state
+     * @param geometryUpdater persists the new geometry value
+     * @return a listener that ignores geometry changes while the stage is maximized
+     */
+    static ChangeListener<Number> normalStageGeometryListener(
+            BooleanSupplier maximized, Consumer<Number> geometryUpdater) {
+        return (value, oldValue, newValue) -> {
+            if (!maximized.getAsBoolean()) {
+                geometryUpdater.accept(newValue);
+            }
+        };
     }
 
     public static void main(String[] args) {
