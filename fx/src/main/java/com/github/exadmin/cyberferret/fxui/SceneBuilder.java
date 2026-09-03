@@ -50,8 +50,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
-import static com.github.exadmin.cyberferret.fxui.FxConstants.DEFAULT_BUTTON_WIDTH;
-import static com.github.exadmin.cyberferret.fxui.FxConstants.DEFAULT_LABEL_WIDTH;
+import static com.github.exadmin.cyberferret.AppConstants.DEFAULT_BUTTON_WIDTH;
+import static com.github.exadmin.cyberferret.AppConstants.DEFAULT_LABEL_WIDTH;
 import static com.github.exadmin.cyberferret.persistence.PersistentPropertiesManager.*;
 
 public class SceneBuilder {

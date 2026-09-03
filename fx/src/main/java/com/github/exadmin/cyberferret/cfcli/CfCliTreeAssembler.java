@@ -13,7 +13,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
 
-import static com.github.exadmin.cyberferret.fxui.FxConstants.MAX_CONTEXT_FILE_SIZE_BYTES;
+import static com.github.exadmin.cyberferret.AppConstants.MAX_CONTEXT_FILE_SIZE_BYTES;
 
 public final class CfCliTreeAssembler {
     private final Path root;

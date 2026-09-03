@@ -15,9 +15,9 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.WRITE;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class CfCliTreeAssemblerTests {
     @TempDir

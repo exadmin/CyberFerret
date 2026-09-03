@@ -9,14 +9,10 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 import java.util.function.Consumer;
 
-import static com.github.exadmin.cyberferret.fxui.FxConstants.CFCLI_EXCLUSION_TIMEOUT_SECONDS;
+import static com.github.exadmin.cyberferret.AppConstants.CFCLI_EXCLUSION_TIMEOUT_SECONDS;
 
 public final class CfCliExcluder implements Runnable {
     @FunctionalInterface
@@ -150,11 +146,11 @@ public final class CfCliExcluder implements Runnable {
             }
             successSink.accept(output);
         } catch (TimeoutException ex) {
-            if (process != null) process.destroyForcibly();
+            process.destroyForcibly();
             errorSink.accept("Exclusion update timed out after " + timeout.toSeconds() + " seconds.");
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
-            if (process != null) process.destroyForcibly();
+            process.destroyForcibly();
             errorSink.accept("Exclusion update was interrupted.");
         } catch (Exception ex) {
             if (process != null && process.isAlive()) process.destroyForcibly();

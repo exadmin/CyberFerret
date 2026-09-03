@@ -9,10 +9,6 @@ public class MiscUtils {
         return str == null || str.isEmpty();
     }
 
-    public static boolean isNotEmpty(String str) {
-        return !isEmpty(str);
-    }
-
     private static final String VERSION_PROPERTIES_RESOURCE = "/version.properties";
 
     public static String loadApplicationVersion() {
