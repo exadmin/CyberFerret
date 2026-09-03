@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 class SceneBuilderStatusTests {
     @Test
@@ -36,6 +37,30 @@ class SceneBuilderStatusTests {
         assertEquals("Allowed", SceneBuilder.statusFor(allowed));
         assertEquals("Excluded", SceneBuilder.statusFor(excluded));
         assertEquals("Warning", SceneBuilder.statusFor(warning));
+    }
+
+    @Test
+    void mapsItemStateAndSelectionToRowStyle() {
+        FoundPathItem ignored = item("ignored", ItemType.SIGNATURE);
+        ignored.setIgnored(true);
+        FoundPathItem allowed = item("allowed", ItemType.SIGNATURE);
+        allowed.setAllowedValue(true);
+        FoundPathItem found = item("found", ItemType.SIGNATURE);
+        found.setFoundString("secret");
+
+        assertEquals(SceneBuilder.EXCLUDED_ROW_STYLE, SceneBuilder.rowStyleFor(ignored, false));
+        assertEquals("-fx-background-color: #c1f7cf;", SceneBuilder.rowStyleFor(allowed, false));
+        assertEquals("-fx-background-color: #f2d0d0;", SceneBuilder.rowStyleFor(found, false));
+        assertEquals("", SceneBuilder.rowStyleFor(ignored, true));
+    }
+
+    @Test
+    void prefersContextMenuItemAsExclusionTarget() {
+        FoundPathItem contextMenuItem = item("context-menu-item", ItemType.FILE);
+        FoundPathItem selectedItem = item("selected-item", ItemType.FILE);
+
+        assertSame(contextMenuItem, SceneBuilder.exclusionTarget(contextMenuItem, selectedItem));
+        assertSame(selectedItem, SceneBuilder.exclusionTarget(null, selectedItem));
     }
 
     private static FoundPathItem item(String path, ItemType type) {

@@ -247,7 +247,7 @@ public class SceneBuilder {
 
             Button btnMark = new Button("Mark as ignored");
             btnMark.setPrefWidth(DEFAULT_BUTTON_WIDTH);
-            btnMark.setOnAction(new MarkAsIgnoredEventHandler());
+            btnMark.setOnAction(new MarkAsIgnoredEventHandler(null));
 
             selectedItemProperty.addListener((bean, olValue, newValue) -> {
                 if (bean != null && bean.getValue() != null && bean.getValue().getValue() != null) {
@@ -352,26 +352,24 @@ public class SceneBuilder {
         ttView.setMinHeight(320);
 
         ttView.setRowFactory(tv -> new TreeTableRow<>() {
+            /**
+             * Refreshes row state and clears presentation left by reused empty rows.
+             *
+             * @param foundPathItem item displayed by this row
+             * @param empty whether this row has no item to display
+             */
             @Override
-            protected void updateItem(FoundPathItem foundPathItem, boolean isSelected) {
-                if (foundPathItem == null) {
+            protected void updateItem(FoundPathItem foundPathItem, boolean empty) {
+                super.updateItem(foundPathItem, empty);
+                if (empty || foundPathItem == null) {
                     setStyle("");
                     setContextMenu(null);
-                } else {
-                    if (!isSelected && foundPathItem.isIgnored()) {
-                        setStyle(EXCLUDED_ROW_STYLE);
-                    } else if (!isSelected && foundPathItem.isAllowedValue()) {
-                        setStyle("-fx-background-color: #c1f7cf;");
-                    } else if (!isSelected && foundPathItem.getFoundString() != null && !foundPathItem.getFoundString().isEmpty()) {
-                        setStyle("-fx-background-color: #f2d0d0;");
-                    } else {
-                        setStyle("");
-                    }
-
-                    ContextMenu contextMenu = createContextMenu(foundPathItem);
-                    setContextMenu(contextMenu);
+                    return;
                 }
-                super.updateItem(foundPathItem, isSelected);
+
+                setStyle(rowStyleFor(foundPathItem, isSelected()));
+                ContextMenu contextMenu = createContextMenu(foundPathItem);
+                setContextMenu(contextMenu);
             }
 
             private ContextMenu createContextMenu(FoundPathItem foundPathItem) {
@@ -412,7 +410,7 @@ public class SceneBuilder {
                 });
 
                 MenuItem markAsIgnored = new MenuItem("Mark as ignored");
-                markAsIgnored.setOnAction(new MarkAsIgnoredEventHandler());
+                markAsIgnored.setOnAction(new MarkAsIgnoredEventHandler(foundPathItem));
 
                 return new ContextMenu(openInEditor, openInExplorer, copySignature, markAsIgnored);
             }
@@ -519,6 +517,36 @@ public class SceneBuilder {
         };
     }
 
+    /**
+     * Selects the background style for a populated tree-table row.
+     * Selected rows keep the control's selection style instead of an item status color.
+     *
+     * @param item item displayed by the row
+     * @param selected whether the row is selected
+     * @return CSS style for the row, or an empty string for the default style
+     */
+    static String rowStyleFor(FoundPathItem item, boolean selected) {
+        if (selected) return "";
+        if (item.isIgnored()) return EXCLUDED_ROW_STYLE;
+        if (item.isAllowedValue()) return "-fx-background-color: #c1f7cf;";
+        if (item.getFoundString() != null && !item.getFoundString().isEmpty()) {
+            return "-fx-background-color: #f2d0d0;";
+        }
+        return "";
+    }
+
+    /**
+     * Resolves the item affected by an exclusion action.
+     * A context-menu item takes precedence over the table selection.
+     *
+     * @param contextMenuItem item whose context menu initiated the action, or {@code null}
+     * @param selectedItem item selected in the table, or {@code null}
+     * @return item to update, or {@code null} when neither source provides one
+     */
+    static FoundPathItem exclusionTarget(FoundPathItem contextMenuItem, FoundPathItem selectedItem) {
+        return contextMenuItem == null ? selectedItem : contextMenuItem;
+    }
+
 
     private TitledPane createLogsPane() {
         TitledPane tpLogs = new TitledPane();
@@ -549,9 +577,28 @@ public class SceneBuilder {
     }
 
     private class MarkAsIgnoredEventHandler implements EventHandler<ActionEvent> {
+        private final FoundPathItem contextMenuItem;
+
+        /**
+         * Creates an exclusion handler for a context-menu item or the current table selection.
+         *
+         * @param contextMenuItem fixed context-menu target, or {@code null} to use the selection
+         */
+        private MarkAsIgnoredEventHandler(FoundPathItem contextMenuItem) {
+            this.contextMenuItem = contextMenuItem;
+        }
+
+        /**
+         * Starts an asynchronous cfcli exclusion update for the resolved target item.
+         *
+         * @param event action event that initiated the update
+         */
         @Override
         public void handle(ActionEvent event) {
-            if (selectedItemProperty.getValue() == null) {
+            TreeItem<FoundPathItem> selectedTreeItem = selectedItemProperty.getValue();
+            FoundPathItem selectedItem = selectedTreeItem == null ? null : selectedTreeItem.getValue();
+            FoundPathItem foundPathItem = exclusionTarget(contextMenuItem, selectedItem);
+            if (foundPathItem == null) {
                 AlertBuilder.showInfo("Select an item before changing its exclusion state.");
                 return;
             }
@@ -584,7 +631,6 @@ public class SceneBuilder {
                 return;
             }
 
-            FoundPathItem foundPathItem = selectedItemProperty.getValue().getValue();
             boolean exclude = !foundPathItem.isIgnored();
             CfCliExcluder excluder = new CfCliExcluder(
                     cliExecutable.command(),
