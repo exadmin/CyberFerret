@@ -7,6 +7,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.SeekableByteChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -14,6 +16,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static java.nio.file.StandardOpenOption.CREATE;
+import static java.nio.file.StandardOpenOption.WRITE;
 
 public class CfCliTreeAssemblerTests {
     @TempDir
@@ -89,6 +93,27 @@ public class CfCliTreeAssemblerTests {
         assertEquals(0, signature.getLineNumber());
         assertEquals("", signature.getDisplayText());
         assertEquals(1, warnings.size());
+    }
+
+    @Test
+    public void analyzesFirstTenMebibytesOfLargerFiles() throws Exception {
+        Path file = root.resolve("large.txt");
+        try (SeekableByteChannel channel = Files.newByteChannel(file, CREATE, WRITE)) {
+            channel.write(ByteBuffer.wrap("VALUE\n".getBytes(StandardCharsets.UTF_8)));
+            channel.position(10L * 1024 * 1024);
+            channel.write(ByteBuffer.wrap(new byte[]{0}));
+        }
+        FoundItemsContainer container = new FoundItemsContainer();
+        List<String> warnings = new ArrayList<>();
+        CfCliTreeAssembler assembler = new CfCliTreeAssembler(root, container, warnings::add);
+
+        assembler.accept(message("list", "large.txt", null, null, null, null));
+        assembler.accept(message("found", "large.txt", null, "KEY", "VALUE", 1L));
+
+        FoundPathItem signature = container.getFoundItemsCopy().getLast();
+        assertEquals(1, signature.getLineNumber());
+        assertEquals("VALUE", signature.getDisplayText());
+        assertEquals(0, warnings.size());
     }
 
     private static CfCliMessage message(

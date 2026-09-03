@@ -6,11 +6,14 @@ import com.github.exadmin.cyberferret.model.ItemType;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
+
+import static com.github.exadmin.cyberferret.fxui.FxConstants.MAX_CONTEXT_FILE_SIZE_BYTES;
 
 public final class CfCliTreeAssembler {
     private final Path root;
@@ -125,9 +128,19 @@ public final class CfCliTreeAssembler {
         return resolved;
     }
 
+    /**
+     * Loads a bounded file prefix for context extraction while preventing oversized allocations.
+     * Consecutive signatures in the same file reuse the cached content.
+     *
+     * @param file file containing the reported signature
+     * @return file content
+     * @throws IOException when the file cannot be read
+     */
     private byte[] contentFor(Path file) throws IOException {
         if (!file.equals(cachedFile)) {
-            cachedContent = Files.readAllBytes(file);
+            try (InputStream input = Files.newInputStream(file)) {
+                cachedContent = input.readNBytes(MAX_CONTEXT_FILE_SIZE_BYTES);
+            }
             cachedFile = file;
         }
         return cachedContent;
