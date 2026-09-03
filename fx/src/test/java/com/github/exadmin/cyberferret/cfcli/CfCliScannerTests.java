@@ -11,10 +11,14 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class CfCliScannerTests {
@@ -80,6 +84,54 @@ public class CfCliScannerTests {
         assertTrue(protocolErrors.getFirst().contains("Cannot process cfcli output"));
         assertEquals(1, exitCompletions.get());
         assertEquals(1, protocolCompletions.get());
+    }
+
+    @Test
+    public void completesOnlyAfterInterruptedStreamCallbacksFinish() throws InterruptedException {
+        CountDownLatch callbackStarted = new CountDownLatch(1);
+        CountDownLatch releaseCallback = new CountDownLatch(1);
+        CountDownLatch completionCalled = new CountDownLatch(1);
+        AtomicBoolean callbackFinished = new AtomicBoolean();
+        List<String> errors = new ArrayList<>();
+        CfCliScanner scanner = new CfCliScanner(
+                root,
+                ignored -> {
+                },
+                ignored -> {
+                    callbackStarted.countDown();
+                    while (true) {
+                        try {
+                            releaseCallback.await();
+                            break;
+                        } catch (InterruptedException ex) {
+                            // Keep the callback active until the test releases it.
+                        }
+                    }
+                    callbackFinished.set(true);
+                },
+                errors::add,
+                completionCalled::countDown,
+                ignored -> new FakeProcess("TEXT: wait\n", "", 0));
+        Thread scannerThread = new Thread(scanner);
+
+        scannerThread.start();
+        assertTrue(callbackStarted.await(1, TimeUnit.SECONDS));
+        scannerThread.interrupt();
+
+        boolean completedBeforeCallback;
+        try {
+            completedBeforeCallback = completionCalled.await(200, TimeUnit.MILLISECONDS);
+        } finally {
+            releaseCallback.countDown();
+        }
+        scannerThread.join(1_000);
+
+        assertFalse(completedBeforeCallback);
+        assertFalse(scannerThread.isAlive());
+        assertTrue(scannerThread.isInterrupted());
+        assertTrue(callbackFinished.get());
+        assertEquals(0, completionCalled.getCount());
+        assertTrue(errors.getFirst().contains("interrupted"));
     }
 
     private CfCliScanner scannerFor(

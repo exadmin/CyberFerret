@@ -82,6 +82,9 @@ public final class CfCliScanner implements Runnable {
         this.processLauncher = processLauncher;
     }
 
+    /**
+     * Runs the scanner process and invokes completion only after both process streams stop producing callbacks.
+     */
     @Override
     public void run() {
         ExecutorService streamExecutor = Executors.newFixedThreadPool(2, runnable -> {
@@ -90,6 +93,8 @@ public final class CfCliScanner implements Runnable {
             return thread;
         });
         Process process = null;
+        boolean streamsAwaited = false;
+        boolean restoreInterrupt = false;
         try {
             List<String> command = List.of(
                     executable,
@@ -104,19 +109,80 @@ public final class CfCliScanner implements Runnable {
             int exitCode = process.waitFor();
             await(stdout);
             await(stderr);
+            streamsAwaited = true;
             if (exitCode != 0 && exitCode != 2) {
                 throw new IOException("cfcli finished with exit code " + exitCode);
             }
         } catch (InterruptedException ex) {
-            Thread.currentThread().interrupt();
-            if (process != null) process.destroyForcibly();
+            restoreInterrupt = true;
             errorSink.accept("cfcli scanning was interrupted");
         } catch (Exception ex) {
-            if (process != null && process.isAlive()) process.destroyForcibly();
             errorSink.accept("Cannot process cfcli output: " + rootMessage(ex));
         } finally {
-            streamExecutor.shutdownNow();
-            completion.run();
+            restoreInterrupt |= finishStreamTasks(process, streamExecutor, streamsAwaited);
+            try {
+                completion.run();
+            } finally {
+                if (restoreInterrupt) Thread.currentThread().interrupt();
+            }
+        }
+    }
+
+    /**
+     * Stops unfinished process I/O and waits until all stream tasks terminate.
+     *
+     * @param process scanner process, or {@code null} when startup failed
+     * @param streamExecutor executor that owns both stream-pump tasks
+     * @param streamsAwaited whether both pump futures completed before cleanup
+     * @return {@code true} when cleanup was interrupted and the caller must restore the interrupt flag
+     */
+    private static boolean finishStreamTasks(
+            Process process, ExecutorService streamExecutor, boolean streamsAwaited) {
+        boolean interrupted = false;
+        if (!streamsAwaited && process != null) {
+            if (process.isAlive()) process.destroyForcibly();
+            while (process.isAlive()) {
+                try {
+                    process.waitFor();
+                } catch (InterruptedException ex) {
+                    interrupted = true;
+                }
+            }
+            closeProcessStreams(process);
+        }
+
+        streamExecutor.shutdownNow();
+        while (!streamExecutor.isTerminated()) {
+            try {
+                streamExecutor.awaitTermination(Long.MAX_VALUE, java.util.concurrent.TimeUnit.NANOSECONDS);
+            } catch (InterruptedException ex) {
+                interrupted = true;
+            }
+        }
+        return interrupted;
+    }
+
+    /**
+     * Closes every process stream to release pump tasks blocked in an I/O operation.
+     *
+     * @param process process whose streams must be closed
+     */
+    private static void closeProcessStreams(Process process) {
+        closeQuietly(process.getInputStream());
+        closeQuietly(process.getErrorStream());
+        closeQuietly(process.getOutputStream());
+    }
+
+    /**
+     * Closes a process stream without masking the scanner's original failure.
+     *
+     * @param stream stream to close
+     */
+    private static void closeQuietly(AutoCloseable stream) {
+        try {
+            stream.close();
+        } catch (Exception ignored) {
+            // The original scanner result remains the primary outcome.
         }
     }
 
