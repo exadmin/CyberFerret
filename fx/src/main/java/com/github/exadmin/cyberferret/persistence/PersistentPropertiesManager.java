@@ -4,11 +4,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.nio.channels.Channels;
+import java.nio.channels.FileChannel;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+
+import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
+import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
+import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
+import static java.nio.file.StandardOpenOption.WRITE;
 
 /**
  * Loads and saves persistent settings for the JavaFX application.
@@ -76,6 +85,10 @@ public class PersistentPropertiesManager {
         }
     }
 
+    /**
+     * Saves all registered properties without exposing a partially written target file.
+     * I/O failures are logged and leave the application lifecycle running.
+     */
     public void saveProperties() {
         Properties properties = new Properties();
         synchronized (REG_MAP) {
@@ -84,10 +97,39 @@ public class PersistentPropertiesManager {
                 if (value != null) properties.setProperty(me.getKey(), value.toString());
             }
         }
-        try (OutputStream os = new FileOutputStream(filePath.toFile())) {
-            properties.store(os, "");
+        try {
+            storeAtomically(properties, filePath);
         } catch (IOException ex) {
             LOG.error("Error while saving application context properties into the file '{}'", filePath, ex);
+        }
+    }
+
+    /**
+     * Persists properties to a temporary sibling file and then replaces the target.
+     * The temporary content is flushed to disk before the move, and unsupported atomic moves fall back to replacement.
+     *
+     * @param properties properties to persist
+     * @param targetPath destination properties file
+     * @throws IOException when writing, flushing, or replacing the target fails
+     */
+    static void storeAtomically(Properties properties, Path targetPath) throws IOException {
+        Path target = targetPath.toAbsolutePath().normalize();
+        Path temporary = Files.createTempFile(target.getParent(), "cyberferret-", ".tmp");
+        try {
+            try (FileChannel channel = FileChannel.open(temporary, WRITE, TRUNCATE_EXISTING)) {
+                OutputStream output = Channels.newOutputStream(channel);
+                properties.store(output, "");
+                output.flush();
+                channel.force(true);
+            }
+
+            try {
+                Files.move(temporary, target, REPLACE_EXISTING, ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException ex) {
+                Files.move(temporary, target, REPLACE_EXISTING);
+            }
+        } finally {
+            Files.deleteIfExists(temporary);
         }
     }
 }
