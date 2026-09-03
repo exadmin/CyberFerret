@@ -49,7 +49,7 @@ public class RunnableLogger implements Runnable {
                 String text = fxAppender.popNext();
                 if (text == null) break;
 
-                buf.append(text).append("\n");
+                appendFormattedEvent(buf, text);
             }
 
             if (!buf.isEmpty()) {
@@ -125,5 +125,17 @@ public class RunnableLogger implements Runnable {
     static long remainingDelayMillis(long lastUpdateTimestamp, long currentTimestamp) {
         long elapsed = currentTimestamp - lastUpdateTimestamp;
         return Math.max(0, MILLIS_MUST_PASSED - elapsed);
+    }
+
+    /**
+     * Appends an event that already contains the line separators supplied by its Log4j layout.
+     *
+     * <p>Both arguments must be non-null. This method mutates only {@code buffer} and does not add delimiters.</p>
+     *
+     * @param buffer destination for the UI update batch
+     * @param formattedEvent event text produced by the configured Log4j layout
+     */
+    static void appendFormattedEvent(StringBuilder buffer, String formattedEvent) {
+        buffer.append(formattedEvent);
     }
 }

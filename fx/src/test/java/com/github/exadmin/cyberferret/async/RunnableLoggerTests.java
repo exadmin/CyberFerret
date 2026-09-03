@@ -42,4 +42,17 @@ class RunnableLoggerTests {
         assertTrue(stoppedAfterInterrupt);
         assertTrue(interruptStatusPreserved);
     }
+
+    /**
+     * Verifies that layout-provided line separators are not duplicated while events are batched for the UI.
+     */
+    @Test
+    void appendsFormattedEventsWithoutExtraLineBreaks() {
+        StringBuilder buffer = new StringBuilder();
+
+        RunnableLogger.appendFormattedEvent(buffer, "first event\n");
+        RunnableLogger.appendFormattedEvent(buffer, "second event\n");
+
+        assertEquals("first event\nsecond event\n", buffer.toString());
+    }
 }
