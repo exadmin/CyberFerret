@@ -1,6 +1,8 @@
 package com.github.exadmin.cyberferret.fxui.logger;
 
 import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.impl.Log4jLogEvent;
 import org.apache.logging.log4j.core.layout.PatternLayout;
 import org.apache.logging.log4j.message.SimpleMessage;
@@ -62,5 +64,37 @@ class FXConsoleAppenderTests {
         String formattedEvent = appender.popNext();
         assertTrue(formattedEvent.contains("ERROR operation failed"));
         assertTrue(formattedEvent.contains("IllegalStateException: failure details"));
+    }
+
+    /**
+     * Verifies that the configured UI appender receives application events but excludes dependency events.
+     */
+    @Test
+    void routesOnlyApplicationEventsToUiAppender() {
+        LoggerContext context = (LoggerContext) LogManager.getContext(false);
+        FXConsoleAppender appender = context.getConfiguration().getAppender("FXConsoleAppender");
+        drain(appender);
+
+        LogManager.getLogger("third.party.Dependency").info("dependency routing probe");
+        LogManager.getLogger("com.github.exadmin.cyberferret.RoutingProbe").info("application routing probe");
+
+        List<String> messages = drain(appender);
+        assertFalse(messages.stream().anyMatch(message -> message.contains("dependency routing probe")));
+        assertTrue(messages.stream().anyMatch(message -> message.contains("application routing probe")));
+    }
+
+    /**
+     * Removes and returns all pending messages from an appender without affecting its lifecycle.
+     *
+     * @param appender appender to drain
+     * @return pending messages in queue order
+     */
+    private static List<String> drain(FXConsoleAppender appender) {
+        List<String> messages = new ArrayList<>();
+        String message;
+        while ((message = appender.popNext()) != null) {
+            messages.add(message);
+        }
+        return messages;
     }
 }

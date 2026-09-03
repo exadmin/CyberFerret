@@ -37,11 +37,13 @@
     </Appenders>
     <Loggers>
         <Logger name="org.apache" level="INFO"/>
+        <Logger name="com.github.exadmin.cyberferret" level="INFO" additivity="true">
+            <AppenderRef ref="FXConsoleAppender"/>
+        </Logger>
 
         <Root level="INFO">
             <AppenderRef ref="Console"/>
             <AppenderRef ref="File"/>
-            <AppenderRef ref="FXConsoleAppender" />
         </Root>
     </Loggers>
 </Configuration>
