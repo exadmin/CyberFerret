@@ -61,7 +61,7 @@ func selectFiles(ctx context.Context, rootArg string, listArg *string) ([]string
 	selected := make(map[string]struct{}, len(candidates))
 	for relativePath := range candidates {
 		absolutePath := filepath.Join(root, relativePath)
-		fileInfo, err := os.Stat(absolutePath)
+		fileInfo, err := os.Lstat(absolutePath)
 		if err != nil || !fileInfo.Mode().IsRegular() {
 			continue
 		}

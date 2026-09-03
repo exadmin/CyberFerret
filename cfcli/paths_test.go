@@ -105,9 +105,8 @@ func TestSelectFilesRejectsInvalidRoot(t *testing.T) {
 	}
 }
 
-// A tracked symbolic link to a file is selected; one to a directory is not, and
-// neither are the files behind it.
-func TestSelectFilesHandlesSymbolicLinksWithoutTraversingDirectories(t *testing.T) {
+// Tracked symbolic links are excluded whether they point to files or directories.
+func TestSelectFilesExcludesSymbolicLinks(t *testing.T) {
 	root := initRepository(t)
 	targetFile := writeTestFile(t, root, "target.txt", "target")
 	fileLink := filepath.Join(root, "file-link.txt")
@@ -130,11 +129,8 @@ func TestSelectFilesHandlesSymbolicLinksWithoutTraversingDirectories(t *testing.
 		t.Fatal(err)
 	}
 
-	if !containsPath(got, fileLink) {
-		t.Fatalf("selectFiles() = %#v, want file symlink %q", got, fileLink)
-	}
-	if containsPath(got, directoryLink) || containsPath(got, filepath.Join(directoryLink, "nested.txt")) {
-		t.Fatalf("selectFiles() = %#v, must not include or traverse directory symlink", got)
+	if containsPath(got, fileLink) || containsPath(got, directoryLink) || containsPath(got, filepath.Join(directoryLink, "nested.txt")) {
+		t.Fatalf("selectFiles() = %#v, must not include or traverse symbolic links", got)
 	}
 }
 
