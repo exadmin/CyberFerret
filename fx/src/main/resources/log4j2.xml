@@ -17,7 +17,9 @@
             <PatternLayout pattern="%d{HH:mm:ss} %-5level: %msg%n"/>
         </File>
 
-        <FXConsoleAppender name="FXConsoleAppender" append="true"/>
+        <FXConsoleAppender name="FXConsoleAppender">
+            <PatternLayout pattern="%d{HH:mm:ss} %-5level: %msg%n"/>
+        </FXConsoleAppender>
     </Appenders>
     <Loggers>
         <Logger name="org.apache" level="INFO"/>

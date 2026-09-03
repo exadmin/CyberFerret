@@ -7,6 +7,7 @@ import org.apache.logging.log4j.core.config.plugins.Plugin;
 import org.apache.logging.log4j.core.config.plugins.PluginAttribute;
 import org.apache.logging.log4j.core.config.plugins.PluginElement;
 import org.apache.logging.log4j.core.config.plugins.PluginFactory;
+import org.apache.logging.log4j.core.layout.PatternLayout;
 
 import java.io.Serializable;
 import java.util.List;
@@ -31,24 +32,39 @@ public class FXConsoleAppender extends AbstractAppender {
         super(name, filter, layout, ignoreExceptions, properties);
     }
 
+    /**
+     * Creates and registers an appender that formats events with the configured layout.
+     * A default pattern layout is used when the configuration omits one.
+     *
+     * @param name appender name from the Log4j configuration
+     * @param filter optional event filter
+     * @param layout optional event layout
+     * @return registered appender instance
+     */
     @PluginFactory
     public static FXConsoleAppender createAppender(
             @PluginAttribute("name") String name,
-            @PluginElement("Filter") Filter filter) {
-        FXConsoleAppender newInstance = new FXConsoleAppender(name, filter, null, true, null);
+            @PluginElement("Filter") Filter filter,
+            @PluginElement("Layout") Layout<? extends Serializable> layout) {
+        Layout<? extends Serializable> effectiveLayout = layout == null
+                ? PatternLayout.createDefaultLayout()
+                : layout;
+        FXConsoleAppender newInstance = new FXConsoleAppender(name, filter, effectiveLayout, true, null);
         MY_INSTANCES.add(newInstance);
         return newInstance;
     }
 
     /**
-     * Adds the newest formatted message without blocking the logging thread.
+     * Formats and adds the newest event without blocking the logging thread.
      * The oldest queued message is discarded when the queue reaches its capacity.
      *
      * @param event log event to enqueue
      */
     @Override
     public void append(LogEvent event) {
-        String message = event.getMessage().getFormattedMessage();
+        String message = getLayout() == null
+                ? event.getMessage().getFormattedMessage()
+                : String.valueOf(toSerializable(event));
         while (!queue.offer(message)) {
             queue.poll();
         }
