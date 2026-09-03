@@ -123,10 +123,16 @@ func loadDictionary(plaintext []byte, output *lineOutput) (dictionary, error) {
 			if key == "" {
 				return dictionary{}, fmt.Errorf("dictionary regexp key is empty")
 			}
+			if entry.value == "" {
+				return dictionary{}, fmt.Errorf("dictionary regexp value for key %q is empty", key)
+			}
 			signatures = append(signatures, signatureSpec{key: key, expression: entry.value})
 		case strings.ContainsAny(entry.key, "()"):
 			return dictionary{}, fmt.Errorf("unsupported dictionary key suffix in %q", entry.key)
 		default:
+			if entry.value == "" {
+				return dictionary{}, fmt.Errorf("dictionary literal value for key %q is empty", entry.key)
+			}
 			signatures = append(signatures, signatureSpec{key: entry.key, expression: literalExpression(entry.value)})
 		}
 	}

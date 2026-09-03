@@ -85,6 +85,34 @@ func TestLoadDictionaryRejectsMalformedEntries(t *testing.T) {
 	}
 }
 
+func TestLoadDictionaryRejectsEmptySignatureValues(t *testing.T) {
+	tests := []struct {
+		name        string
+		plaintext   string
+		wantMessage string
+	}{
+		{
+			name:        "regexp",
+			plaintext:   "EMPTY(regexp)=\n",
+			wantMessage: `dictionary regexp value for key "EMPTY" is empty`,
+		},
+		{
+			name:        "literal",
+			plaintext:   "EMPTY=\n",
+			wantMessage: `dictionary literal value for key "EMPTY" is empty`,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := loadDictionary([]byte(test.plaintext), newLineOutput(&bytes.Buffer{}))
+
+			if err == nil || err.Error() != test.wantMessage {
+				t.Fatalf("loadDictionary() error = %v, want %q", err, test.wantMessage)
+			}
+		})
+	}
+}
+
 func TestLoadDictionaryReturnsTypedRegexpError(t *testing.T) {
 	_, err := loadDictionary([]byte("LOOKBEHIND(regexp)=(?<=token)value\n"), newLineOutput(&bytes.Buffer{}))
 
