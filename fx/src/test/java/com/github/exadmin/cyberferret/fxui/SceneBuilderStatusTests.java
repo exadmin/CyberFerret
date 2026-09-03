@@ -5,6 +5,8 @@ import com.github.exadmin.cyberferret.model.ItemType;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -72,6 +74,26 @@ class SceneBuilderStatusTests {
         assertTrue(SceneBuilder.matchesScanResultsRoot(scanResultsRoot, scanResultsRoot.toString()));
         assertFalse(SceneBuilder.matchesScanResultsRoot(scanResultsRoot, Path.of("other").toString()));
         assertFalse(SceneBuilder.matchesScanResultsRoot(scanResultsRoot, "\0"));
+    }
+
+    @Test
+    void restoresWorkerStateWhenStartupFails() {
+        AtomicBoolean running = new AtomicBoolean(true);
+        AtomicBoolean rolledBack = new AtomicBoolean();
+        AtomicReference<RuntimeException> reportedFailure = new AtomicReference<>();
+        IllegalStateException failure = new IllegalStateException("startup failed");
+
+        SceneBuilder.startWorker(
+                running,
+                () -> {
+                    throw failure;
+                },
+                () -> rolledBack.set(true),
+                reportedFailure::set);
+
+        assertFalse(running.get());
+        assertTrue(rolledBack.get());
+        assertSame(failure, reportedFailure.get());
     }
 
     private static FoundPathItem item(String path, ItemType type) {

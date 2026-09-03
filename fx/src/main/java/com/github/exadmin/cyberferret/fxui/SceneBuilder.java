@@ -48,6 +48,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 
 import static com.github.exadmin.cyberferret.fxui.FxConstants.DEFAULT_BUTTON_WIDTH;
 import static com.github.exadmin.cyberferret.fxui.FxConstants.DEFAULT_LABEL_WIDTH;
@@ -240,32 +241,44 @@ public class SceneBuilder {
                 scannedLabel.setText("Scanned 0");
 
                 setButtonsDisabledForScanning(true);
-                CfCliTreeAssembler assembler = new CfCliTreeAssembler(
-                        scanRoot,
-                        foundItemsContainer,
-                        message -> log.warn("{}", message));
-                CfCliScanner scanner = new CfCliScanner(
-                        cliExecutable.command(),
-                        scanRoot,
-                        message -> {
-                            assembler.accept(message);
-                            if (message.isList()) {
-                                long count = scannedItems.incrementAndGet();
-                                runOnFxThread(() -> scannedLabel.setText("Scanned " + count));
-                            }
-                        },
-                        message -> log.info("{}", message),
-                        message -> {
-                            log.error("{}", message);
-                            runOnFxThread(() -> AlertBuilder.showError(message));
+                startWorker(
+                        scannerRunning,
+                        () -> {
+                            CfCliTreeAssembler assembler = new CfCliTreeAssembler(
+                                    scanRoot,
+                                    foundItemsContainer,
+                                    message -> log.warn("{}", message));
+                            CfCliScanner scanner = new CfCliScanner(
+                                    cliExecutable.command(),
+                                    scanRoot,
+                                    message -> {
+                                        assembler.accept(message);
+                                        if (message.isList()) {
+                                            long count = scannedItems.incrementAndGet();
+                                            runOnFxThread(() -> scannedLabel.setText("Scanned " + count));
+                                        }
+                                    },
+                                    message -> log.info("{}", message),
+                                    message -> {
+                                        log.error("{}", message);
+                                        runOnFxThread(() -> AlertBuilder.showError(message));
+                                    },
+                                    () -> {
+                                        scannerRunning.set(false);
+                                        runOnFxThread(() -> setButtonsDisabledForScanning(false));
+                                    });
+                            Thread scannerThread = new Thread(scanner, "cyberferret-go-cli-scanner");
+                            scannerThread.setDaemon(true);
+                            scannerThread.start();
                         },
                         () -> {
-                            scannerRunning.set(false);
-                            runOnFxThread(() -> setButtonsDisabledForScanning(false));
+                            scanResultsRoot = null;
+                            setButtonsDisabledForScanning(false);
+                        },
+                        ex -> {
+                            log.error("Failed to start scanning", ex);
+                            AlertBuilder.showError("Cannot start scanning: " + ex.getMessage());
                         });
-                Thread scannerThread = new Thread(scanner, "cyberferret-go-cli-scanner");
-                scannerThread.setDaemon(true);
-                scannerThread.start();
             });
 
 
@@ -589,6 +602,29 @@ public class SceneBuilder {
         }
     }
 
+    /**
+     * Starts a worker and restores its state when startup throws a runtime exception.
+     * Startup failures are reported after the running flag and related UI state are reset.
+     *
+     * @param running flag set before the startup attempt
+     * @param startup operation that constructs and starts the worker
+     * @param rollback operation that restores related UI state
+     * @param failureSink handler for the startup exception
+     */
+    static void startWorker(
+            AtomicBoolean running,
+            Runnable startup,
+            Runnable rollback,
+            Consumer<RuntimeException> failureSink) {
+        try {
+            startup.run();
+        } catch (RuntimeException ex) {
+            running.set(false);
+            rollback.run();
+            failureSink.accept(ex);
+        }
+    }
+
 
     private TitledPane createLogsPane() {
         TitledPane tpLogs = new TitledPane();
@@ -680,24 +716,34 @@ public class SceneBuilder {
             }
 
             boolean exclude = !foundPathItem.isIgnored();
-            CfCliExcluder excluder = new CfCliExcluder(
-                    cliExecutable.command(),
-                    scanRoot,
-                    foundPathItem,
-                    exclude,
-                    message -> runOnFxThread(() -> {
-                        foundPathItem.setIgnored(exclude);
-                        foundItemsContainer.notifyItemUpdated(foundPathItem);
-                        log.info("{}", message);
-                    }),
-                    message -> {
-                        log.error("{}", message);
-                        runOnFxThread(() -> AlertBuilder.showError(message));
+            startWorker(
+                    exclusionUpdateRunning,
+                    () -> {
+                        CfCliExcluder excluder = new CfCliExcluder(
+                                cliExecutable.command(),
+                                scanRoot,
+                                foundPathItem,
+                                exclude,
+                                message -> runOnFxThread(() -> {
+                                    foundPathItem.setIgnored(exclude);
+                                    foundItemsContainer.notifyItemUpdated(foundPathItem);
+                                    log.info("{}", message);
+                                }),
+                                message -> {
+                                    log.error("{}", message);
+                                    runOnFxThread(() -> AlertBuilder.showError(message));
+                                },
+                                () -> runOnFxThread(() -> exclusionUpdateRunning.set(false)));
+                        Thread exclusionThread = new Thread(excluder, "cyberferret-cfcli-exclusion");
+                        exclusionThread.setDaemon(true);
+                        exclusionThread.start();
                     },
-                    () -> runOnFxThread(() -> exclusionUpdateRunning.set(false)));
-            Thread exclusionThread = new Thread(excluder, "cyberferret-cfcli-exclusion");
-            exclusionThread.setDaemon(true);
-            exclusionThread.start();
+                    () -> {
+                    },
+                    ex -> {
+                        log.error("Failed to start exclusion update", ex);
+                        AlertBuilder.showError("Cannot start exclusion update: " + ex.getMessage());
+                    });
         }
     }
 }
