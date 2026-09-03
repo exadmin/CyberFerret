@@ -31,13 +31,18 @@ public class AlertBuilder {
         });
     }
 
+    /**
+     * Schedules a modal warning alert and records the message at warning level.
+     *
+     * @param text warning message displayed in the alert header
+     */
     public static void showWarn(String text) {
         Platform.runLater(() -> {
             Alert alert = new Alert(Alert.AlertType.WARNING);
             alert.setTitle("Warning");
             alert.setHeaderText(text);
 
-            log.error(text);
+            log.warn(text);
             alert.showAndWait();
         });
     }
