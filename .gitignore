@@ -45,3 +45,4 @@ apm_modules/
 
 # CF-CLI
 cfcli/tmp/*
+**/.qubership/grand-report.lock

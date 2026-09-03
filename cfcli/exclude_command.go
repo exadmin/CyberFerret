@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/gofrs/flock"
 )
 
 // excludeEvent is the part of a [finding] the exclude command acts on. The remaining finding fields
@@ -278,11 +280,30 @@ func updateExclusion(root, encodedEvent string, operation exclusionOperation) (e
 	if !rootInfo.IsDir() {
 		return exclusionChange{}, &excludeCommandError{message: fmt.Sprintf("FOLDER_PATH %q is not a directory.", root)}
 	}
+	target, err := exclusionForEvent(event)
+	if err != nil {
+		return exclusionChange{}, err
+	}
 
 	reportPath, err := filepath.Abs(filepath.Join(root, ".qubership", "grand-report.json"))
 	if err != nil {
 		return exclusionChange{}, &excludeCommandError{message: fmt.Sprintf("Cannot resolve exclusions file: %v.", err)}
 	}
+	directory := filepath.Dir(reportPath)
+	if err := os.MkdirAll(directory, 0o755); err != nil {
+		return exclusionChange{}, &excludeCommandError{message: fmt.Sprintf("Cannot create exclusions directory %q: %v.", directory, err)}
+	}
+	reportLock := flock.New(filepath.Join(directory, "grand-report.lock"))
+	if err := reportLock.Lock(); err != nil {
+		return exclusionChange{}, &excludeCommandError{message: fmt.Sprintf("Cannot lock exclusions file %q: %v.", reportPath, err)}
+	}
+	locked := true
+	defer func() {
+		if locked {
+			_ = reportLock.Unlock()
+		}
+	}()
+
 	var report grandReport
 	content, err := os.ReadFile(reportPath)
 	switch {
@@ -301,10 +322,6 @@ func updateExclusion(root, encodedEvent string, operation exclusionOperation) (e
 		}
 	}
 
-	target, err := exclusionForEvent(event)
-	if err != nil {
-		return exclusionChange{}, err
-	}
 	matchCount := 0
 	filtered := report.Exclusions[:0]
 	for _, existing := range report.Exclusions {
@@ -346,10 +363,6 @@ func updateExclusion(root, encodedEvent string, operation exclusionOperation) (e
 	}
 	content = append(content, '\n')
 
-	directory := filepath.Dir(reportPath)
-	if err := os.MkdirAll(directory, 0o755); err != nil {
-		return exclusionChange{}, &excludeCommandError{message: fmt.Sprintf("Cannot create exclusions directory %q: %v.", directory, err)}
-	}
 	temporary, err := os.CreateTemp(directory, ".grand-report-*.tmp")
 	if err != nil {
 		return exclusionChange{}, &excludeCommandError{message: fmt.Sprintf("Cannot create temporary exclusions file: %v.", err)}
@@ -366,6 +379,10 @@ func updateExclusion(root, encodedEvent string, operation exclusionOperation) (e
 	if err := os.Rename(temporaryPath, reportPath); err != nil {
 		return exclusionChange{}, &excludeCommandError{message: fmt.Sprintf("Cannot replace exclusions file %q: %v.", reportPath, err)}
 	}
+	if err := reportLock.Unlock(); err != nil {
+		return exclusionChange{ReportPath: reportPath, Changed: changed}, fmt.Errorf("unlock exclusions file %q: %w", reportPath, err)
+	}
+	locked = false
 	return exclusionChange{ReportPath: reportPath, Changed: changed}, nil
 }
 

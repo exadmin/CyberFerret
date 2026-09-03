@@ -11,7 +11,11 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
+	"time"
+
+	"github.com/gofrs/flock"
 )
 
 func TestUpdateExclusionsAcceptsRawAndPrefixedFoundEvents(t *testing.T) {
@@ -63,6 +67,86 @@ func TestUpdateExclusionsAcceptsRawAndPrefixedFoundEvents(t *testing.T) {
 				t.Fatalf("exclusions = %#v, want %#v", report.Exclusions, want)
 			}
 		})
+	}
+}
+
+func TestUpdateExclusionWaitsForReportLock(t *testing.T) {
+	root := t.TempDir()
+	reportDirectory := filepath.Join(root, ".qubership")
+	if err := os.MkdirAll(reportDirectory, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	reportLock := flock.New(filepath.Join(reportDirectory, "grand-report.lock"))
+	if err := reportLock.Lock(); err != nil {
+		t.Fatal(err)
+	}
+	defer reportLock.Unlock()
+
+	result := make(chan error, 1)
+	go func() {
+		_, err := updateExclusion(
+			root,
+			`{"type":"file","file":"src/file.txt"}`,
+			exclusionAdd,
+		)
+		result <- err
+	}()
+
+	select {
+	case err := <-result:
+		t.Fatalf("updateExclusion() completed while report lock was held: %v", err)
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	if err := reportLock.Unlock(); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-result:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("updateExclusion() did not complete after report lock was released")
+	}
+}
+
+func TestUpdateExclusionPreservesConcurrentAdditions(t *testing.T) {
+	const updateCount = 8
+	root := t.TempDir()
+	start := make(chan struct{})
+	errors := make(chan error, updateCount)
+	var updates sync.WaitGroup
+	for index := 0; index < updateCount; index++ {
+		updates.Add(1)
+		go func(index int) {
+			defer updates.Done()
+			<-start
+			encoded := fmt.Sprintf(`{"type":"file","file":"file-%d.txt"}`, index)
+			_, err := updateExclusion(root, encoded, exclusionAdd)
+			errors <- err
+		}(index)
+	}
+
+	close(start)
+	updates.Wait()
+	close(errors)
+	for err := range errors {
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	content, err := os.ReadFile(filepath.Join(root, ".qubership", "grand-report.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	report, err := decodeGrandReport(content)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := len(report.Exclusions); got != updateCount {
+		t.Fatalf("exclusion count = %d, want %d", got, updateCount)
 	}
 }
 
