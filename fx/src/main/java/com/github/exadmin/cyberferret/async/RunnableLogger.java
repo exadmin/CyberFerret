@@ -32,7 +32,9 @@ public class RunnableLogger implements Runnable {
         while (!stop) {
             // check if appender initialized
             if (fxAppender == null && FXConsoleAppender.MY_INSTANCES.isEmpty()) {
-                sleep();
+                if (!sleep()) {
+                    return;
+                }
                 continue;
             }
 
@@ -54,7 +56,9 @@ public class RunnableLogger implements Runnable {
                 long curTime = System.currentTimeMillis();
                 long remainingDelay = remainingDelayMillis(lastTimestamp, curTime);
                 if (remainingDelay > 0) {
-                    sleep(remainingDelay);
+                    if (!sleep(remainingDelay)) {
+                        return;
+                    }
                     curTime = System.currentTimeMillis();
                 }
 
@@ -78,28 +82,36 @@ public class RunnableLogger implements Runnable {
                 lastTimestamp = curTime;
             } else {
                 // sleep a moment
-                sleep();
+                if (!sleep()) {
+                    return;
+                }
             }
         }
     }
 
     /**
      * Pauses polling briefly when no log message is available.
+     *
+     * @return {@code true} when the wait completes, or {@code false} when the thread is interrupted
      */
-    private void sleep() {
-        sleep(100);
+    private boolean sleep() {
+        return sleep(100);
     }
 
     /**
      * Pauses the logger thread for the requested interval.
      *
      * @param millis number of milliseconds to wait
+     * @return {@code true} when the wait completes, or {@code false} when the thread is interrupted
      */
-    private void sleep(long millis) {
+    private boolean sleep(long millis) {
         try {
             Thread.sleep(millis);
-        } catch (Exception ex) {
-            ex.printStackTrace();
+            return true;
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            stop = true;
+            return false;
         }
     }
 
