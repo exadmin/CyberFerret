@@ -23,7 +23,7 @@ class MiscUtilsTests {
      */
     @Test
     void returnsVersionFromProperties() {
-        assertEquals("2.1.2", loadVersion("application.version=2.1.2"));
+        assertEquals("2.1.3", loadVersion("application.version=2.1.3"));
     }
 
     /**
