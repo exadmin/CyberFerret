@@ -4,6 +4,8 @@ import com.github.exadmin.cyberferret.fxui.logger.FXConsoleAppender;
 import javafx.application.Platform;
 import javafx.scene.control.TextArea;
 
+import java.util.List;
+
 public class RunnableLogger implements Runnable {
     private static final int MAX_LOG_SIZE_IN_TEXT_AREA_CHARS = 1024 * 5;
 
@@ -13,9 +15,15 @@ public class RunnableLogger implements Runnable {
     private volatile boolean stop = false;
     private FXConsoleAppender fxAppender = null;
     private final TextArea textArea;
+    private final List<FXConsoleAppender> appenders;
 
     public RunnableLogger(TextArea textArea) {
+        this(textArea, FXConsoleAppender.MY_INSTANCES);
+    }
+
+    RunnableLogger(TextArea textArea, List<FXConsoleAppender> appenders) {
         this.textArea = textArea;
+        this.appenders = appenders;
     }
 
     public void setStop(boolean stop) {
@@ -31,7 +39,7 @@ public class RunnableLogger implements Runnable {
 
         while (!stop) {
             // check if appender initialized
-            if (fxAppender == null && FXConsoleAppender.MY_INSTANCES.isEmpty()) {
+            if (fxAppender == null && appenders.isEmpty()) {
                 if (!sleep()) {
                     return;
                 }
@@ -39,7 +47,7 @@ public class RunnableLogger implements Runnable {
             }
 
             if (fxAppender == null) {
-                fxAppender = FXConsoleAppender.MY_INSTANCES.getFirst();
+                fxAppender = appenders.getFirst();
                 fxAppender.setServed(true);
             }
 

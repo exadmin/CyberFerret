@@ -2,6 +2,8 @@ package com.github.exadmin.cyberferret.async;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class RunnableLoggerTests {
@@ -14,20 +16,21 @@ class RunnableLoggerTests {
 
     @Test
     void exitsAndPreservesInterruptStatusWhenSleepIsInterrupted() throws InterruptedException {
-        RunnableLogger logger = new RunnableLogger(null);
+        RunnableLogger logger = new RunnableLogger(null, List.of());
         Thread loggerThread = new Thread(logger);
         loggerThread.start();
-
-        long waitDeadline = System.currentTimeMillis() + 1_000;
-        while (loggerThread.getState() != Thread.State.TIMED_WAITING
-                && System.currentTimeMillis() < waitDeadline) {
-            Thread.onSpinWait();
-        }
-        assertEquals(Thread.State.TIMED_WAITING, loggerThread.getState());
 
         boolean stoppedAfterInterrupt;
         boolean interruptStatusPreserved;
         try {
+            long waitDeadline = System.nanoTime() + 1_000_000_000L;
+            while (loggerThread.getState() != Thread.State.TIMED_WAITING
+                    && loggerThread.isAlive()
+                    && System.nanoTime() < waitDeadline) {
+                Thread.sleep(1);
+            }
+            assertEquals(Thread.State.TIMED_WAITING, loggerThread.getState());
+
             loggerThread.interrupt();
             loggerThread.join(1_000);
             stoppedAfterInterrupt = !loggerThread.isAlive();
