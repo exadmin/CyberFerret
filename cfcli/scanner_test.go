@@ -142,7 +142,7 @@ func TestScanFilesHonorsExcludedExtensionsCaseInsensitively(t *testing.T) {
 	}
 }
 
-func TestScanFilesStopsSignatureAfterAllowedWildcard(t *testing.T) {
+func TestScanFilesContinuesSignatureAfterAllowedWildcard(t *testing.T) {
 	root := t.TempDir()
 	allowedEmail := "user+tag@" + "example.com"
 	reportedEmail := "bad@" + "other.com"
@@ -170,10 +170,11 @@ func TestScanFilesStopsSignatureAfterAllowedWildcard(t *testing.T) {
 		newLineOutput(&bytes.Buffer{}),
 	)
 
-	if err != nil || result.found || result.scannedCount != 1 {
-		t.Fatalf("scan result = %#v, error = %v; want no finding in one scanned file", result, err)
+	if err != nil || !result.found || result.scannedCount != 1 {
+		t.Fatalf("scan result = %#v, error = %v; want finding in one scanned file", result, err)
 	}
 	want := `JSON: {"type":"allowed","key":"EMAIL","found":"` + allowedEmail + `","line":1,"file":"emails.txt"}` + "\n"
+	want += `JSON: {"type":"found","key":"EMAIL","found":"` + reportedEmail + `","line":1,"file":"emails.txt"}` + "\n"
 	if stdout.String() != want {
 		t.Fatalf("stdout = %q, want %q", stdout.String(), want)
 	}
@@ -450,7 +451,7 @@ func TestScanFilesWithExclusionsReportsAllowedExcludedMatch(t *testing.T) {
 	}
 }
 
-func TestScanFilesStopsSignatureAfterExcludedMatch(t *testing.T) {
+func TestScanFilesContinuesSignatureAfterExcludedMatch(t *testing.T) {
 	root := t.TempDir()
 	content := "EXCLUDE SECRET TOKEN"
 	file := writeTestFile(t, root, "repeated.txt", content)
@@ -480,8 +481,8 @@ func TestScanFilesStopsSignatureAfterExcludedMatch(t *testing.T) {
 		t.Fatalf("scan result = %#v, error = %v; want findings in one scanned file", result, err)
 	}
 	output := stdout.String()
-	if strings.Contains(output, `"type":"found","key":"SECRET"`) {
-		t.Fatalf("output = %q, want no SECRET finding after excluded match", output)
+	if !strings.Contains(output, `"type":"found","key":"SECRET","found":"SECRET"`) {
+		t.Fatalf("output = %q, want SECRET finding after excluded match", output)
 	}
 	if !strings.Contains(output, `"type":"excluded","key":"SECRET","found":"EXCLUDE"`) {
 		t.Fatalf("output = %q, want excluded event", output)
@@ -578,5 +579,47 @@ func TestScanFilesSharesFindingLimitAcrossSignaturesWithSameKey(t *testing.T) {
 	}
 	if got := strings.Count(stdout.String(), `"type":"found","key":"SHARED"`); got != 5 {
 		t.Fatalf("SHARED found event count = %d, want 5; output = %q", got, stdout.String())
+	}
+}
+
+func TestScanFilesFindsProblemsAfterSuppressedMatches(t *testing.T) {
+	for _, mode := range []scanMode{modeQuick, modeJSON} {
+		for _, suppression := range []string{"allowed", "excluded"} {
+			t.Run(string(mode)+"/"+suppression, func(t *testing.T) {
+				root := t.TempDir()
+				file := writeTestFile(t, root, "mixed.txt", strings.Repeat("SAFE\n", 8)+strings.Repeat("BAD\n", 6))
+				loaded := dictionary{
+					allowed:    map[string]struct{}{},
+					signatures: []signature{{key: "VALUE", expression: regexp.MustCompile(`SAFE|BAD`)}},
+				}
+				exclusions := exclusionSet{}
+				if suppression == "allowed" {
+					loaded.allowed["safe"] = struct{}{}
+				} else {
+					exclusions.textHashesByFileHash = map[string]map[string]struct{}{
+						testSHA256("mixed.txt"): {testSHA256("SAFE"): {}},
+					}
+				}
+				var stdout bytes.Buffer
+				result, err := scanFilesWithExclusions(root, []string{file}, loaded, mode, exclusions,
+					newLineOutput(&stdout), newLineOutput(&bytes.Buffer{}))
+				if err != nil || !result.found || result.scannedCount != 1 {
+					t.Fatalf("result = %#v, error = %v; want finding in one file", result, err)
+				}
+				wantCount := 5
+				if mode == modeQuick {
+					wantCount = 1
+					if strings.Contains(stdout.String(), `"type":"`+suppression+`"`) {
+						t.Fatalf("quick output contains suppressed event: %s", stdout.String())
+					}
+				}
+				if got := strings.Count(stdout.String(), `"type":"found"`); got != wantCount {
+					t.Fatalf("found count = %d, want %d; output = %s", got, wantCount, stdout.String())
+				}
+				if !strings.Contains(stdout.String(), `"found":"BAD","line":9`) {
+					t.Fatalf("missing first BAD match on line 9: %s", stdout.String())
+				}
+			})
+		}
 	}
 }

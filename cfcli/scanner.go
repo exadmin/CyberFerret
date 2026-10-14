@@ -8,9 +8,8 @@ import (
 )
 
 // maxFindingsPerSignaturePerFile caps the found events one file may report for
-// one signature key. Signatures that share a key share the cap. An allowed or
-// excluded match stops the current signature's scan of the file without
-// counting against the cap.
+// one signature key. Signatures that share a key share the cap. Allowed and
+// excluded matches do not count against the cap.
 const maxFindingsPerSignaturePerFile = 5
 
 // finding is the JSON event carrying one signature match.
@@ -82,8 +81,8 @@ func scanFilesWithExclusions(
 // scanned; the returned error covers only path resolution and failed writes.
 //
 // modeJSON also reports a match the dictionary allowed list or the grand report
-// suppresses, then stops scanning that signature in the current file. modeQuick
-// reports neither and also stops that signature. It returns as soon as one
+// suppresses, then continues scanning that signature in the current file. modeQuick
+// reports neither and continues scanning. It returns as soon as one
 // match survives both, leaving the remaining files unread; printDetails then adds the
 // copy-ready cfcli exclude commands for that match, and without it output
 // carries a one-line hint. verbose emits a [listPathEvent] for each folder and
@@ -199,7 +198,21 @@ func scanFilesConfigured(
 			}
 			lineCursor := 0
 			line := 1
-			for _, match := range currentSignature.expression.FindAllIndex(content, matchLimit) {
+			matches := currentSignature.expression.FindAllIndex(content, matchLimit)
+			for matchIndex := 0; ; matchIndex++ {
+				if matchIndex == len(matches) {
+					if len(matches) < matchLimit {
+						break
+					}
+					// Keep the original input so anchors and word boundaries retain their meaning.
+					// Grow only when earlier matches were suppressed.
+					matchLimit *= 2
+					matches = currentSignature.expression.FindAllIndex(content, matchLimit)
+					if matchIndex == len(matches) {
+						break
+					}
+				}
+				match := matches[matchIndex]
 				lineCursor, line = lineAt(content, match[0], lineCursor, line)
 				exact := string(content[match[0]:match[1]])
 				if exclusions.excludesMatch(relativePath, exact) {
@@ -214,7 +227,7 @@ func scanFilesConfigured(
 							return scanResult{}, fmt.Errorf("write excluded finding: %w", err)
 						}
 					}
-					break
+					continue
 				}
 				if loaded.isAllowed(exact) {
 					if mode == modeJSON {
@@ -228,7 +241,7 @@ func scanFilesConfigured(
 							return scanResult{}, fmt.Errorf("write allowed finding: %w", err)
 						}
 					}
-					break
+					continue
 				}
 				foundAny = true
 				findingCounts[currentSignature.key]++
