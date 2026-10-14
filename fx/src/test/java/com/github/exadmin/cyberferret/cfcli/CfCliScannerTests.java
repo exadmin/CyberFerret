@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -27,7 +28,7 @@ public class CfCliScannerTests {
     public void runsExpectedCommandAndStreamsStdoutAndStderr() {
         AtomicReference<List<String>> command = new AtomicReference<>();
         List<CfCliMessage> messages = new ArrayList<>();
-        List<String> logs = new ArrayList<>();
+        List<String> logs = new CopyOnWriteArrayList<>();
         List<String> errors = new ArrayList<>();
         AtomicInteger completions = new AtomicInteger();
         FakeProcess process = new FakeProcess(
