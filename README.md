@@ -1,4 +1,4 @@
-# Cyber Ferret, v2.x.x
+# Cyber Ferret, v2.2.0
 [<img src="./docs/cyber-ferret.jpg">]()
 
 Scans locally cloned Git-repository for different pre-defined signatures (supporting RegExp and other rules).
