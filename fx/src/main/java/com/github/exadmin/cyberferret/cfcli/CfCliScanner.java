@@ -41,7 +41,7 @@ public final class CfCliScanner implements Runnable {
             Consumer<String> errorSink,
             Runnable completion) {
         this("cfcli", root, messageHandler, logSink, errorSink, completion,
-                command -> new ProcessBuilder(command).start());
+                command -> scanProcessBuilder(command).start());
     }
 
     public CfCliScanner(
@@ -52,7 +52,13 @@ public final class CfCliScanner implements Runnable {
             Consumer<String> errorSink,
             Runnable completion) {
         this(executable, root, messageHandler, logSink, errorSink, completion,
-                command -> new ProcessBuilder(command).start());
+                command -> scanProcessBuilder(command).start());
+    }
+
+    static ProcessBuilder scanProcessBuilder(List<String> command) {
+        ProcessBuilder builder = new ProcessBuilder(command);
+        builder.environment().put("CYBER_FERRET_SILENT_MODE", "false");
+        return builder;
     }
 
     CfCliScanner(

@@ -25,6 +25,13 @@ public class CfCliScannerTests {
     Path root;
 
     @Test
+    public void disablesSilentModeForScannerProcess() {
+        ProcessBuilder builder = CfCliScanner.scanProcessBuilder(List.of("cfcli", "--mode=json"));
+        assertEquals("false", builder.environment().get("CYBER_FERRET_SILENT_MODE"));
+        assertEquals(List.of("cfcli", "--mode=json"), builder.command());
+    }
+
+    @Test
     public void runsExpectedCommandAndStreamsStdoutAndStderr() {
         AtomicReference<List<String>> command = new AtomicReference<>();
         List<CfCliMessage> messages = new ArrayList<>();

@@ -156,6 +156,13 @@ a nonempty, whitespace-free local part at `example.com`. It rejects an empty loc
 
 ## Output
 
+Set `CYBER_FERRET_SILENT_MODE=true` to print only findings, warnings, errors, and quick-mode finding hints or
+exclusion commands. A scan without findings or warnings produces no console output. This setting suppresses
+informational messages, verbose path events, and allowed or excluded matches without buffering output.
+Only the exact value `true` enables silent mode. Other values preserve normal output. Exit codes remain unchanged.
+Help and exclusion commands keep their normal output. The FX application sets this variable to `false` for its
+scanner subprocess so console logs and UI events remain available even when the parent environment enables silent mode.
+
 Every flushed output line starts with `TEXT: ` or `JSON: `. JSON findings have this shape:
 
 ```text
@@ -206,7 +213,7 @@ matches. With verbose enabled, it does report full path exclusions after their `
 as findings and cause exit code `2`. If a match is both allowed and excluded, only the `excluded` event is emitted.
 
 `found` contains the complete exact match, and `line` is the one-based number of the line containing the match. JSON
-mode does not print the selected paths. After the dictionary version, both modes print
+mode does not print the selected paths. Unless silent mode is enabled, after the dictionary version, both modes print
 `TEXT: Scanning is in progress. Please wait.`. After scanning, both modes print `TEXT: Total files scanned N` and
 `TEXT: Scanning is finished in S.SSS seconds.`. `N` excludes files skipped after read errors or full grand-report
 exclusions. In quick mode, it includes the file with the first finding and excludes files that were not visited after

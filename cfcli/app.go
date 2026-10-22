@@ -50,7 +50,13 @@ func runWithDependencies(
 	stdout, stderr io.Writer,
 	dependencies appDependencies,
 ) exitStatus {
-	if err := writeAppVersion(stdout); err != nil {
+	silent := !isExcludeCommand(args) && dependencies.getenv != nil &&
+		dependencies.getenv("CYBER_FERRET_SILENT_MODE") == "true"
+	informationWriter := stdout
+	if silent {
+		informationWriter = io.Discard
+	}
+	if err := writeAppVersion(informationWriter); err != nil {
 		return exitFailure
 	}
 	if isExcludeCommand(args) {
@@ -58,6 +64,8 @@ func runWithDependencies(
 	}
 
 	output := newLineOutput(stdout)
+	output.silent = silent
+	information := newLineOutput(informationWriter)
 	errorOutput := newLineOutput(stderr)
 	parsed, err := parseOptions(args)
 	if err != nil {
@@ -83,11 +91,15 @@ func runWithDependencies(
 		return exitFailure
 	}
 	cachePath := cache.path
-	if err := output.text("%s", dictionaryStatusMessage(cache.state)); err != nil {
+	statusOutput := information
+	if cache.state == cacheFallback {
+		statusOutput = output
+	}
+	if err := statusOutput.text("%s", dictionaryStatusMessage(cache.state)); err != nil {
 		writeFatal(errorOutput, "Cannot write dictionary status: %v", err)
 		return exitFailure
 	}
-	if err := output.text("Dictionary path: %s", dictionaryDisplayPath(cache.path, cache.home)); err != nil {
+	if err := information.text("Dictionary path: %s", dictionaryDisplayPath(cache.path, cache.home)); err != nil {
 		writeFatal(errorOutput, "Cannot write dictionary path: %v", err)
 		return exitFailure
 	}
@@ -120,7 +132,7 @@ func runWithDependencies(
 		writeFatal(errorOutput, "Cannot load dictionary: %v", err)
 		return exitFailure
 	}
-	if err := output.text("Dictionary version: %s", loaded.version); err != nil {
+	if err := information.text("Dictionary version: %s", loaded.version); err != nil {
 		writeFatal(errorOutput, "Cannot write dictionary version: %v", err)
 		return exitFailure
 	}
@@ -130,7 +142,7 @@ func runWithDependencies(
 		now = time.Now
 	}
 	startedAt := now()
-	if err := output.text("Scanning is in progress. Please wait."); err != nil {
+	if err := information.text("Scanning is in progress. Please wait."); err != nil {
 		writeFatal(errorOutput, "Cannot write scanning progress: %v", err)
 		return exitFailure
 	}
@@ -147,7 +159,7 @@ func runWithDependencies(
 		loaded,
 		parsed.mode,
 		exclusions,
-		parsed.verbose,
+		parsed.verbose && !silent,
 		parsed.printDetails,
 		output,
 		errorOutput,
@@ -156,12 +168,12 @@ func runWithDependencies(
 		writeFatal(errorOutput, "Cannot scan files: %v", err)
 		return exitFailure
 	}
-	if err := output.text("Total files scanned %d", result.scannedCount); err != nil {
+	if err := information.text("Total files scanned %d", result.scannedCount); err != nil {
 		writeFatal(errorOutput, "Cannot write scanned file count: %v", err)
 		return exitFailure
 	}
 	elapsed := now().Sub(startedAt).Seconds()
-	if err := output.text("Scanning is finished in %.3f seconds.", elapsed); err != nil {
+	if err := information.text("Scanning is finished in %.3f seconds.", elapsed); err != nil {
 		writeFatal(errorOutput, "Cannot write scanning duration: %v", err)
 		return exitFailure
 	}
@@ -196,6 +208,7 @@ func writeHelp(output *lineOutput) error {
 		"  --print=details          In quick mode, print copy-ready exclude commands for the finding.",
 		"  --verbose=true           Print each folder and file before it is scanned.",
 		"  --verbose=false          Do not print per-file progress. This is the default.",
+		"  CYBER_FERRET_SILENT_MODE=true suppresses scan output except findings, warnings, and errors.",
 		"  add                      Ensure that the specified exclusion exists.",
 		"  remove                   Ensure that the specified exclusion does not exist.",
 		"  JSON_OBJECT              Exclusion target for FOLDER_PATH/.qubership/grand-report.json.",
