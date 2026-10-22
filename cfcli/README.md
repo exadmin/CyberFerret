@@ -21,6 +21,15 @@ On Windows, the output file is `cfcli.exe`.
 
 ## Usage
 
+Print the application version and exit without scanning:
+
+```shell
+./cfcli --version
+```
+
+This command does not require Git, a dictionary, or `CYBER_FERRET_PASSWORD`. It prints the version even when
+`CYBER_FERRET_SILENT_MODE=true`.
+
 Scan every selected file in the default JSON mode:
 
 ```shell

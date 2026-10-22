@@ -50,6 +50,12 @@ func runWithDependencies(
 	stdout, stderr io.Writer,
 	dependencies appDependencies,
 ) exitStatus {
+	if len(args) == 1 && args[0] == "--version" {
+		if err := writeAppVersion(stdout); err != nil {
+			return exitFailure
+		}
+		return exitClean
+	}
 	silent := !isExcludeCommand(args) && dependencies.getenv != nil &&
 		dependencies.getenv("CYBER_FERRET_SILENT_MODE") == "true"
 	informationWriter := stdout
@@ -186,6 +192,7 @@ func runWithDependencies(
 func writeHelp(output *lineOutput) error {
 	lines := []string{
 		"Usage:",
+		"  cfcli --version",
 		"  cfcli [--mode=quick|--mode=json] [--print=details] [--verbose=true|--verbose=false] " +
 			"FOLDER_PATH [PATH_TO_LIST_OF_FILES]",
 		"  cfcli exclude <add|remove> FOLDER_PATH JSON_OBJECT",
@@ -200,6 +207,7 @@ func writeHelp(output *lineOutput) error {
 		"  Git must be available on PATH.",
 		"",
 		"Arguments and options:",
+		"  --version                Print the application version and exit without scanning.",
 		"  FOLDER_PATH              Git repository root to scan or update.",
 		"  PATH_TO_LIST_OF_FILES    Optional file with Git-relative paths to scan, one path per line.",
 		"  --mode=json              Scan all selected files and print findings as JSON. " +

@@ -3,11 +3,43 @@ package main
 import (
 	"bytes"
 	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func TestRunVersionWithoutScanDependencies(t *testing.T) {
+	for _, silent := range []string{"", "true"} {
+		t.Run("silent="+silent, func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			dependencies := appDependencies{
+				getenv: func(name string) string {
+					if name != "CYBER_FERRET_SILENT_MODE" {
+						t.Fatalf("unexpected environment access: %s", name)
+					}
+					return silent
+				},
+			}
+			code := runWithDependencies(context.Background(), []string{"--version"}, &stdout, &stderr, dependencies)
+			if code != exitClean || stdout.String() != currentAppVersionOutput() || stderr.Len() != 0 {
+				t.Fatalf("code = %d, stdout = %q, stderr = %q", code, stdout.String(), stderr.String())
+			}
+		})
+	}
+}
+
+func TestRunVersionReportsOutputFailure(t *testing.T) {
+	reader, writer := io.Pipe()
+	_ = reader.Close()
+	defer writer.Close()
+	var stderr bytes.Buffer
+	code := runWithDependencies(context.Background(), []string{"--version"}, writer, &stderr, appDependencies{})
+	if code != exitFailure || stderr.Len() != 0 {
+		t.Fatalf("code = %d, stderr = %q", code, stderr.String())
+	}
+}
 
 // A scan invocation with no positional argument, or with more than two, exits 1 with the usage
 // text on stderr and only the application version on stdout. The zero-value dependencies are part
@@ -57,6 +89,7 @@ func TestRunPrintsExpandedHelpForInsufficientArguments(t *testing.T) {
 		}
 		for _, expected := range []string{
 			"TEXT: Usage:\n",
+			"TEXT:   cfcli --version\n",
 			"TEXT:   cfcli [--mode=quick|--mode=json] [--print=details]",
 			"TEXT:   cfcli exclude <add|remove> FOLDER_PATH JSON_OBJECT\n",
 			"TEXT:   cfcli exclude FOLDER_PATH JSON_OBJECT\n",
